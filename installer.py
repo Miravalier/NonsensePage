@@ -69,27 +69,38 @@ def main():
     # Perform installation
     for target in queue:
         info = targets[target]
-        perform_install(Path(target), Path(info['destination']), args.verbose)
-        commands = info.get("install-commands", [])
-        for command in commands:
-            result = subprocess.call(shlex.split(command))
-            if result != 0:
-                print("error: command '{}' in target '{}' returned '{}'".format(command, target, result))
-                sys.exit(1)
-            elif args.verbose:
-                print("executed '{}' from target '{}'".format(command, target))
+        changes = perform_install(Path(target), Path(info['destination']), args.verbose)
+        if changes:
+            commands = info.get("install-commands", [])
+            for command in commands:
+                result = subprocess.call(shlex.split(command))
+                if result != 0:
+                    print("error: command '{}' in target '{}' returned '{}'".format(command, target, result))
+                    sys.exit(1)
+                elif args.verbose:
+                    print("info: executed '{}' from target '{}'".format(command, target))
+        elif args.verbose:
+            print("info: skipping target '{}', no changes".format(target))
 
 
 def perform_install(source, destination, verbose):
+    changes = False
+
     if source.is_dir():
         for subsource in source.iterdir():
-            perform_install(subsource, destination, verbose)
+            changes |= perform_install(subsource, destination, verbose)
     else:
         destination /= source
-        os.makedirs(destination.parent, exist_ok=True)
-        shutil.copy(str(source), str(destination))
-        if verbose:
-            print(source, '->', destination)
+        if not destination.exists() or source.stat().st_mtime > destination.stat().st_mtime:
+            if verbose:
+                print("info: copying", source, '->', destination)
+            os.makedirs(destination.parent, exist_ok=True)
+            shutil.copy(str(source), str(destination))
+            changes = True
+        elif verbose:
+            print("info: skipping", source, "->", destination)
+
+    return changes
 
 
 if __name__ == '__main__':
