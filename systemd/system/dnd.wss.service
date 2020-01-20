@@ -1,0 +1,12 @@
+[Unit]
+Description=D&D WSS Service
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+User=root
+ExecStart=/usr/bin/env python3.7 /var/wss/dnd.py
+
+[Install]
+WantedBy=multi-user.target

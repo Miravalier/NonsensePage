@@ -1,0 +1,24 @@
+{
+    "options": {
+        "require-root": true
+    },
+    "targets": {
+        "dnd.html": {
+            "destination": "/var/www/miravalier/"
+        },
+        "wss": {
+            "destination": "/var",
+            "install-commands": [
+                "systemctl daemon-reload",
+                "service dnd.wss restart"
+            ],
+            "dependencies": ["systemd"]
+        },
+        "systemd": {
+            "destination": "/etc"
+        },
+        "res": {
+            "destination": "/var/www/miravalier/"
+        }
+    }
+}

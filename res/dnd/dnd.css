@@ -1,0 +1,173 @@
+@import url('https://fonts.googleapis.com/css?family=Nunito+Sans&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Orbitron&display=swap');
+@import url('https://fonts.googleapis.com/css?family=El+Messiri&display=swap');
+
+* {
+    font-family: 'Nunito Sans', sans-serif;
+}
+
+html, body {
+    margin: 0px;
+    padding: 0px;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+#tabletop {
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    margin: 0px;
+}
+
+#background_menu {
+    width: 140px;
+    position: absolute;
+}
+
+.file_viewport {
+    position: absolute;
+    top: 24px;
+    bottom: 2px;
+    left: 2px;
+    right: 2px;
+}
+
+.directory h6 {
+    text-align: left;
+    padding: 4px;
+}
+
+h1, h2, h3, h4, h5, h6, p, img, .unselectable {
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+/Edge */
+    user-select: none; /* Standard */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    text-align: center;
+    margin: 2px;
+}
+
+.dnd_window {
+    position: absolute;
+    padding: 5px;
+    margin: 0px;
+    border-style: solid;
+    border-width: 2px;
+    border-radius: 3px;
+    border-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+.close_button {
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    top: 5px;
+    right: 5px;
+    margin: 0px;
+    padding: 0px;
+    cursor: pointer;
+}
+
+.button_svg {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    margin: 0px;
+    padding: 0px;
+    top: 0px;
+    left: 0px;
+}
+
+
+.message_display {
+    width: 100%;
+    height: calc(100% - 24px);
+    overflow-y: scroll;
+}
+
+.message_input {
+    width: calc(100% - 4px);
+}
+
+.any_message {
+    white-space: -moz-pre-wrap !important;
+    white-space: -webkit-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-all;
+    white-space: normal;
+    font-family: 'Nunito Sans', sans-serif;
+}
+
+.any_message h4, .any_message p {
+    display: inline;
+}
+
+.received_message {
+}
+
+.error_message {
+    font-style: italic;
+    color: red;
+}
+
+.system_message {
+    font-style: italic;
+    color: grey;
+}
+
+.window_title {
+    /* font-family: 'Orbitron', sans-serif; */
+    /* font-family: 'El Messiri', sans-serif; */
+}
+
+/* Themes */
+
+div#watermark {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: url('/res/dnd/ampersand.png') center center no-repeat;
+    background-size: contain;
+    pointer-events: none;
+}
+
+div#background {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: none center center repeat;
+}
+
+#watermark.fantasy {
+    filter: drop-shadow(4px 4px 6px black);
+}
+
+#watermark.tech {
+    filter: saturate(0) drop-shadow(4px 4px 6px black)
+}
+
+#watermark.icy {
+    filter: hue-rotate(247deg) brightness(2.64) saturate(0.3) drop-shadow(4px 4px 6px black);
+}
+
+
+#background.fantasy {
+    background-image: url('/res/dnd/fantasy.png');
+}
+
+#background.tech {
+    background-image: url('/res/dnd/tech.png');
+}
+
+#background.icy {
+    background-image: url('/res/dnd/icy.png');
+}

@@ -1,0 +1,6 @@
+*.sw[op]
+__pycache__/
+*.pyc
+*.a
+*.so
+*.o
