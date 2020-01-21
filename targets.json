@@ -9,13 +9,13 @@
         "wss": {
             "destination": "/var",
             "install-commands": [
-                "systemctl daemon-reload",
                 "service dnd.wss restart"
             ],
             "dependencies": ["systemd"]
         },
         "systemd": {
-            "destination": "/etc"
+            "destination": "/etc",
+            "install-commands": ["systemctl daemon-reload"]
         },
         "res": {
             "destination": "/var/www/miravalier/"

@@ -1,12 +1,34 @@
 #!/usr/bin/env python3.7
 
+import postgres
 import asyncio
 import ssl
 import websockets
 import json
+import psycopg2 as psql
+from contextlib import contextmanager
+from google.oauth2 import id_token
+from google.auth.transport import requests
+
+
+@contextmanager
+def cursor():
+    connection = psql.connect("dbname=dnd")
+    cursor = connection.cursor()
+    try:
+        yield cursor
+    finally:
+        cursor.close()
+        connection.commit()
+        connection.close()
 
 connected_sockets = set()
 event_groups = {}
+
+with open("/etc/oauth/oauth.json") as fp:
+    GOOGLE_OAUTH = json.load(fp)
+
+GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH['CLIENT_ID']
 
 
 def main():
@@ -56,8 +78,7 @@ async def debug_log(msg):
 
 
 async def handle_connection(websocket, path):
-    auth = False
-    username = None
+    account = None
 
     while True:
         # Receive message
@@ -73,22 +94,28 @@ async def handle_connection(websocket, path):
 
         # Process message
         if msg_type == "auth":
-            username = msg.get("username", "")
-            auth_token = msg.get("auth_token", "")
-            if auth:
+            auth_token = msg.get("auth_token", None)
+
+            if account:
                 reply = {"type": "error", "reason": "already authenticated"}
-            elif not username:
-                reply = {"type": "auth failure", "reason": "missing username"}
             elif not auth_token:
                 reply = {"type": "auth failure", "reason": "missing auth token"}
             else:
-                reply = {"type": "auth success"}
-                auth = True
-                connected_sockets.add(websocket)
+                try:
+                    idinfo = id_token.verify_oauth2_token(auth_token, requests.Request(), GOOGLE_OAUTH_CLIENT_ID)
+
+                    if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                        raise ValueError('wrong issuer')
+
+                    account = get_account(idinfo['sub'])
+                    reply = {"type": "auth success"}
+                    connected_sockets.add(websocket)
+                except ValueError as e:
+                    reply = {"type": "auth failure", "reason": "invalid auth token, " + str(e)}
         elif msg_type == "invalid":
             reply = {"type": "error", "reason": "invalid message"}
-        elif not auth:
-            reply = {"type": "error", "reason": "unauthorized"}
+        elif not account:
+            reply = {"type": "error", "reason": "not authenticated"}
         elif msg_type == "register event":
             event_id = msg.get("id", None)
             if event_id in event_groups:
@@ -110,7 +137,7 @@ async def handle_connection(websocket, path):
             if event_id in event_groups:
                 event_data = msg.get("data", None)
                 await broadcast(
-                    {"type": "event", "user": username, "id": event_id, "data": event_data},
+                    {"type": "event", "user": account.username, "id": event_id, "data": event_data},
                     event_groups[event_id]
                 )
             else:
@@ -125,6 +152,10 @@ async def handle_connection(websocket, path):
             await websocket.send(json.dumps(reply))
 
     connected_sockets.discard(websocket)
+
+
+def get_account(user_id):
+    raise ValueError("account does not exist")
 
 
 if __name__ == '__main__':

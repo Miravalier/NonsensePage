@@ -13,6 +13,7 @@ acquire_connection();
 /************
  * D&D Code *
  ************/
+
 var g_commands = {
     '/theme': function (args) {
         if (args.length != 2)
@@ -89,7 +90,7 @@ function get_cookie(key)
     }
     else
     {
-        return "";
+        return null;
     }
 }
 
@@ -241,19 +242,35 @@ function message_handler(event)
     }
 }
 
+function send_auth_packet(auth2) {
+    var google_user = auth2.currentUser.get();
+    console.log("google_user: " + google_user);
+
+    var id_token = google_user.getAuthResponse().id_token;
+    console.log("Sending auth_token: " + id_token);
+
+    connection.send(
+        JSON.stringify({
+            type: "auth",
+            auth_token: id_token
+        })
+    )
+}
+
 function activate_connection()
 {
-    console.log("Sending auth request.");
-    connection.send(
-        JSON.stringify(
-            {
-                type: "auth",
-                username: get_cookie("username"),
-                auth_token: get_cookie("auth_token")
-            }
-        )
-    )
     connection.onopen = undefined;
+
+    console.log("Sending auth request.");
+
+    gapi.load('auth2', function() {
+        gapi.auth2.init({
+            client_id: "667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com"
+        }).then(function (auth2) {
+            console.log("auth2: " + auth2);
+            send_auth_packet(auth2);
+        });
+    });
 }
 
 function acquire_connection()
