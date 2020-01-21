@@ -1,6 +1,4 @@
 #!/usr/bin/env python3.7
-
-import postgres
 import asyncio
 import ssl
 import websockets
@@ -10,17 +8,6 @@ from contextlib import contextmanager
 from google.oauth2 import id_token
 from google.auth.transport import requests
 
-
-@contextmanager
-def cursor():
-    connection = psql.connect("dbname=dnd")
-    cursor = connection.cursor()
-    try:
-        yield cursor
-    finally:
-        cursor.close()
-        connection.commit()
-        connection.close()
 
 connected_sockets = set()
 event_groups = {}
@@ -48,6 +35,35 @@ def main():
         )
     )
     asyncio.get_event_loop().run_forever()
+
+
+@contextmanager
+def cursor():
+    connection = psql.connect("dbname=dnd")
+    cur = connection.cursor()
+    try:
+        yield cur
+    finally:
+        cur.close()
+        connection.commit()
+        connection.close()
+
+
+def execute(*args, **kwargs):
+    with cursor() as cur:
+        cur.execute(*args, **kwargs)
+
+
+def query(*args, **kwargs):
+    with cursor() as cur:
+        cur.execute(*args, **kwargs)
+        return cur.fetchall()
+
+
+def single_query(*args, **kwargs):
+    with cursor() as cur:
+        cur.execute(*args, **kwargs)
+        return cur.fetchone()
 
 
 async def attempt_send(websocket, msg):
@@ -107,7 +123,7 @@ async def handle_connection(websocket, path):
                     if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
                         raise ValueError('wrong issuer')
 
-                    account = get_account(idinfo['sub'])
+                    account = get_account(idinfo['sub'], idinfo['email'])
                     reply = {"type": "auth success"}
                     connected_sockets.add(websocket)
                 except ValueError as e:
@@ -137,7 +153,7 @@ async def handle_connection(websocket, path):
             if event_id in event_groups:
                 event_data = msg.get("data", None)
                 await broadcast(
-                    {"type": "event", "user": account.username, "id": event_id, "data": event_data},
+                    {"type": "event", "user": account.user_name, "id": event_id, "data": event_data},
                     event_groups[event_id]
                 )
             else:
@@ -154,8 +170,21 @@ async def handle_connection(websocket, path):
     connected_sockets.discard(websocket)
 
 
-def get_account(user_id):
-    raise ValueError("account does not exist")
+class Account:
+    def __init__(self, google_id, user_id, user_name):
+        self.google_id = google_id
+        self.user_id = user_id
+        self.user_name = user_name
+
+
+def get_account(google_id, email):
+    result = single_query("SELECT user_id, user_name FROM users WHERE google_id=%s", (google_id,))
+    if result:
+        user_id, user_name = result
+        return Account(google_id, user_id, user_name)
+    else:
+        execute("INSERT INTO users (google_id, user_name) VALUES (%s, %s)", (google_id, email))
+        return get_account(google_id)
 
 
 if __name__ == '__main__':

@@ -198,7 +198,7 @@ function message_handler(event)
     }
     else if (message.type == "auth success")
     {
-        console.log("Authentication accepted.");
+        console.log("[!] Authentication accepted");
         connection_activated = true;
         for (event_id of Object.keys(g_event_handlers))
         {
@@ -244,10 +244,7 @@ function message_handler(event)
 
 function send_auth_packet(auth2) {
     var google_user = auth2.currentUser.get();
-    console.log("google_user: " + google_user);
-
     var id_token = google_user.getAuthResponse().id_token;
-    console.log("Sending auth_token: " + id_token);
 
     connection.send(
         JSON.stringify({
@@ -255,19 +252,20 @@ function send_auth_packet(auth2) {
             auth_token: id_token
         })
     )
+
+    console.log("[!] Auth request sent")
 }
 
 function activate_connection()
 {
     connection.onopen = undefined;
 
-    console.log("Sending auth request.");
+    console.log("[!] Loading google oauth2");
 
     gapi.load('auth2', function() {
         gapi.auth2.init({
             client_id: "667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com"
         }).then(function (auth2) {
-            console.log("auth2: " + auth2);
             send_auth_packet(auth2);
         });
     });
