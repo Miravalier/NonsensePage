@@ -6,7 +6,9 @@ The townhall project is a tabletop RPG web server, similar to Roll20, but design
  - A web server (apt install nginx)
  - Valid SSL/TLS certificate (https://certbot.eff.org/)
  - Python 3.7 (apt install python3.7)
+ - PostgreSQL (https://www.postgresql.org/)
  - websockets (python3.7 -m pip install websockets)
+ - psycopg2 (python3.7 -m pip install psycopg2)
 
 ## Setup
  - Configure your web server and update the targets.json to make your web server's file structure.
