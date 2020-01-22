@@ -1,12 +1,13 @@
 // Configuration parameters
+var attempts = 0;
 var attempt_limit = 10;
 
 // Mutable Globals
+var auth2 = null;
 var connection = null;
 var connection_buffer = [];
 var connection_activated = false;
 var g_event_handlers = {};
-acquire_connection();
 
 // Constants
 
@@ -198,6 +199,7 @@ function message_handler(event)
     }
     else if (message.type == "auth success")
     {
+        attempts = 0;
         console.log("[!] Authentication accepted");
         connection_activated = true;
         for (event_id of Object.keys(g_event_handlers))
@@ -261,24 +263,24 @@ function activate_connection()
     connection.onopen = undefined;
 
     console.log("[!] Loading google oauth2");
-
-    gapi.load('auth2', function() {
-        gapi.auth2.init({
-            client_id: "667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com"
-        }).then(function (auth2) {
-            send_auth_packet(auth2);
-        });
-    });
+    send_auth_packet(auth2);
 }
 
 function acquire_connection()
 {
+    if (attempts > attempt_limit)
+    {
+        console.error("Too many connection attempts.");
+        connection = null;
+        return;
+    }
     connection_activated = false;
     connection = new WebSocket("wss://miravalier.net:3030/");
     connection.onopen = activate_connection;
     connection.onmessage = message_handler;
     connection.onerror = acquire_connection;
     connection.onclose = acquire_connection;
+    attempts++;
 }
 
 function simulate_server_reply(data)
@@ -493,8 +495,21 @@ var background_menu_function_map = {
     'Cancel': function(x, y) {}
 };
 
+function init() {
+    gapi.load('auth2', function() {
+        gapi.auth2.init({
+            client_id: "667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com"
+        }).then(function (value) {
+            auth2 = value;
+            acquire_connection();
+        });
+    });
+}
+
 // Main function
 $("document").ready(function () {
+    // Authenticate with google
+
     // Setup background doubleclick function
     $("#tabletop").dblclick(function (eventObject) {
         create_background_menu(eventObject.clientX, eventObject.clientY);
