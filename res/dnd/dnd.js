@@ -28,16 +28,10 @@ var g_commands = {
     }
 };
 
-//var command_regex = /(?<cmd>[^ \t\n]+)(\s+(?<arg>([^ \t\n]+)|("[^"]+")|('[^']+')))*/;
-function parse_command(message)
-{
-    let words = message.split(/\s+/);
-    return [words[0], words];
-}
 
 function window_execute_command()
 {
-    var message = this.text_input.value;
+    let message = this.text_input.value;
     if (message.length > 1024)
     {
         error_message("Your message is too long.");
@@ -45,7 +39,8 @@ function window_execute_command()
     }
     else if (message[0] == '/')
     {
-        var [command, args] = parse_command(message);
+        let args = string_to_args(message);
+        let command = args[0];
         if (command in g_commands)
         {
             g_commands[command](args);
@@ -57,7 +52,7 @@ function window_execute_command()
     }
     else
     {
-        trigger_event("chat message", message);
+        send_object({type: "chat message", text: message});
     }
 
     this.text_input.value = "";
@@ -141,12 +136,12 @@ function deregister_event(event_id, event_handler)
 
 function error_message(text)
 {
-    simulate_event("Error", "chat message", text);
+    simulate_event(-1, "chat message", {category: "Error", text: text, id: -1});
 }
 
 function system_message(text)
 {
-    simulate_event("System", "chat message", text);
+    simulate_event(-1, "chat message", {category: "System", text: text, id: -1});
 }
 
 function simulate_event(sim_user, event_id, event_data)
@@ -215,6 +210,18 @@ function message_handler(event)
             connection.send(msg);
         }
         connection_buffer = [];
+    }
+    else if (message.type == "username reply") {
+        let id = message.id;
+        let name = message.name;
+        g_username_cache[id] = name;
+        if (id in g_username_watchers) {
+            let watchers = g_username_watchers[id];
+            while (watchers.length != 0) {
+                (watchers.pop())(name);
+            }
+            delete g_username_watchers[id];
+        }
     }
     else if (message.type == "event")
     {
@@ -432,19 +439,46 @@ function create_chat_window(x, y)
     });
     chat_window.append(text_input);
     chat_window.text_input = text_input;
+    chat_window.message_set = new Set();
 
-    chat_window.register_event("chat message", function (message) {
-        if (message.user == "Error")
+    chat_window.register_event("chat message", function (chat_event) {
+        let message = chat_event.data;
+        if (message.id != -1 && chat_window.message_set.has(message.id))
         {
-            create_message(message_display, "error", message.user, message.data);
+            // Discard messages we've already received unless
+            // their id is -1 (internal)
+            return;
         }
-        else if (message.user == "System")
+        chat_window.message_set.add(message.id);
+
+        if (message.category == "Error")
         {
-            create_message(message_display, "system", message.user, message.data);
+            create_message(message_display, "error", "Error", message.text);
+        }
+        else if (message.category == "System")
+        {
+            create_message(message_display, "system", "System", message.text);
         }
         else
         {
-            create_message(message_display, "received", message.user, message.data);
+            let id = chat_event.user;
+            let name = username_lookup(id);
+            if (name) {
+                create_message(message_display, "received", name, message.text);
+            }
+            else {
+                let watcher = (function(name) {
+                    create_message(message_display, "received", name, message.text);
+                });
+
+                if (id in g_username_watchers) {
+                    g_username_watchers[id].push(watcher);
+                }
+                else {
+                    g_username_watchers[id] = [watcher];
+                }
+                send_object({type: "query username", id: id});
+            }
         }
     });
 
@@ -495,6 +529,19 @@ var background_menu_function_map = {
     'Cancel': function(x, y) {}
 };
 
+var g_username_watchers = {};
+var g_username_cache = {};
+g_username_cache[-1] = "System";
+function username_lookup(id) {
+    if (id in g_username_cache) {
+        return g_username_cache[id];
+    }
+    else
+    {
+        return null;
+    }
+}
+
 function init() {
     gapi.load('auth2', function() {
         gapi.auth2.init({
@@ -508,10 +555,9 @@ function init() {
 
 // Main function
 $("document").ready(function () {
-    // Authenticate with google
-
     // Setup background doubleclick function
     $("#tabletop").dblclick(function (eventObject) {
         create_background_menu(eventObject.clientX, eventObject.clientY);
     });
+
 });

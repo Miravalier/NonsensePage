@@ -7,6 +7,7 @@ import psycopg2 as psql
 from contextlib import contextmanager
 from google.oauth2 import id_token
 from google.auth.transport import requests
+from functools import lru_cache
 
 
 connected_sockets = set()
@@ -148,12 +149,26 @@ async def handle_connection(websocket, path):
                     del event_groups[event_id]
             else:
                 reply = {"type": "error", "reason": "non-existent event id"}
+        elif msg_type == "query username":
+            user_id = msg.get("id", None)
+            if user_id is None:
+                reply = {"type": "error", "reason": "username query missing user id"}
+            else:
+                user_name = get_user_name(user_id)
+                reply = {"type": "username reply", "id": user_id, "name": user_name}
+        elif msg_type == "chat message":
+            text = msg.get("text", "")
+            await broadcast({
+                "type": "event", "user": account.user_id, "id": "chat message", "data": {
+                    "category": "user", "id": -1, "text": text
+                }
+            })
         elif msg_type == "trigger event":
             event_id = msg.get("id", None)
             if event_id in event_groups:
                 event_data = msg.get("data", None)
                 await broadcast(
-                    {"type": "event", "user": account.user_name, "id": event_id, "data": event_data},
+                    {"type": "event", "user": account.user_id, "id": event_id, "data": event_data},
                     event_groups[event_id]
                 )
             else:
@@ -177,6 +192,7 @@ class Account:
         self.user_name = user_name
 
 
+@lru_cache(maxsize=64)
 def get_account(google_id, email):
     result = single_query("SELECT user_id, user_name FROM users WHERE google_id=%s", (google_id,))
     if result:
@@ -185,6 +201,15 @@ def get_account(google_id, email):
     else:
         execute("INSERT INTO users (google_id, user_name) VALUES (%s, %s)", (google_id, email))
         return get_account(google_id)
+
+
+@lru_cache(maxsize=64)
+def get_user_name(user_id):
+    result = single_query("SELECT user_name FROM users WHERE user_id=%s", (user_id,))
+    if result:
+        return result[0]
+    else:
+        return "Unknown User"
 
 
 if __name__ == '__main__':
