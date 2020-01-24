@@ -51,6 +51,12 @@ def cursor():
         connection.close()
 
 
+def execute_and_return(*args, **kwargs):
+    with cursor() as cur:
+        cur.execute(*args, **kwargs)
+        return cur.fetchone()
+
+
 def execute(*args, **kwargs):
     with cursor() as cur:
         cur.execute(*args, **kwargs)
@@ -145,9 +151,17 @@ async def _ (account, message, websocket):
 @register_handler("chat message")
 async def _ (account, message, websocket):
     text = message.get("text", "")
+    category = message.get("category", "ooc")
+    display_name = message.get("display name", account.user_name)
+    result = execute_and_return('''
+        INSERT INTO messages (message_id, sender_id, category, display_name, content)
+        VALUES (DEFAULT, %s, %s, %s, %s)
+        RETURNING message_id
+    ''', (account.user_id, category, display_name, text))
+
     await broadcast({
         "type": "event", "user": account.user_id, "id": "chat message", "data": {
-            "category": "user", "id": -1, "text": text
+            "category": category, "display name": display_name, "id": result[0], "text": text
         }
     })
 
@@ -162,6 +176,23 @@ async def _ (account, message, websocket):
         {"type": "event", "user": account.user_id, "id": event_id, "data": event_data},
         event_groups[event_id]
     )
+
+
+@register_handler("clear history")
+async def _ (account, message, websocket):
+    execute("DELETE FROM messages");
+    await broadcast({"type": "event", "id": "clear history"})
+
+
+@register_handler("request history")
+async def _ (account, message, websocket):
+    return {
+        "type": "history reply",
+        "messages": query('''
+            SELECT message_id, sender_id, category, display_name, content
+            FROM messages ORDER BY message_id DESC LIMIT 100
+        ''')
+    }
 
 
 @register_handler("list events")

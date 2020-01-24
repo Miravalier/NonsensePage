@@ -20,9 +20,15 @@ const sleep = (milliseconds) => {
  ************/
 
 var g_commands = {
+    '/clear': function (args) {
+        if (args.length != 1) {
+            error_message("usage is /clear");
+            return;
+        }
+        send_object({"type": "clear history"});
+    },
     '/theme': function (args) {
-        if (args.length != 2)
-        {
+        if (args.length != 2) {
             error_message("usage is /theme <fantasy | tech | icy>");
             return;
         }
@@ -140,15 +146,15 @@ function deregister_event(event_id, event_handler)
 
 function error_message(text)
 {
-    simulate_event(-1, "chat message", {category: "Error", text: text, id: -1});
+    local_event(-1, "chat message", {category: "Error", text: text, id: -1});
 }
 
 function system_message(text)
 {
-    simulate_event(-1, "chat message", {category: "System", text: text, id: -1});
+    local_event(-1, "chat message", {category: "System", text: text, id: -1});
 }
 
-function simulate_event(sim_user, event_id, event_data)
+function local_event(sim_user, event_id, event_data)
 {
     if (event_id in g_event_handlers)
     {
@@ -215,6 +221,18 @@ function global_handler(event)
         }
         connection_buffer = [];
     }
+    else if (message.type == "history reply") {
+        let messages = message.messages;
+        for (let i=messages.length-1; i >= 0; i--) {
+            let [message_id, sender_id, category, display_name, content] = messages[i];
+            local_event(sender_id, "chat message", {
+                "category": category,
+                "text": content,
+                "id": message_id,
+                "display name": display_name
+            });
+        }
+    }
     else if (message.type == "prompt username") {
         select_username_dialog();
     }
@@ -224,8 +242,8 @@ function global_handler(event)
         g_username_cache[id] = name;
         if (id in g_username_watchers) {
             let watchers = g_username_watchers[id];
-            while (watchers.length != 0) {
-                (watchers.pop())(name);
+            for (let i=0; i < watchers.length; i++) {
+                watchers[i](name);
             }
             delete g_username_watchers[id];
         }
@@ -329,7 +347,7 @@ function send_string(data)
 {
     if (connection.readyState == WebSocket.OPEN && connection_activated)
     {
-        console.log(`Sending ${data} immediately.`);
+        console.log(`Sending ${data}.`);
         connection.send(data);
     }
     else
@@ -342,37 +360,41 @@ function send_string(data)
 /************
  * GUI Code *
  ************/
-function create_background_menu(x, y)
+function create_context_menu(x, y, options, args)
 {
-    var menu = $("#background_menu");
-    if (!menu.length)
-    {
-        // Create menu html
-        var list = document.createElement('ul');
-        list.id = "background_menu";
-        list.innerHTML = `
-            <li class="ui-state-disabled unselectable"><div>New</div></li>
-            <li><div class="unselectable">Chat</div></li>
-            <li><div class="unselectable">Buttons</div></li>
-            <li><div class="unselectable">Files</div></li>
-            <li class="ui-state-disabled unselectable"><div>Misc.</div></li>
-            <li><div class="unselectable">Cancel</div></li>
-        `;
+    $("#g_context_menu").remove();
 
-        // Append html to DOM
-        $("#tabletop").append(list);
-
-        // Create menu widget
-        menu = $(list)
-        menu.menu({
-            select: function (eventObject, ui) {
-                background_menu_function_map[ui.item.text()](x, y);
-                menu.remove();
-            }
+    let menu_html = "";
+    Object.keys(options).forEach(function(category_name) {
+        let category = options[category_name]
+        menu_html += `<li class="ui-state-disabled unselectable"><div>${category_name}</div></li>`;
+        Object.keys(category).forEach(function (option_name) {
+            menu_html += `<li data-category="${category_name}"><div class="unselectable">${option_name}</div></li>`;
         });
-    }
+    });
 
-    // Move menu here
+    // Create menu html
+    var list = document.createElement('ul');
+    list.id = "g_context_menu";
+    list.innerHTML = menu_html;
+
+    // Append html to DOM
+    $("#tabletop").append(list);
+
+    // Create menu widget
+    menu = $(list)
+    menu.menu({
+        select: function (eventObject, ui) {
+            let category = ui.item.data("category");
+            let option = ui.item.text();
+            let callback = options[category][option];
+            if (callback) {
+                callback(x, y, args);
+            }
+            menu.remove();
+        }
+    });
+
     menu.css("left", x);
     menu.css("top", y);
     return menu;
@@ -413,48 +435,45 @@ function create_window(x, y, width, height)
         containment: "parent",
         handles: 'all'
     });
+    window_element.remove_handlers = [];
     window_element.register_event = window_register_event;
 
-    let close_button = $(`
-        <button type="button" class="close_button">
-            <img class="button_svg" src="/res/dnd/trash.svg" alt="Close Window"></img>
-        </button>
-    `);
-    close_button.click(function () {
-        if (window_element.remove_handler !== undefined)
-        {
-            window_element.remove_handler();
+    window_element.options = {
+        "Misc": {
+            "Close": function() {
+                window_element.remove_handlers.forEach(handler => {handler();});
+                window_element.remove();
+            }
         }
-        window_element.remove();
-    });
+    };
 
-    window_element.append(close_button);
     $("#tabletop").append(window_element);
+
+    window_element.on("contextmenu", function (e) {
+        create_context_menu(e.clientX, e.clientY, window_element.options);
+        e.preventDefault();
+        e.stopPropagation();
+    });
     return window_element;
 }
 
 window_register_event = function (event_id, event_handler)
 {
     register_event(event_id, event_handler);
-    this.remove_handler = function () {
+    this.remove_handlers.push(function () {
         deregister_event(event_id, event_handler);
-    }
+    });
 }
 
 function create_message(message_display, category, source, content)
 {
-    let content_element = document.createElement("p");
-    content_element.appendChild(document.createTextNode(content));
-
-    let source_element = document.createElement("h4");
-    source_element.appendChild(document.createTextNode(source + ':'));
-
-    let message_element = document.createElement("div");
-    message_element.setAttribute('class', 'any_message ' + category + '_message');
-    message_element.appendChild(source_element);
-    message_element.appendChild(content_element);
-    message_display.append(message_element);
-    message_display.scrollTop = message_display.scrollHeight;
+    let message = $(`
+        <div class="any_message ${category}_message">
+            <h4>${source}:</h4><p>${content}</p>
+        </div>
+    `);
+    message_display.append(message);
+    message_display.scrollTop(message_display.prop('scrollHeight'));
 }
 
 function create_chat_window(x, y)
@@ -462,8 +481,7 @@ function create_chat_window(x, y)
     var chat_window = create_window(x, y, 400, 400);
     chat_window.execute_command = window_execute_command;
 
-    var message_display = document.createElement("div");
-    message_display.setAttribute('class', 'message_display');
+    var message_display = $('<div class="message_display"></div>')
     chat_window.append(message_display);
     chat_window.message_display = message_display
 
@@ -480,6 +498,11 @@ function create_chat_window(x, y)
     chat_window.append(text_input);
     chat_window.text_input = text_input;
     chat_window.message_set = new Set();
+
+    chat_window.register_event("clear history", function (clear_event) {
+        chat_window.message_set.clear();
+        message_display.html("");
+    });
 
     chat_window.register_event("chat message", function (chat_event) {
         let message = chat_event.data;
@@ -502,7 +525,7 @@ function create_chat_window(x, y)
         else
         {
             let id = chat_event.user;
-            let name = username_lookup(id);
+            let name = message["display name"];
             if (name) {
                 create_message(message_display, "received", name, message.text);
             }
@@ -522,6 +545,8 @@ function create_chat_window(x, y)
         }
     });
 
+    send_object({"type": "request history"});
+
     return chat_window;
 }
 
@@ -529,10 +554,8 @@ function create_button_window(x, y)
 {
     let button_window = create_window(x, y, 500, 100);
     let button_display = $(`<div class="button_display"></div>`);
-    button_display.on("contextmenu", function (e) {
+    button_window.options['Misc']['Add Button'] = (function () {
         button_display.append($(`<img class="window_button" src="/res/dnd/button.svg"></img>`));
-        e.preventDefault();
-        e.stopPropagation();
     });
     button_window.append(button_display);
     return button_window;
@@ -568,12 +591,6 @@ function create_file_window(x, y)
     return file_window;
 }
 
-var background_menu_function_map = {
-    'Chat': create_chat_window,
-    'Buttons': create_button_window,
-    'Files': create_file_window,
-    'Cancel': function(x, y) {}
-};
 
 var g_username_watchers = {};
 var g_username_cache = {};
@@ -603,11 +620,20 @@ function init() {
 $("document").ready(function () {
     let tabletop = $("#tabletop");
     tabletop.on("click", function (e) {
-        $("#background_menu").remove();
+        $("#g_context_menu").remove();
         e.stopPropagation();
     });
     tabletop.on("contextmenu", function (e) {
-        create_background_menu(e.clientX, e.clientY);
+        create_context_menu(e.clientX, e.clientY, {
+            'New': {
+                'Chat': create_chat_window,
+                'Buttons': create_button_window,
+                'Files': create_file_window,
+            },
+            'Misc': {
+                'Cancel': () => {}
+            }
+        });
         e.preventDefault();
         e.stopPropagation();
     });
