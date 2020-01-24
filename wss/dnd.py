@@ -12,6 +12,7 @@ from functools import lru_cache
 
 connected_sockets = set()
 event_groups = {}
+request_handlers = {}
 
 with open("/etc/oauth/oauth.json") as fp:
     GOOGLE_OAUTH = json.load(fp)
@@ -94,6 +95,84 @@ async def debug_log(msg):
     await broadcast({"type": "debug", "data": msg})
 
 
+def register_handler(message_type):
+    def sub_register_handler(func):
+        request_handlers[message_type] = func
+        return func
+    return sub_register_handler
+
+
+@register_handler("register event")
+async def _ (account, message, websocket):
+    event_id = message.get("id", None)
+    if event_id in event_groups:
+        event_groups[event_id].add(websocket)
+    else:
+        event_groups[event_id] = {websocket}
+        await broadcast({"type": "event created", "id": event_id})
+    return {"type": "event registered", "id": event_id}
+
+
+@register_handler("deregister event")
+async def _ (account, message, websocket):
+    event_id = message.get("id", None)
+    if event_id not in event_groups:
+        return {"type": "error", "reason": "non-existent event id"}
+    event_groups[event_id].discard(websocket)
+    if not event_groups[event_id]:
+        del event_groups[event_id]
+
+
+@register_handler("update username")
+async def _ (account, message, websocket):
+    new_name = message.get("name", None)
+    if new_name is None:
+        return {"type": "error", "reason": "missing updated username"}
+    account.user_name = new_name
+    execute("UPDATE users SET user_name=%s WHERE user_id=%s", (new_name, account.user_id))
+    get_user_name.cache_clear()
+    await broadcast({"type": "username update", "id": account.user_id, "name": new_name})
+
+
+@register_handler("query username")
+async def _ (account, message, websocket):
+    user_id = message.get("id", None)
+    if user_id is None:
+        return {"type": "error", "reason": "username query missing user id"}
+    return {"type": "username update", "id": user_id, "name": get_user_name(user_id)}
+
+
+@register_handler("chat message")
+async def _ (account, message, websocket):
+    text = message.get("text", "")
+    await broadcast({
+        "type": "event", "user": account.user_id, "id": "chat message", "data": {
+            "category": "user", "id": -1, "text": text
+        }
+    })
+
+
+@register_handler("trigger event")
+async def _ (account, message, websocket):
+    event_id = message.get("id", None)
+    event_data = message.get("data", None)
+    if event_id not in event_groups:
+        return {"type": "error", "reason": "non-existent event id"}
+    await broadcast(
+        {"type": "event", "user": account.user_id, "id": event_id, "data": event_data},
+        event_groups[event_id]
+    )
+
+
+@register_handler("list events")
+async def _ (account, message, websocket):
+    return {"type": "event list", "events": list(event_groups.keys())}
+
+
+async def unknown_request(account, message, websocket):
+    return {"type": "error", "reason": "unknown type '{}'".format(message.type)}
+
+
 async def handle_connection(websocket, path):
     account = None
 
@@ -112,7 +191,6 @@ async def handle_connection(websocket, path):
         # Process message
         if msg_type == "auth":
             auth_token = msg.get("auth_token", None)
-
             if account:
                 reply = {"type": "error", "reason": "already authenticated"}
             elif not auth_token:
@@ -124,7 +202,11 @@ async def handle_connection(websocket, path):
                     if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
                         raise ValueError('wrong issuer')
 
-                    account = get_account(idinfo['sub'], idinfo['email'])
+                    account = get_account(idinfo['sub'])
+                    if account.user_name is None:
+                        account.user_name = idinfo['email']
+                        execute("UPDATE users SET user_name=%s WHERE user_id=%s", (idinfo['email'], account.user_id))
+                        await websocket.send(json.dumps({"type": "prompt username"}))
                     reply = {"type": "auth success"}
                     connected_sockets.add(websocket)
                 except ValueError as e:
@@ -133,50 +215,12 @@ async def handle_connection(websocket, path):
             reply = {"type": "error", "reason": "invalid message"}
         elif not account:
             reply = {"type": "error", "reason": "not authenticated"}
-        elif msg_type == "register event":
-            event_id = msg.get("id", None)
-            if event_id in event_groups:
-                event_groups[event_id].add(websocket)
-            else:
-                event_groups[event_id] = {websocket}
-                await broadcast({"type": "event created", "id": event_id})
-            reply = {"type": "event registered", "id": event_id}
-        elif msg_type == "deregister event":
-            event_id = msg.get("id", None)
-            if event_id in event_groups:
-                event_groups[event_id].discard(websocket)
-                if not event_groups[event_id]:
-                    del event_groups[event_id]
-            else:
-                reply = {"type": "error", "reason": "non-existent event id"}
-        elif msg_type == "query username":
-            user_id = msg.get("id", None)
-            if user_id is None:
-                reply = {"type": "error", "reason": "username query missing user id"}
-            else:
-                user_name = get_user_name(user_id)
-                reply = {"type": "username reply", "id": user_id, "name": user_name}
-        elif msg_type == "chat message":
-            text = msg.get("text", "")
-            await broadcast({
-                "type": "event", "user": account.user_id, "id": "chat message", "data": {
-                    "category": "user", "id": -1, "text": text
-                }
-            })
-        elif msg_type == "trigger event":
-            event_id = msg.get("id", None)
-            if event_id in event_groups:
-                event_data = msg.get("data", None)
-                await broadcast(
-                    {"type": "event", "user": account.user_id, "id": event_id, "data": event_data},
-                    event_groups[event_id]
-                )
-            else:
-                reply = {"type": "error", "reason": "non-existent event id"}
-        elif msg_type == "list events":
-            reply = {"type": "event list", "events": list(event_groups.keys())}
         else:
-            reply = {"type": "error", "reason": "unknown type '{}'".format(msg_type)}
+            try:
+                handler = request_handlers[msg_type]
+            except KeyError:
+                handler = unknown_request
+            reply = await handler(account, msg, websocket)
 
         # Send reply
         if reply is not None:
@@ -193,13 +237,13 @@ class Account:
 
 
 @lru_cache(maxsize=64)
-def get_account(google_id, email):
+def get_account(google_id):
     result = single_query("SELECT user_id, user_name FROM users WHERE google_id=%s", (google_id,))
     if result:
         user_id, user_name = result
         return Account(google_id, user_id, user_name)
     else:
-        execute("INSERT INTO users (google_id, user_name) VALUES (%s, %s)", (google_id, email))
+        execute("INSERT INTO users (google_id) VALUES (%s)", (google_id,))
         return get_account(google_id)
 
 

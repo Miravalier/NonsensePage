@@ -9,6 +9,10 @@ var connection_buffer = [];
 var connection_activated = false;
 var g_event_handlers = {};
 
+const sleep = (milliseconds) => {
+  return new Promise(resolve => setTimeout(resolve, milliseconds))
+}
+
 // Constants
 
 /************
@@ -174,7 +178,7 @@ function trigger_event(event_id, event_data)
     });
 }
 
-function message_handler(event)
+function global_handler(event)
 {
     try
     {
@@ -211,7 +215,10 @@ function message_handler(event)
         }
         connection_buffer = [];
     }
-    else if (message.type == "username reply") {
+    else if (message.type == "prompt username") {
+        select_username_dialog();
+    }
+    else if (message.type == "username update") {
         let id = message.id;
         let name = message.name;
         g_username_cache[id] = name;
@@ -273,27 +280,44 @@ function activate_connection()
     send_auth_packet(auth2);
 }
 
+function reacquire_connection()
+{
+    connection_activated = false;
+    close_connection();
+
+    sleep(1000).then(() => {
+        if (attempts > attempt_limit)
+        {
+            console.error("Too many connection attempts.");
+            return;
+        }
+        acquire_connection();
+        attempts++;
+    })
+}
+
+function close_connection()
+{
+    connection.onopen = undefined;
+    connection.onmessage = undefined;
+    connection.onerror = undefined;
+    connection.onclose = undefined;
+    connection = null;
+}
+
 function acquire_connection()
 {
-    if (attempts > attempt_limit)
-    {
-        console.error("Too many connection attempts.");
-        connection = null;
-        return;
-    }
-    connection_activated = false;
     connection = new WebSocket("wss://miravalier.net:3030/");
     connection.onopen = activate_connection;
-    connection.onmessage = message_handler;
-    connection.onerror = acquire_connection;
-    connection.onclose = acquire_connection;
-    attempts++;
+    connection.onmessage = global_handler;
+    connection.onerror = reacquire_connection;
+    connection.onclose = reacquire_connection;
 }
 
 function simulate_server_reply(data)
 {
     let event = {"data": data};
-    message_handler(event);
+    global_handler(event);
 }
 
 function send_object(data)
@@ -351,45 +375,62 @@ function create_background_menu(x, y)
     // Move menu here
     menu.css("left", x);
     menu.css("top", y);
+    return menu;
+}
+
+function select_username_dialog()
+{
+    let username_dialog = $(`<div title="Select Username">
+        Username:
+        <input type="text" class="name"></input>
+    </div>`);
+    $("#tabletop").append(username_dialog);
+    username_dialog.dialog({
+        resizable: false,
+        height: "auto",
+        width: 400,
+        modal: true,
+        buttons: {
+            Confirm: function() {
+                let name = username_dialog.find("input.name").val();
+                send_object({type: "update username", name: name});
+                $(this).dialog("close");
+            }
+        }
+    });
 }
 
 function create_window(x, y, width, height)
 {
-    var _window_element = document.createElement('div');
-    $("#tabletop").append(_window_element);
-    _window_element.setAttribute("class", "dnd_window");
-    var _window = $(_window_element);
-    var close_button_element = document.createElement('button');
-    close_button_element.setAttribute("type", "button");
-    close_button_element.setAttribute("class", "close_button");
-    close_button_element.addEventListener("click", function () {
-        if (_window.remove_handler !== undefined)
-        {
-            _window.remove_handler();
-        }
-        _window.remove();
-    });
-    var svg_element = document.createElement('img');
-    svg_element.setAttribute('class', 'button_svg');
-    svg_element.setAttribute('src', '/res/dnd/trash.svg');
-    svg_element.setAttribute('alt', 'Close Window');
-    close_button_element.appendChild(svg_element);
-    _window_element.appendChild(close_button_element);
-    _window.draggable({
+    let window_element = $(`
+        <div class="dnd_window" style="width: ${width}px; height: ${height}px; left: ${x}px; top: ${y}px; position: absolute;"></div>
+    `);
+    window_element.draggable({
         containment: "parent",
         snap: ".dnd_window"
     });
-    _window.resizable({
+    window_element.resizable({
         containment: "parent",
         handles: 'all'
     });
-    _window.css("left", x);
-    _window.css("top", y);
-    _window.css("width", width);
-    _window.css("height", height);
-    _window.register_event = window_register_event;
-    _window.execute_command = window_execute_command;
-    return _window;
+    window_element.register_event = window_register_event;
+
+    let close_button = $(`
+        <button type="button" class="close_button">
+            <img class="button_svg" src="/res/dnd/trash.svg" alt="Close Window"></img>
+        </button>
+    `);
+    close_button.click(function () {
+        if (window_element.remove_handler !== undefined)
+        {
+            window_element.remove_handler();
+        }
+        window_element.remove();
+    });
+
+    window_element.append(close_button);
+    $("#tabletop").append(window_element);
+    return window_element;
 }
 
 window_register_event = function (event_id, event_handler)
@@ -418,9 +459,8 @@ function create_message(message_display, category, source, content)
 
 function create_chat_window(x, y)
 {
-    var chat_window = create_window(x, y, 400, 600);
-    chat_window.css("width", "400px");
-    chat_window.css("height", "400px");
+    var chat_window = create_window(x, y, 400, 400);
+    chat_window.execute_command = window_execute_command;
 
     var message_display = document.createElement("div");
     message_display.setAttribute('class', 'message_display');
@@ -487,8 +527,14 @@ function create_chat_window(x, y)
 
 function create_button_window(x, y)
 {
-    var button_window = create_window(x, y, 600, 200);
-    
+    let button_window = create_window(x, y, 500, 100);
+    let button_display = $(`<div class="button_display"></div>`);
+    button_display.on("contextmenu", function (e) {
+        button_display.append($(`<img class="window_button" src="/res/dnd/button.svg"></img>`));
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    button_window.append(button_display);
     return button_window;
 }
 
@@ -555,9 +601,14 @@ function init() {
 
 // Main function
 $("document").ready(function () {
-    // Setup background doubleclick function
-    $("#tabletop").dblclick(function (eventObject) {
-        create_background_menu(eventObject.clientX, eventObject.clientY);
+    let tabletop = $("#tabletop");
+    tabletop.on("click", function (e) {
+        $("#background_menu").remove();
+        e.stopPropagation();
     });
-
+    tabletop.on("contextmenu", function (e) {
+        create_background_menu(e.clientX, e.clientY);
+        e.preventDefault();
+        e.stopPropagation();
+    });
 });

@@ -3,6 +3,9 @@
         "require-root": true
     },
     "targets": {
+        "mobile/dnd.html": {
+            "destination": "/var/www/miravalier/"
+        },
         "dnd.html": {
             "destination": "/var/www/miravalier/"
         },

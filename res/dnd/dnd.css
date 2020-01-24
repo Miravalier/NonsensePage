@@ -51,6 +51,12 @@ h1, h2, h3, h4, h5, h6 {
     margin: 2px;
 }
 
+.window_button {
+    width: 32px;
+    height: 32px;
+    margin: 4px;
+}
+
 .dnd_window {
     position: absolute;
     padding: 5px;
@@ -83,6 +89,16 @@ h1, h2, h3, h4, h5, h6 {
     left: 0px;
 }
 
+.button_display {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    overflow-y: scroll;
+}
 
 .message_display {
     width: 100%;
@@ -106,7 +122,12 @@ h1, h2, h3, h4, h5, h6 {
     font-family: 'Nunito Sans', sans-serif;
 }
 
-.any_message h4, .any_message p {
+.any_message h4 {
+    margin-right: 4px;
+    display: inline;
+}
+
+.any_message p {
     display: inline;
 }
 
