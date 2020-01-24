@@ -14,6 +14,14 @@ html, body {
     overflow: hidden;
 }
 
+.file_viewport button {
+    margin: 1px;
+}
+
+.file_viewport button.directory {
+    border-radius: 4px;
+}
+
 #tabletop {
     position: fixed;
     height: 100%;
@@ -27,8 +35,11 @@ html, body {
 }
 
 .file_viewport {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
     position: absolute;
-    top: 24px;
+    top: 2px;
     bottom: 2px;
     left: 2px;
     right: 2px;

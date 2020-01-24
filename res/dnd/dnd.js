@@ -360,7 +360,7 @@ function send_string(data)
 /************
  * GUI Code *
  ************/
-function create_context_menu(x, y, options, args)
+function create_context_menu(x, y, options)
 {
     $("#g_context_menu").remove();
 
@@ -389,7 +389,7 @@ function create_context_menu(x, y, options, args)
             let option = ui.item.text();
             let callback = options[category][option];
             if (callback) {
-                callback(x, y, args);
+                callback(x, y);
             }
             menu.remove();
         }
@@ -398,6 +398,52 @@ function create_context_menu(x, y, options, args)
     menu.css("left", x);
     menu.css("top", y);
     return menu;
+}
+
+function new_folder_dialog(file_window)
+{
+    let folder_dialog = $(`<div title="New Folder">
+        Name:
+        <input type="text" class="name"></input>
+    </div>`);
+    $("#tabletop").append(folder_dialog);
+    folder_dialog.dialog({
+        resizable: false,
+        height: "auto",
+        width: 400,
+        modal: true,
+        buttons: {
+            Confirm: function() {
+                let name = folder_dialog.find("input.name").val();
+                console.log("New Folder: " + file_window.pwd_id + " - " + name);
+                //send_object({type: "update username", name: name});
+                $(this).dialog("close");
+            }
+        }
+    });
+}
+
+function new_file_dialog(file_window)
+{
+    let file_dialog = $(`<div title="New File">
+        Name:
+        <input type="text" class="name"></input>
+    </div>`);
+    $("#tabletop").append(file_dialog);
+    file_dialog.dialog({
+        resizable: false,
+        height: "auto",
+        width: 400,
+        modal: true,
+        buttons: {
+            Confirm: function() {
+                let name = file_dialog.find("input.name").val();
+                console.log("New File: " + file_window.pwd_id + " - " + name);
+                //send_object({type: "update username", name: name});
+                $(this).dialog("close");
+            }
+        }
+    });
 }
 
 function select_username_dialog()
@@ -564,8 +610,18 @@ function create_button_window(x, y)
 function create_file_window(x, y)
 {
     var file_window = create_window(x, y, 400, 400);
+    file_window.pwd_id = 0;
 
-    /* TODO: Add create folder, download, and upload buttons */
+    /* TODO: Add download, and upload options */
+    file_window.options['New'] = {
+        'File': function (x, y) {
+            new_file_dialog(file_window)
+        },
+        'Folder': function (x, y) {
+            new_folder_dialog(file_window)
+        }
+    };
+
     let file_viewport = $(`
         <div class="file_viewport"></div>
     `);
@@ -576,16 +632,12 @@ function create_file_window(x, y)
 
     for (section of sections)
     {
-        let accordion = $(`
-            <div class="directory">
+        let button = $(`
+            <button type="button" class="directory">
                 <h6>${section}</h6>
-            </div>
-        `)
-        file_viewport.append(accordion)
-        accordion.accordion({
-            collapsible: true,
-            icons: null
-        });
+            </button>
+        `);
+        file_viewport.append(button)
     }
 
     return file_window;
