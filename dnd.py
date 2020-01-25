@@ -3,6 +3,7 @@ import asyncio
 import ssl
 import websockets
 import json
+import html
 import psycopg2 as psql
 import uuid
 import sys
@@ -151,7 +152,7 @@ async def _ (account, message, websocket):
     if file_type == 'txt':
         try:
             with open(upload_root / file_uuid, "r") as fp:
-                file_content = fp.read()
+                file_content = html.escape(fp.read())
             return {"type": file_type, "content": file_content}
         except OSError:
             return {"type": "error", "reason": "txt file not backed by uuid"}

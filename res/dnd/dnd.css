@@ -6,7 +6,7 @@
     font-family: 'Nunito Sans', sans-serif;
 }
 
-p {
+pre, p {
     margin: 4px;
 }
 
@@ -21,7 +21,6 @@ html, body {
 .drag_handle {
     width: 100%;
     height: 16px;
-    border-radius: 2px;
 }
 
 .file_viewport button {
@@ -36,15 +35,22 @@ html, body {
     justify-content: flex-start;
 }
 
+.text_viewport {
+    background: white;
+    border: grey;
+    border-width: 1px;
+    border-radius: 2px;
+}
+
 .text_viewport, .image_viewport {
     justify-content: flex-start;
     align-items: flex-start;
     display: flex;
     position: absolute;
-    top: 12px;
-    bottom: 2px;
-    left: 2px;
-    right: 2px;
+    top: 10px;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
     overflow: scroll;
 }
 
@@ -159,12 +165,15 @@ h1, h2, h3, h4, h5, h6 {
     user-select: none; /* Standard */
 }
 
+.opened_text {
+    font-family: monospace;
+}
+
 .opened_text, .any_message {
     -webkit-user-select: auto; /* Safari */
     -moz-user-select: auto; /* Firefox */
     -ms-user-select: auto; /* IE10+/Edge */
     user-select: auto; /* Standard */
-    font-family: 'Nunito Sans', sans-serif;
 }
 
 .any_message h4 {
@@ -174,6 +183,7 @@ h1, h2, h3, h4, h5, h6 {
     user-select: auto; /* Standard */
     margin-right: 4px;
     display: inline;
+    font-family: 'Nunito Sans', sans-serif;
 }
 
 .any_message p {
@@ -182,6 +192,7 @@ h1, h2, h3, h4, h5, h6 {
     -ms-user-select: auto; /* IE10+/Edge */
     user-select: auto; /* Standard */
     display: inline;
+    font-family: 'Nunito Sans', sans-serif;
 }
 
 .received_message {

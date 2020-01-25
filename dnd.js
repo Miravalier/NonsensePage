@@ -706,7 +706,7 @@ function create_text_viewer(x, y, content)
 {
     let text_window = create_window(x, y, 400, 400);
     text_window.append($(`<div class="text_viewport">
-        <p class="opened_text no_drag">${content}</p>
+        <pre class="opened_text no_drag">${content}</pre>
     </div>`));
     return text_window;
 }
