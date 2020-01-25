@@ -293,18 +293,6 @@ function message_handler(message) {
             })
         );
     }
-    else if (message.type == "username update") {
-        let id = message.id;
-        let name = message.name;
-        g_username_cache[id] = name;
-        if (id in g_username_watchers) {
-            let watchers = g_username_watchers[id];
-            for (let i=0; i < watchers.length; i++) {
-                watchers[i](name);
-            }
-            delete g_username_watchers[id];
-        }
-    }
     else if (message.type == "event") {
         if (message.id in g_event_handlers)
         {
@@ -489,7 +477,7 @@ function upload_file_dialog(file_window)
         let files = dialog_element.find("input.file").prop('files')
         for (let i=0; i < files.length; i++) {
             files[i].arrayBuffer().then(buffer => {
-                if (file.size > 5242880) {
+                if (files[i].size > 5242880) {
                     console.log("wow im a massive jag, maybe I shouldn't send a file that big");
                     return;
                 }
@@ -667,42 +655,21 @@ function create_chat_window(x, y)
 
     chat_window.register_event("chat message", function (chat_event) {
         let message = chat_event.data;
-        if (message.id != -1 && chat_window.message_set.has(message.id))
-        {
+        if (message.id != -1 && chat_window.message_set.has(message.id)) {
             // Discard messages we've already received unless
             // their id is -1 (internal)
             return;
         }
         chat_window.message_set.add(message.id);
 
-        if (message.category == "Error")
-        {
+        if (message.category == "Error") {
             create_message(message_display, "error", "Error", message.text);
         }
-        else if (message.category == "System")
-        {
+        else if (message.category == "System") {
             create_message(message_display, "system", "System", message.text);
         }
-        else
-        {
-            let id = chat_event.user;
-            let name = message["display name"];
-            if (name) {
-                create_message(message_display, "received", name, message.text);
-            }
-            else {
-                let watcher = (function(name) {
-                    create_message(message_display, "received", name, message.text);
-                });
-
-                if (id in g_username_watchers) {
-                    g_username_watchers[id].push(watcher);
-                }
-                else {
-                    g_username_watchers[id] = [watcher];
-                }
-                send_object({type: "query username", id: id});
-            }
+        else {
+            create_message(message_display, "received", message["display name"], message.text);
         }
     });
 
@@ -724,6 +691,12 @@ function create_button_window(x, y)
     };
     button_window.append(button_display);
     return button_window;
+}
+
+function create_image_viewer(data)
+{
+    var image_window = create_window(100, 100, 400, 400);
+    return image_window;
 }
 
 function create_file_window(x, y)
@@ -815,7 +788,15 @@ function load_file_listing(file_window) {
                         );
                     }
                     else {
-                        send_object({type: "open file", id: fileid})
+                        on_reply(
+                            {type: "open file", id: fileid},
+                            function (reply) {
+                                console.log(reply); // DEBUG
+                                if (reply.type == "img") {
+                                    create_image_viewer(reply.data);
+                                }
+                            }
+                        );
                     }
                 });
                 button.on("contextmenu", function (e) {
@@ -867,7 +848,6 @@ function load_file_listing(file_window) {
 
 
 function save_file(name, type, data) {
-    console.log(data);
     let blob = new Blob([data], {type: type});
     let a = document.createElement("a");
     document.body.appendChild(a);
@@ -883,19 +863,6 @@ function save_file(name, type, data) {
     window.URL.revokeObjectURL(url);
 };
 
-
-var g_username_watchers = {};
-var g_username_cache = {};
-g_username_cache[-1] = "System";
-function username_lookup(id) {
-    if (id in g_username_cache) {
-        return g_username_cache[id];
-    }
-    else
-    {
-        return null;
-    }
-}
 
 function init() {
     gapi.load('auth2', function() {

@@ -17,7 +17,7 @@ from functools import lru_cache
 connected_sockets = set()
 event_groups = {}
 request_handlers = {}
-upload_root = Path("/var/townhall/")
+upload_root = Path("/var/www/miravalier/content/")
 
 with open("/etc/oauth/oauth.json") as fp:
     GOOGLE_OAUTH = json.load(fp)
