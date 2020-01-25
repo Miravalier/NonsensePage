@@ -193,7 +193,7 @@ async def _ (account, message, websocket):
     if file_type == "directory":
         deleted += delete_children(file_id)
     execute("DELETE FROM files WHERE file_id=%s", (file_id,));
-    return {"type": "files deleted", "count": deleted}
+    return {"type": "event", "id": "files updated"}
 
 
 def delete_children(file_id):
@@ -221,7 +221,7 @@ async def _ (account, message, websocket):
         VALUES (%s, %s, %s, %s)
     """, (directory_name, "directory", account.user_id, directory_id))
 
-    return {"type": "files updated"}
+    return {"type": "event", "id": "files updated"}
 
 
 @register_handler("rename file")
@@ -237,7 +237,7 @@ async def _ (account, message, websocket):
         UPDATE files SET file_name=%s WHERE file_id=%s
     """, (file_name, file_id))
 
-    return {"type": "files updated"}
+    return {"type": "event", "id": "files updated"}
 
 
 @register_handler("chat message")

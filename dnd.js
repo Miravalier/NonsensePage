@@ -497,6 +497,15 @@ function query_dialog(title, prompt, callback)
             }
         }
     });
+    dialog_element.on("keydown", function(e) {
+        if (e.key == "Enter") {
+            let value = dialog_element.find("input.name").val().trim();
+            if (value) {
+                callback(value);
+            }
+            $(this).dialog("close");
+        }
+    });
 }
 
 
@@ -507,7 +516,8 @@ function create_window(x, y, width, height)
     `);
     window_element.draggable({
         containment: "parent",
-        snap: ".dnd_window"
+        snap: ".dnd_window",
+        cancel: ".no_drag"
     });
     window_element.resizable({
         containment: "parent",
@@ -557,17 +567,19 @@ function create_message(message_display, category, source, content)
 function create_chat_window(x, y)
 {
     let chat_window = create_window(x, y, 400, 400);
-    let message_display = $('<div class="message_display"></div>')
+    let drag_handle = $('<div class="drag_handle"></div>')
+    chat_window.append(drag_handle);
+
+    let message_display = $('<div class="message_display no_drag"></div>')
     chat_window.append(message_display);
     chat_window.message_display = message_display
-
 
     let text_input = document.createElement("input");
     chat_window.text_input = text_input;
     let suggestion = document.createElement("input");
     chat_window.suggestion = suggestion;
 
-    text_input.setAttribute('class', 'message_input');
+    text_input.setAttribute('class', 'message_input no_drag');
     text_input.setAttribute('type', 'text');
     text_input.setAttribute('name', 'message');
     text_input.setAttribute('autocomplete', 'off');
@@ -587,7 +599,11 @@ function create_chat_window(x, y)
         window_autocomplete(chat_window);
     });
 
-    suggestion.setAttribute('class', 'message_suggestion');
+    text_input.addEventListener('click', function (e) {
+        text_input.focus();
+    })
+
+    suggestion.setAttribute('class', 'message_suggestion no_drag');
     suggestion.setAttribute('type', 'text');
     suggestion.setAttribute('name', 'suggestion');
     suggestion.setAttribute('autocomplete', 'off');
@@ -667,6 +683,9 @@ function create_button_window(x, y)
 function create_file_window(x, y)
 {
     var file_window = create_window(x, y, 400, 400);
+    file_window.register_event("files updated", function () {
+        load_file_listing(file_window);
+    });
 
     file_window.options['Files'] = {
         'Add Subfolder': function () {
