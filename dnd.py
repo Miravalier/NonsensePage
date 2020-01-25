@@ -198,7 +198,7 @@ async def _ (account, message, websocket):
 
 def delete_children(file_id):
     deleted = 0
-    children = query("SELECT file_id, file_type FROM files WHERE parent_id=%s", file_id)
+    children = query("SELECT file_id, file_type FROM files WHERE parent_id=%s", (file_id,))
     for child_id, child_type in children:
         if child_type == "directory":
             deleted += delete_children(child_id)
