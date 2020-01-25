@@ -107,7 +107,7 @@ async def debug_error(msg):
 
 
 async def debug_log(msg):
-    await broadcast({"type": "debug", "data": msg})
+    await broadcast({"type": "debug", "reason": msg})
 
 
 def register_handler(message_type):
@@ -117,12 +117,43 @@ def register_handler(message_type):
     return sub_register_handler
 
 
+@register_handler("download file")
+async def _ (account, message, websocket):
+    file_id = message.get("id", None)
+    request_id = message.get("request id", None)
+    if file_id is None or request_id is None:
+        return {"type": "error", "reason": "download request missing id"}
+
+    try:
+        file_type, file_uuid = single_query("SELECT file_type, file_uuid FROM files WHERE file_id=%s", (file_id,))
+    except:
+        return {"type": "error", "reason": "file id {} does not exist".format(file_id)}
+    if file_uuid is None:
+        return {"type": "error", "reason": "id {} not backed by file".format(file_id)}
+
+    with open(upload_root / file_uuid, "rb") as fp:
+        file_data = request_id.to_bytes(4, 'big') + fp.read()
+
+    await websocket.send(file_data)
+
+
+@register_handler("open file")
+async def _ (account, message, websocket):
+    file_id = message.get("id", None)
+    if file_id is None:
+        return {"type": "error", "reason": "open request missing file id"}
+
+    return {"type": "debug", "reason": "file open not implemented yet"}
+
+
 @register_handler("upload file")
 async def _ (account, message, websocket):
     try:
         file_data = await websocket.recv()
         if type(file_data) is not bytes:
             raise TypeError("file data not binary")
+        if len(file_data) > 5242880:
+            return {"type": "error", "reason": "file too large"}
     except:
         return {"type": "error", "reason": "failed to receive file data"}
     file_name = message.get("name", None)

@@ -208,21 +208,38 @@ function trigger_event(event_id, event_data)
 
 function global_handler(event)
 {
-    try
-    {
-        var message = JSON.parse(event.data);
+    if (event.data instanceof Blob) {
+        event.data.arrayBuffer().then(buffer => {
+            let view = new DataView(buffer);
+            let request_id = view.getUint32(0);
+            let binary_data = new Uint8Array(buffer, 4, buffer.byteLength-4);
+            var message = {type: "binary", "request id": request_id, data: binary_data}
+            message_handler(message);
+        });
     }
-    catch (e)
-    {
-        console.error(`Server message is not valid JSON: ${event.data}`);
-        return;
+    else if (event.data instanceof ArrayBuffer) {
+        let view = new DataView(event.data);
+        let request_id = view.getUint32(0);
+        let binary_data = new Uint8Array(event.data, 4, event.data.byteLength-4);
+        var message = {type: "binary", "request id": request_id, data: binary_data}
+        message_handler(message);
     }
+    else {
+        try {
+            var message = JSON.parse(event.data);
+        }
+        catch (e) {
+            console.error(`Server message is not valid JSON: ${event.data}`);
+            return;
+        }
+        message_handler(message);
+    }
+}
 
-    if ('request id' in message)
-    {
+function message_handler(message) {
+    if ('request id' in message) {
         let pair = g_waiting_requests[message['request id']];
-        if (pair)
-        {
+        if (pair) {
             let [request, callback] = pair;
             callback(message);
             delete g_waiting_requests[message['request id']];
@@ -230,31 +247,26 @@ function global_handler(event)
         return;
     }
 
-    if (message.type == "auth failure")
-    {
+    if (message.type == "auth failure") {
         console.error("Authentication not accepted: " + message.reason);
         set_cookie("source", "/dnd")
         window.location.href = "/login";
     }
-    else if (message.type == "auth success")
-    {
+    else if (message.type == "auth success") {
         attempts = 0;
         console.log("[!] Authentication accepted");
         connection_activated = true;
-        for (event_id of Object.keys(g_event_handlers))
-        {
+        for (event_id of Object.keys(g_event_handlers)) {
             send_object({
                 type: "register event",
                 id: event_id
             });
         }
-        for (msg of connection_buffer)
-        {
+        for (msg of connection_buffer) {
             console.log(`Sending ${msg} from the queue.`);
             connection.send(msg);
         }
-        for (request_id of Object.keys(g_waiting_requests))
-        {
+        for (request_id of Object.keys(g_waiting_requests)) {
             let [request, callback] = g_waiting_requests[request_id];
             send_object(request);
         }
@@ -278,7 +290,6 @@ function global_handler(event)
             "Username:",
             (function(value) {
                 send_object({type: "update username", name: value});
-                $(this).dialog("close");
             })
         );
     }
@@ -294,8 +305,7 @@ function global_handler(event)
             delete g_username_watchers[id];
         }
     }
-    else if (message.type == "event")
-    {
+    else if (message.type == "event") {
         if (message.id in g_event_handlers)
         {
             for (handler of g_event_handlers[message.id])
@@ -308,19 +318,14 @@ function global_handler(event)
             console.log(`Received un-handled event '${message.id}' from '${message.user}'`);
         }
     }
-    else if (message.type == "error")
-    {
+    else if (message.type == "error") {
         console.error("Error from server: " + message.reason);
         if ('request' in message) {
             console.log("Unknown request was: " + message.request);
         };
     }
-    else if (message.type == "debug")
-    {
-        console.warn("Debug from server: " + message.data);
-    }
-    else if (message.type == "sync reply")
-    {
+    else if (message.type == "debug") {
+        console.warn("Debug from server: " + message.reason);
     }
     else
     {
@@ -386,8 +391,7 @@ function acquire_connection()
 
 function simulate_server_reply(data)
 {
-    let event = {"data": data};
-    global_handler(JSON.stringify(event));
+    message_handler(data);
 }
 
 function send_object(data)
@@ -485,6 +489,10 @@ function upload_file_dialog(file_window)
         let files = dialog_element.find("input.file").prop('files')
         for (let i=0; i < files.length; i++) {
             files[i].arrayBuffer().then(buffer => {
+                if (file.size > 5242880) {
+                    console.log("wow im a massive jag, maybe I shouldn't send a file that big");
+                    return;
+                }
                 connection.send(
                     JSON.stringify({
                         type: "upload file",
@@ -751,7 +759,7 @@ function create_file_window(x, y)
 
 g_waiting_requests = {};
 function on_reply(request, callback) {
-    let request_id = Math.floor(Math.random()*4294967296);
+    let request_id = Math.floor(Math.random()*4294967295);
     request["request id"] = request_id;
     g_waiting_requests[request_id] = [request, callback];
     send_object(request);
@@ -798,21 +806,28 @@ function load_file_listing(file_window) {
                         file_window.pwd_id = fileid
                         load_file_listing(file_window);
                     }
-                    else if (filetype == 'txt') {
-                        send_object({type: "open file", id: fileid})
+                    else if (filetype == 'raw') {
+                        on_reply(
+                            {type: "download file", id: fileid},
+                            function (reply) {
+                                save_file(filename, "octet/stream", reply.data);
+                            }
+                        );
                     }
                     else {
-                        send_object({type: "download file", id: fileid})
+                        send_object({type: "open file", id: fileid})
                     }
                 });
                 button.on("contextmenu", function (e) {
                     let file_menu = {};
                     file_menu[filename] = {
                             'Download': (function () {
-                                send_object({
-                                    type: "download file",
-                                    id: fileid
-                                });
+                                on_reply(
+                                    {type: "download file", id: fileid},
+                                    function (reply) {
+                                        save_file(filename, "octet/stream", reply.data);
+                                    }
+                                );
                             }),
                             'Rename': (function () {
                                 query_dialog(
@@ -849,6 +864,24 @@ function load_file_listing(file_window) {
         })
     );
 }
+
+
+function save_file(name, type, data) {
+    console.log(data);
+    let blob = new Blob([data], {type: type});
+    let a = document.createElement("a");
+    document.body.appendChild(a);
+    let url = window.URL.createObjectURL(blob);
+
+    a.style = "display: none";
+    a.href = url;
+    a.download = name;
+
+    a.click();
+
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+};
 
 
 var g_username_watchers = {};
