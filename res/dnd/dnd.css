@@ -142,15 +142,27 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .any_message {
+    -webkit-user-select: text; /* Safari */
+    -moz-user-select: text; /* Firefox */
+    -ms-user-select: text; /* IE10+/Edge */
+    user-select: text; /* Standard */
     font-family: 'Nunito Sans', sans-serif;
 }
 
 .any_message h4 {
+    -webkit-user-select: text; /* Safari */
+    -moz-user-select: text; /* Firefox */
+    -ms-user-select: text; /* IE10+/Edge */
+    user-select: text; /* Standard */
     margin-right: 4px;
     display: inline;
 }
 
 .any_message p {
+    -webkit-user-select: text; /* Safari */
+    -moz-user-select: text; /* Firefox */
+    -ms-user-select: text; /* IE10+/Edge */
+    user-select: text; /* Standard */
     display: inline;
 }
 
