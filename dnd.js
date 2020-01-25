@@ -475,6 +475,44 @@ function confirm_dialog(prompt, callback)
     });
 }
 
+function upload_file_dialog(file_window)
+{
+    let dialog_element = $(`<div title="Upload Files">
+        <input type="file" class="file"></input>
+    </div>`);
+    $("#tabletop").append(dialog_element);
+    let confirm_function = (function () {
+        let files = dialog_element.find("input.file").prop('files')
+        for (let i=0; i < files.length; i++) {
+            files[i].arrayBuffer().then(buffer => {
+                connection.send(
+                    JSON.stringify({
+                        type: "upload file",
+                        id: file_window.pwd_id,
+                        name: files[i].name
+                    })
+                );
+                connection.send(buffer);
+            });
+        }
+        dialog_element.dialog("close");
+    });
+    dialog_element.dialog({
+        resizable: false,
+        height: "auto",
+        width: 400,
+        modal: true,
+        buttons: {
+            Confirm: confirm_function
+        }
+    });
+    dialog_element.on("keydown", function(e) {
+        if (e.key == "Enter") {
+            confirm_function();
+        }
+    });
+}
+
 function query_dialog(title, prompt, callback)
 {
     let dialog_element = $(`<div title="${title}">
@@ -694,7 +732,7 @@ function create_file_window(x, y)
             });
         },
         'Upload File': function () {
-            return;
+            upload_file_dialog(file_window);
         }
     };
 

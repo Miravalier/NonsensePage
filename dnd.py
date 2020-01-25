@@ -4,6 +4,10 @@ import ssl
 import websockets
 import json
 import psycopg2 as psql
+import uuid
+import sys
+import os
+from pathlib import Path
 from contextlib import contextmanager
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -13,6 +17,7 @@ from functools import lru_cache
 connected_sockets = set()
 event_groups = {}
 request_handlers = {}
+upload_root = Path("/var/townhall/")
 
 with open("/etc/oauth/oauth.json") as fp:
     GOOGLE_OAUTH = json.load(fp)
@@ -112,6 +117,35 @@ def register_handler(message_type):
     return sub_register_handler
 
 
+@register_handler("upload file")
+async def _ (account, message, websocket):
+    try:
+        file_data = await websocket.recv()
+        if type(file_data) is not bytes:
+            raise TypeError("file data not binary")
+    except:
+        return {"type": "error", "reason": "failed to receive file data"}
+    file_name = message.get("name", None)
+    if file_name is None:
+        return {"type": "error", "reason": "missing file name"}
+    directory_id = message.get("id", None)
+    if directory_id is None:
+        return {"type": "error", "reason": "missing directory id"}
+
+    file_uuid = str(uuid.uuid4())
+    file_type = sniff(file_data)
+
+    with open(upload_root / file_uuid, "wb") as fp:
+        fp.write(file_data)
+
+    execute("""
+        INSERT INTO files (file_name, file_type, owner_id, parent_id, file_uuid)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (file_name, file_type, account.user_id, directory_id, file_uuid))
+
+    return {"type": "event", "id": "files updated"}
+
+
 @register_handler("get parent")
 async def _ (account, message, websocket):
     file_id = message.get("id", None)
@@ -188,20 +222,25 @@ async def _ (account, message, websocket):
     file_id = message.get("id", None)
     if file_id is None:
         return {"type": "error", "reason": "delete file missing file id"}
-    file_type = single_query("SELECT file_type FROM files WHERE file_id=%s", (file_id,))
+    file_uuid, file_type = single_query("SELECT file_uuid, file_type FROM files WHERE file_id=%s", (file_id,))
     deleted = 1
     if file_type == "directory":
         deleted += delete_children(file_id)
     execute("DELETE FROM files WHERE file_id=%s", (file_id,));
+    if file_uuid:
+        os.unlink(str(upload_root / file_uuid))
+
     return {"type": "event", "id": "files updated"}
 
 
 def delete_children(file_id):
     deleted = 0
-    children = query("SELECT file_id, file_type FROM files WHERE parent_id=%s", (file_id,))
-    for child_id, child_type in children:
+    children = query("SELECT file_uuid, file_id, file_type FROM files WHERE parent_id=%s", (file_id,))
+    for child_uuid, child_id, child_type in children:
         if child_type == "directory":
             deleted += delete_children(child_id)
+        if child_uuid:
+            os.unlink(str(upload_root / child_uuid))
         deleted += 1
     execute("DELETE FROM files WHERE parent_id=%s", (file_id,))
     return deleted
@@ -330,7 +369,10 @@ async def handle_connection(websocket, path):
                     if account.user_name is None:
                         account.user_name = idinfo['email']
                         execute("UPDATE users SET user_name=%s WHERE user_id=%s", (idinfo['email'], account.user_id))
-                        await websocket.send(json.dumps({"type": "prompt username"}))
+                        try:
+                            await websocket.send(json.dumps({"type": "prompt username"}))
+                        except:
+                            break
                     reply = {"type": "auth success"}
                     connected_sockets.add(websocket)
                 except ValueError as e:
@@ -344,13 +386,17 @@ async def handle_connection(websocket, path):
                 handler = request_handlers[msg_type]
             except KeyError:
                 handler = unknown_request
+
             reply = await handler(account, msg, websocket)
 
         # Send reply
         if reply is not None:
             if request_id is not None:
                 reply['request id'] = request_id
-            await websocket.send(json.dumps(reply))
+            try:
+                await websocket.send(json.dumps(reply))
+            except:
+                break
 
     connected_sockets.discard(websocket)
 
@@ -377,6 +423,30 @@ def get_account(google_id):
 def get_user_name(user_id):
     result = single_query("SELECT user_name FROM users WHERE user_id=%s", (user_id,))
     return result if result else "Unknown User"
+
+
+file_signatures = {
+    b"\x89\x50\x4E\x47": "img", # PNG
+    b"\xFF\xD8\xFF\xDB": "img", # JPEG
+    b"\xFF\xD8\xFF\xEE": "img", # JPEG
+    b"\xFF\xD8\xFF\xE0": "img", # JPEG
+    b"\xFF\xD8\xFF\xE1": "img", # JPEG
+    b"<svg": "img"              # SVG
+}
+def sniff(file_data):
+    magic_bytes = file_data[:4]
+    result = file_signatures.get(magic_bytes, None)
+    if result is not None:
+        return result
+
+    try:
+        sample = file_data[:64].decode('utf-8')
+        if all(c.isprintable() or c.isspace() for c in sample):
+            return "txt"
+    except:
+        pass
+
+    return "raw"
 
 
 if __name__ == '__main__':
