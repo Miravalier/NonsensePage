@@ -71,7 +71,11 @@ def query(*args, **kwargs):
 def single_query(*args, **kwargs):
     with cursor() as cur:
         cur.execute(*args, **kwargs)
-        return cur.fetchone()
+        result = cur.fetchone()
+        if result and len(result) == 1:
+            return result[0]
+        else:
+            return result
 
 
 async def attempt_send(websocket, msg):
@@ -106,6 +110,37 @@ def register_handler(message_type):
         request_handlers[message_type] = func
         return func
     return sub_register_handler
+
+
+@register_handler("get parent")
+async def _ (account, message, websocket):
+    file_id = message.get("id", None)
+    if file_id is None:
+        return {"type": "error", "reason": "missing file id"}
+
+    return {
+        "type": "file parent",
+        "child": file_id,
+        "parent": single_query("SELECT parent_id FROM files WHERE file_id=%s", (file_id,))
+    }
+
+
+@register_handler("ls")
+async def _ (account, message, websocket):
+    directory_id = message.get("id", None)
+    if directory_id is None:
+        return {"type": "error", "reason": "missing directory id"}
+
+    return {
+        "type": "directory listing",
+        "nodes": query(
+            """
+                SELECT file_name, file_id, file_type FROM files
+                WHERE parent_id=%s
+            """,
+            (directory_id,)
+        )
+    }
 
 
 @register_handler("register event")
@@ -146,6 +181,63 @@ async def _ (account, message, websocket):
     if user_id is None:
         return {"type": "error", "reason": "username query missing user id"}
     return {"type": "username update", "id": user_id, "name": get_user_name(user_id)}
+
+
+@register_handler("delete file")
+async def _ (account, message, websocket):
+    file_id = message.get("id", None)
+    if file_id is None:
+        return {"type": "error", "reason": "delete file missing file id"}
+    file_type = single_query("SELECT file_type FROM files WHERE file_id=%s", (file_id,))
+    deleted = 1
+    if file_type == "directory":
+        deleted += delete_children(file_id)
+    execute("DELETE FROM files WHERE file_id=%s", (file_id,));
+    return {"type": "files deleted", "count": deleted}
+
+
+def delete_children(file_id):
+    deleted = 0
+    children = query("SELECT file_id, file_type FROM files WHERE parent_id=%s", file_id)
+    for child_id, child_type in children:
+        if child_type == "directory":
+            deleted += delete_children(child_id)
+        deleted += 1
+    execute("DELETE FROM files WHERE parent_id=%s", (file_id,))
+    return deleted
+
+
+@register_handler("add subfolder")
+async def _ (account, message, websocket):
+    directory_name = message.get("name", None)
+    directory_id = message.get("id", None)
+    if directory_name is None:
+        return {"type": "error", "reason": "add subfolder missing name"}
+    if directory_id is None:
+        return {"type": "error", "reason": "add subfolder missing parent id"}
+
+    execute("""
+        INSERT INTO files (file_name, file_type, owner_id, parent_id)
+        VALUES (%s, %s, %s, %s)
+    """, (directory_name, "directory", account.user_id, directory_id))
+
+    return {"type": "files updated"}
+
+
+@register_handler("rename file")
+async def _ (account, message, websocket):
+    file_name = message.get("name", None)
+    file_id = message.get("id", None)
+    if file_name is None:
+        return {"type": "error", "reason": "rename file missing name"}
+    if file_id is None:
+        return {"type": "error", "reason": "rename file missing file id"}
+
+    execute("""
+        UPDATE files SET file_name=%s WHERE file_id=%s
+    """, (file_name, file_id))
+
+    return {"type": "files updated"}
 
 
 @register_handler("chat message")
@@ -201,7 +293,7 @@ async def _ (account, message, websocket):
 
 
 async def unknown_request(account, message, websocket):
-    return {"type": "error", "reason": "unknown type '{}'".format(message.type)}
+    return {"type": "error", "reason": "unknown request", "request": json.dumps(message)}
 
 
 async def handle_connection(websocket, path):
@@ -216,6 +308,7 @@ async def handle_connection(websocket, path):
         except:
             break
         msg_type = msg.get("type", "invalid")
+        request_id = msg.get("request id", None)
 
         reply = None
 
@@ -255,6 +348,8 @@ async def handle_connection(websocket, path):
 
         # Send reply
         if reply is not None:
+            if request_id is not None:
+                reply['request id'] = request_id
             await websocket.send(json.dumps(reply))
 
     connected_sockets.discard(websocket)
@@ -281,10 +376,7 @@ def get_account(google_id):
 @lru_cache(maxsize=64)
 def get_user_name(user_id):
     result = single_query("SELECT user_name FROM users WHERE user_id=%s", (user_id,))
-    if result:
-        return result[0]
-    else:
-        return "Unknown User"
+    return result if result else "Unknown User"
 
 
 if __name__ == '__main__':

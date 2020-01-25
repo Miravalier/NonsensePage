@@ -38,10 +38,31 @@ var g_commands = {
     }
 };
 
-
-function window_execute_command()
+function window_autocomplete(window_element)
 {
-    let message = this.text_input.value;
+    let string = window_element.text_input.value;
+    let options = Object.keys(g_commands);
+    let i=0;
+    while (options.length > 1 && i < string.length)
+    {
+        options = options.filter(o=>o.startsWith(string));
+        i++;
+    }
+    if (options.length == 1) {
+        let match = options[0];
+        window_element.suggestion.setAttribute(
+            "placeholder",
+            " ".repeat(string.length) + match.substr(string.length, match.length)
+        );
+    }
+    else {
+        window_element.suggestion.setAttribute("placeholder", "");
+    }
+}
+
+function window_execute_command(window_element)
+{
+    let message = window_element.text_input.value;
     if (message.length > 1024)
     {
         error_message("Your message is too long.");
@@ -65,7 +86,8 @@ function window_execute_command()
         send_object({type: "chat message", text: message});
     }
 
-    this.text_input.value = "";
+    window_element.text_input.value = "";
+    window_element.suggestion.placeholder = "";
 }
 
 /****************
@@ -196,6 +218,18 @@ function global_handler(event)
         return;
     }
 
+    if ('request id' in message)
+    {
+        let pair = g_waiting_requests[message['request id']];
+        if (pair)
+        {
+            let [request, callback] = pair;
+            callback(message);
+            delete g_waiting_requests[message['request id']];
+        }
+        return;
+    }
+
     if (message.type == "auth failure")
     {
         console.error("Authentication not accepted: " + message.reason);
@@ -219,6 +253,11 @@ function global_handler(event)
             console.log(`Sending ${msg} from the queue.`);
             connection.send(msg);
         }
+        for (request_id of Object.keys(g_waiting_requests))
+        {
+            let [request, callback] = g_waiting_requests[request_id];
+            send_object(request);
+        }
         connection_buffer = [];
     }
     else if (message.type == "history reply") {
@@ -234,7 +273,14 @@ function global_handler(event)
         }
     }
     else if (message.type == "prompt username") {
-        select_username_dialog();
+        query_dialog(
+            "Select Username",
+            "Username:",
+            (function(value) {
+                send_object({type: "update username", name: value});
+                $(this).dialog("close");
+            })
+        );
     }
     else if (message.type == "username update") {
         let id = message.id;
@@ -265,10 +311,16 @@ function global_handler(event)
     else if (message.type == "error")
     {
         console.error("Error from server: " + message.reason);
+        if ('request' in message) {
+            console.log("Unknown request was: " + message.request);
+        };
     }
     else if (message.type == "debug")
     {
         console.warn("Debug from server: " + message.data);
+    }
+    else if (message.type == "sync reply")
+    {
     }
     else
     {
@@ -335,7 +387,7 @@ function acquire_connection()
 function simulate_server_reply(data)
 {
     let event = {"data": data};
-    global_handler(event);
+    global_handler(JSON.stringify(event));
 }
 
 function send_object(data)
@@ -400,73 +452,53 @@ function create_context_menu(x, y, options)
     return menu;
 }
 
-function new_folder_dialog(file_window)
+function confirm_dialog(prompt, callback)
 {
-    let folder_dialog = $(`<div title="New Folder">
-        Name:
-        <input type="text" class="name"></input>
+    let dialog_element = $(`<div title="Confirm">
+        ${prompt}
     </div>`);
-    $("#tabletop").append(folder_dialog);
-    folder_dialog.dialog({
+    $("#tabletop").append(dialog_element);
+    dialog_element.dialog({
         resizable: false,
         height: "auto",
         width: 400,
         modal: true,
         buttons: {
             Confirm: function() {
-                let name = folder_dialog.find("input.name").val();
-                console.log("New Folder: " + file_window.pwd_id + " - " + name);
-                //send_object({type: "update username", name: name});
+                callback();
+                $(this).dialog("close");
+            },
+            Cancel: function() {
                 $(this).dialog("close");
             }
         }
     });
 }
 
-function new_file_dialog(file_window)
+function query_dialog(title, prompt, callback)
 {
-    let file_dialog = $(`<div title="New File">
-        Name:
+    let dialog_element = $(`<div title="${title}">
+        ${prompt}
         <input type="text" class="name"></input>
     </div>`);
-    $("#tabletop").append(file_dialog);
-    file_dialog.dialog({
+    $("#tabletop").append(dialog_element);
+    dialog_element.dialog({
         resizable: false,
         height: "auto",
         width: 400,
         modal: true,
         buttons: {
             Confirm: function() {
-                let name = file_dialog.find("input.name").val();
-                console.log("New File: " + file_window.pwd_id + " - " + name);
-                //send_object({type: "update username", name: name});
+                let value = dialog_element.find("input.name").val().trim();
+                if (value) {
+                    callback(value);
+                }
                 $(this).dialog("close");
             }
         }
     });
 }
 
-function select_username_dialog()
-{
-    let username_dialog = $(`<div title="Select Username">
-        Username:
-        <input type="text" class="name"></input>
-    </div>`);
-    $("#tabletop").append(username_dialog);
-    username_dialog.dialog({
-        resizable: false,
-        height: "auto",
-        width: 400,
-        modal: true,
-        buttons: {
-            Confirm: function() {
-                let name = username_dialog.find("input.name").val();
-                send_object({type: "update username", name: name});
-                $(this).dialog("close");
-            }
-        }
-    });
-}
 
 function create_window(x, y, width, height)
 {
@@ -485,7 +517,7 @@ function create_window(x, y, width, height)
     window_element.register_event = window_register_event;
 
     window_element.options = {
-        "Misc": {
+        "UI": {
             "Close": function() {
                 window_element.remove_handlers.forEach(handler => {handler();});
                 window_element.remove();
@@ -524,25 +556,46 @@ function create_message(message_display, category, source, content)
 
 function create_chat_window(x, y)
 {
-    var chat_window = create_window(x, y, 400, 400);
-    chat_window.execute_command = window_execute_command;
-
-    var message_display = $('<div class="message_display"></div>')
+    let chat_window = create_window(x, y, 400, 400);
+    let message_display = $('<div class="message_display"></div>')
     chat_window.append(message_display);
     chat_window.message_display = message_display
 
-    var text_input = document.createElement("input");
+
+    let text_input = document.createElement("input");
+    chat_window.text_input = text_input;
+    let suggestion = document.createElement("input");
+    chat_window.suggestion = suggestion;
+
     text_input.setAttribute('class', 'message_input');
     text_input.setAttribute('type', 'text');
     text_input.setAttribute('name', 'message');
     text_input.setAttribute('autocomplete', 'off');
-    text_input.addEventListener('keydown', function (event) {
-        if (event.key == "Enter") {
-            chat_window.execute_command()
+    text_input.addEventListener('keydown', function (e) {
+        if (e.key == "Enter") {
+            window_execute_command(chat_window);
+            e.preventDefault();
+        }
+        else if (e.key == "Tab") {
+            text_input.value += suggestion.placeholder.trim();
+            suggestion.placeholder = "";
+            e.preventDefault();
         }
     });
+
+    text_input.addEventListener('input', function (e) {
+        window_autocomplete(chat_window);
+    });
+
+    suggestion.setAttribute('class', 'message_suggestion');
+    suggestion.setAttribute('type', 'text');
+    suggestion.setAttribute('name', 'suggestion');
+    suggestion.setAttribute('autocomplete', 'off');
+    suggestion.setAttribute('readonly', true);
+
+    chat_window.append(suggestion);
     chat_window.append(text_input);
-    chat_window.text_input = text_input;
+
     chat_window.message_set = new Set();
 
     chat_window.register_event("clear history", function (clear_event) {
@@ -600,9 +653,13 @@ function create_button_window(x, y)
 {
     let button_window = create_window(x, y, 500, 100);
     let button_display = $(`<div class="button_display"></div>`);
-    button_window.options['Misc']['Add Button'] = (function () {
-        button_display.append($(`<img class="window_button" src="/res/dnd/button.svg"></img>`));
-    });
+    button_window.options['Button Tray'] = {
+        'Add Button': (function () {
+            button_display.append(
+                $(`<img class="window_button" src="/res/dnd/button.svg"></img>`)
+            );
+        })
+    };
     button_window.append(button_display);
     return button_window;
 }
@@ -610,37 +667,130 @@ function create_button_window(x, y)
 function create_file_window(x, y)
 {
     var file_window = create_window(x, y, 400, 400);
-    file_window.pwd_id = 0;
 
-    /* TODO: Add download, and upload options */
-    file_window.options['New'] = {
-        'File': function (x, y) {
-            new_file_dialog(file_window)
+    file_window.options['Files'] = {
+        'Add Subfolder': function () {
+            query_dialog("Add Subfolder", "Name:", function(value) {
+                send_object({type: "add subfolder", id: file_window.pwd_id, name: value});
+            });
         },
-        'Folder': function (x, y) {
-            new_folder_dialog(file_window)
+        'Upload File': function () {
+            return;
         }
     };
 
     let file_viewport = $(`
         <div class="file_viewport"></div>
     `);
+    file_window.viewport = file_viewport;
     file_window.append(file_viewport);
 
-    /* TODO: Get root sections from server */
-    var sections = ['Characters', 'Maps', 'Tokens'];
-
-    for (section of sections)
-    {
-        let button = $(`
-            <button type="button" class="directory">
-                <h6>${section}</h6>
-            </button>
-        `);
-        file_viewport.append(button)
-    }
+    file_window.pwd_id = 0;
+    load_file_listing(file_window);
 
     return file_window;
+}
+
+
+g_waiting_requests = {};
+function on_reply(request, callback) {
+    let request_id = Math.floor(Math.random()*4294967296);
+    request["request id"] = request_id;
+    g_waiting_requests[request_id] = [request, callback];
+    send_object(request);
+}
+
+
+function load_file_listing(file_window) {
+    on_reply(
+        {type: "ls", id: file_window.pwd_id},
+        (function (reply) {
+            file_window.viewport.empty();
+            // Add parent node return
+            if (file_window.pwd_id != 0)
+            {
+                let button = $(`
+                    <button type="button" class="directory">
+                        <img width=24px height=24px src="/res/dnd/icons/back.svg"></img>
+                        <p>Back</p>
+                    </button>
+                `);
+                button.dblclick(function (e) {
+                    on_reply(
+                        {type: "get parent", id: file_window.pwd_id},
+                        (function (subreply) {
+                            file_window.pwd_id = subreply.parent;
+                            load_file_listing(file_window);
+                        })
+                    );
+                });
+                file_window.viewport.prepend(button);
+
+            }
+            // Add child nodes
+            reply.nodes.forEach(node => {
+                let [filename, fileid, filetype] = node;
+                let button = $(`
+                    <button type="button" class="${filetype}">
+                        <img width=24px height=24px src="/res/dnd/icons/${filetype}.svg"></img>
+                        <p>${filename}</p>
+                    </button>
+                `);
+                button.dblclick(function (e) {
+                    if (filetype == 'directory') {
+                        file_window.pwd_id = fileid
+                        load_file_listing(file_window);
+                    }
+                    else if (filetype == 'txt') {
+                        send_object({type: "open file", id: fileid})
+                    }
+                    else {
+                        send_object({type: "download file", id: fileid})
+                    }
+                });
+                button.on("contextmenu", function (e) {
+                    let file_menu = {};
+                    file_menu[filename] = {
+                            'Download': (function () {
+                                send_object({
+                                    type: "download file",
+                                    id: fileid
+                                });
+                            }),
+                            'Rename': (function () {
+                                query_dialog(
+                                    `Rename ${filename}`,
+                                    "Name:",
+                                    (function (value) {
+                                        send_object({
+                                            type: "rename file",
+                                            id: fileid,
+                                            name: value
+                                        });
+                                    })
+                                );
+                            }),
+                            'Delete': (function () {
+                                confirm_dialog(
+                                    `Are you sure you want to delete ${filename}?
+                                    This cannot be undone.`,
+                                    (function () {
+                                        send_object({
+                                            type: "delete file",
+                                            id: fileid
+                                        });
+                                    })
+                                );
+                            })
+                    };
+                    create_context_menu(e.clientX, e.clientY, file_menu);
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+                file_window.viewport.append(button);
+            });
+        })
+    );
 }
 
 
@@ -677,12 +827,12 @@ $("document").ready(function () {
     });
     tabletop.on("contextmenu", function (e) {
         create_context_menu(e.clientX, e.clientY, {
-            'New': {
+            'New Window': {
                 'Chat': create_chat_window,
-                'Buttons': create_button_window,
-                'Files': create_file_window,
+                'Button Tray': create_button_window,
+                'File Explorer': create_file_window,
             },
-            'Misc': {
+            'UI': {
                 'Cancel': () => {}
             }
         });

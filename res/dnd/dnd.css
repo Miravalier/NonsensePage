@@ -6,6 +6,10 @@
     font-family: 'Nunito Sans', sans-serif;
 }
 
+p {
+    margin: 4px;
+}
+
 html, body {
     margin: 0px;
     padding: 0px;
@@ -16,10 +20,17 @@ html, body {
 
 .file_viewport button {
     margin: 1px;
+    border-width: 1px;
+    border-color: black;
+    border-radius: 4px;
+    text-align: left;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: flex-start;
 }
 
 .file_viewport button.directory {
-    border-radius: 4px;
 }
 
 #tabletop {
@@ -43,11 +54,6 @@ html, body {
     bottom: 2px;
     left: 2px;
     right: 2px;
-}
-
-.directory h6 {
-    text-align: left;
-    padding: 4px;
 }
 
 h1, h2, h3, h4, h5, h6, p, img, .unselectable {
@@ -118,7 +124,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .message_input {
-    width: calc(100% - 4px);
+    background-color: transparent;
+    border-color: transparent;
+    font-family: monospace;
+    position: absolute;
+    width: calc(100% - 14px);
+}
+
+.message_suggestion {
+    font-family: monospace;
+    position: absolute;
+    width: calc(100% - 14px);
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+/Edge */
+    user-select: none; /* Standard */
 }
 
 .any_message {
