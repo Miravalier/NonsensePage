@@ -143,7 +143,20 @@ async def _ (account, message, websocket):
     if file_id is None:
         return {"type": "error", "reason": "open request missing file id"}
 
-    return {"type": "debug", "reason": "file open not implemented yet"}
+    try:
+        file_type, file_uuid = single_query("SELECT file_type, file_uuid FROM files WHERE file_id=%s", (file_id,))
+    except:
+        return {"type": "error", "reason": "file id {} does not exist".format(file_id)}
+
+    if file_type == 'txt':
+        try:
+            with open(upload_root / file_uuid, "r") as fp:
+                file_content = fp.read()
+            return {"type": file_type, "content": file_content}
+        except OSError:
+            return {"type": "error", "reason": "txt file not backed by uuid"}
+    else:
+        return {"type": file_type, "uuid": file_uuid}
 
 
 @register_handler("upload file")

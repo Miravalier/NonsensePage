@@ -543,15 +543,23 @@ function query_dialog(title, prompt, callback)
 }
 
 
+g_open_windows = new Set();
 function create_window(x, y, width, height)
 {
     let window_element = $(`
         <div class="dnd_window" style="width: ${width}px; height: ${height}px; left: ${x}px; top: ${y}px; position: absolute;"></div>
     `);
+    g_open_windows.add(window_element);
     window_element.draggable({
         containment: "parent",
         snap: ".dnd_window",
-        cancel: ".no_drag"
+        cancel: ".no_drag",
+        drag: function (e) {
+            for (open_window of g_open_windows) {
+                open_window.css("zIndex", 0);
+            }
+            window_element.css("zIndex", 1);
+        }
     });
     window_element.resizable({
         containment: "parent",
@@ -563,6 +571,7 @@ function create_window(x, y, width, height)
     window_element.options = {
         "UI": {
             "Close": function() {
+                g_open_windows.delete(window_element);
                 window_element.remove_handlers.forEach(handler => {handler();});
                 window_element.remove();
             }
@@ -693,15 +702,29 @@ function create_button_window(x, y)
     return button_window;
 }
 
-function create_image_viewer(data)
+function create_text_viewer(x, y, content)
 {
-    var image_window = create_window(100, 100, 400, 400);
+    let text_window = create_window(x, y, 400, 400);
+    text_window.append($(`<div class="text_viewport">
+        <p class="opened_text no_drag">${content}</p>
+    </div>`));
+    return text_window;
+}
+
+function create_image_viewer(x, y, uuid)
+{
+    let image_window = create_window(x, y, 400, 400);
+    image_window.append($('<div class="drag_handle"></div>'));
+    let image_viewport = $(`<div class="image_viewport">
+        <img class="opened_image" src="/content/${uuid}"></img>
+    </div>`);
+    image_window.append(image_viewport);
     return image_window;
 }
 
 function create_file_window(x, y)
 {
-    var file_window = create_window(x, y, 400, 400);
+    let file_window = create_window(x, y, 400, 400);
     file_window.register_event("files updated", function () {
         load_file_listing(file_window);
     });
@@ -793,7 +816,10 @@ function load_file_listing(file_window) {
                             function (reply) {
                                 console.log(reply); // DEBUG
                                 if (reply.type == "img") {
-                                    create_image_viewer(reply.data);
+                                    create_image_viewer(e.clientX, e.clientY, reply.uuid);
+                                }
+                                else if (reply.type == "txt") {
+                                    create_text_viewer(e.clientX, e.clientY, reply.content);
                                 }
                             }
                         );

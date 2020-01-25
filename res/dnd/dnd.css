@@ -36,7 +36,16 @@ html, body {
     justify-content: flex-start;
 }
 
-.file_viewport button.directory {
+.text_viewport, .image_viewport {
+    justify-content: flex-start;
+    align-items: flex-start;
+    display: flex;
+    position: absolute;
+    top: 12px;
+    bottom: 2px;
+    left: 2px;
+    right: 2px;
+    overflow: scroll;
 }
 
 #tabletop {
@@ -49,6 +58,7 @@ html, body {
 #g_context_menu {
     width: 140px;
     position: absolute;
+    z-index: 10;
 }
 
 .file_viewport {
@@ -130,9 +140,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .message_input {
+    position: absolute;
     margin-top: 4px;
     font-family: monospace;
-    position: absolute;
     width: calc(100% - 14px);
     background-color: transparent;
     border-color: transparent;
@@ -149,7 +159,7 @@ h1, h2, h3, h4, h5, h6 {
     user-select: none; /* Standard */
 }
 
-.any_message {
+.opened_text, .any_message {
     -webkit-user-select: auto; /* Safari */
     -moz-user-select: auto; /* Firefox */
     -ms-user-select: auto; /* IE10+/Edge */
