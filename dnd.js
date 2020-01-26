@@ -640,9 +640,21 @@ function create_message(message_display, category, source, content)
     message_display.scrollTop(message_display.prop('scrollHeight'));
 }
 
-function create_chat_window(x, y)
+function create_chat_window(x, y, width, height)
 {
-    let chat_window = create_window(x, y, 400, 400);
+    if (!x) {
+        x = 0;
+    }
+    if (!y) {
+        y = 0;
+    }
+    if (!width) {
+        width = 400;
+    }
+    if (!height) {
+        height = 400;
+    }
+    let chat_window = create_window(x, y, width, height);
     chat_window.window_type = "chat";
     let drag_handle = $('<div class="drag_handle"></div>');
     chat_window.append(drag_handle);
@@ -721,16 +733,27 @@ function create_chat_window(x, y)
     return chat_window;
 }
 
-function create_button_window(x, y, buttons)
+function create_button_window(x, y, width, height, buttons)
 {
-    let button_window = create_window(x, y, 500, 100);
-    button_window.window_type = "button";
+    if (!x) {
+        x = 0;
+    }
+    if (!y) {
+        y = 0;
+    }
+    if (!width) {
+        width = 240;
+    }
+    if (!height) {
+        height = 64;
+    }
     if (!buttons) {
-        button_window.buttons = [];
+        buttons = [];
     }
-    else {
-        button_window.buttons = buttons;
-    }
+
+    let button_window = create_window(x, y, width, height);
+    button_window.window_type = "button";
+    button_window.buttons = buttons;
     let button_display = $(`<div class="button_display"></div>`);
     button_window.options['Button Tray'] = {
         'Add Button': (function () {
@@ -739,6 +762,7 @@ function create_button_window(x, y, buttons)
             );
         })
     };
+
     button_window.append(button_display);
     button_window.button_display = button_display;
     return button_window;
@@ -766,21 +790,31 @@ function create_image_viewer(x, y, uuid)
     return image_window;
 }
 
-function create_file_window(x, y, pwd_id)
+function create_file_window(x, y, width, height, pwd_id)
 {
-    let file_window = create_window(x, y, 400, 400);
-    file_window.window_type = "file";
+    if (!x) {
+        x = 0;
+    }
+    if (!y) {
+        y = 0;
+    }
+    if (!width) {
+        width = 400;
+    }
+    if (!height) {
+        height = 400;
+    }
     if (!pwd_id) {
-        file_window.pwd_id = 0;
+        pwd_id = 0;
     }
-    else {
-        file_window.pwd_id = pwd_id;
-    }
+
+    let file_window = create_window(x, y, width, height);
+    file_window.window_type = "file";
+    file_window.pwd_id = pwd_id;
 
     file_window.register_event("files updated", function () {
         load_file_listing(file_window);
     });
-
 
     file_window.options['Files'] = {
         'Add Subfolder': function () {
@@ -985,10 +1019,10 @@ function save_layout() {
     for (open_window of g_open_windows) {
         let s_data = [
             open_window.window_type,
-            open_window.css("left"),
-            open_window.css("top"),
-            open_window.css("width"),
-            open_window.css("height")
+            parseFloat(open_window.css("left")),
+            parseFloat(open_window.css("top")),
+            parseFloat(open_window.css("width")),
+            parseFloat(open_window.css("height"))
         ];
         if (open_window.window_type == "button") {
             s_data.push(open_window.buttons);
@@ -1007,6 +1041,11 @@ function save_layout() {
     set_cookie("saved_layout", btoa(JSON.stringify(saved_windows)), true);
 }
 
+g_window_type_map = {
+    "button": create_button_window,
+    "file": create_file_window,
+    "chat": create_chat_window
+}
 function load_layout() {
     try {
         var saved_windows = JSON.parse(atob(get_cookie("saved_layout")));
@@ -1023,20 +1062,11 @@ function load_layout() {
 
     for (saved_window of saved_windows) {
         let [window_type, s_left, s_top, s_width, s_height, s_data] = saved_window;
-        if (window_type == "button") {
-            var window_element = create_button_window(s_left, s_top, s_data);
-        }
-        else if (window_type == "file") {
-            var window_element = create_file_window(s_left, s_top, s_data);
-        }
-        else if (window_type == "chat") {
-            var window_element = create_chat_window(s_left, s_top, s_data);
-        }
-        else {
-            return;
-        }
-        window_element.css("width", s_width);
-        window_element.css("height", s_height);
-        window_element.css({left: s_left, top: s_top});
+
+        let window_creator = g_window_type_map[window_type];
+        if (!window_creator)
+            continue;
+
+        var window_element = window_creator(s_left, s_top, s_width, s_height, s_data);
     }
 }
