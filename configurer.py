@@ -23,12 +23,12 @@ def main():
             os.lseek(fd, offset, os.SEEK_SET)
             data = os.read(fd, 4096)
             replacement_index = data.find(b"$$VER$$")
-            if replacement_index != -1:
-                os.lseek(fd, offset+replacement_index, os.SEEK_SET)
+            if replacement_index == -1:
+                offset += 2048
+            else:
+                offset += replacement_index
+                os.lseek(fd, offset, os.SEEK_SET)
                 os.write(fd, version)
-                if args.verbose:
-                    print("info: version replaced")
-            offset += 2048
     finally:
         os.close(fd)
 
