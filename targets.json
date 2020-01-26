@@ -17,6 +17,9 @@
             "install-commands": ["service dnd.wss restart"],
             "dependencies": ["systemd"]
         },
+        "dnd.css": {
+            "destination": "/var/www/miravalier/res/dnd/"
+        },
         "systemd": {
             "destination": "/etc",
             "install-commands": ["systemctl daemon-reload"]
