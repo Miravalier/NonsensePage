@@ -19,6 +19,7 @@ connected_sockets = set()
 event_groups = {}
 request_handlers = {}
 upload_root = Path("/var/www/miravalier/content/")
+pending_files = {}
 
 with open("/etc/oauth/oauth.json") as fp:
     GOOGLE_OAUTH = json.load(fp)
@@ -162,33 +163,82 @@ async def _ (account, message, websocket):
 
 @register_handler("upload file")
 async def _ (account, message, websocket):
-    try:
-        file_data = await websocket.recv()
-        if type(file_data) is not bytes:
-            raise TypeError("file data not binary")
-        if len(file_data) > 5242880:
-            return {"type": "error", "reason": "file too large"}
-    except:
-        return {"type": "error", "reason": "failed to receive file data"}
     file_name = message.get("name", None)
     if file_name is None:
         return {"type": "error", "reason": "missing file name"}
     directory_id = message.get("id", None)
     if directory_id is None:
         return {"type": "error", "reason": "missing directory id"}
+    request_id = message.get("request id", None)
+    if request_id is None:
+        return {"type": "error", "reason": "missing request id"}
+    chunk_count = message.get("chunk count", None)
+    if chunk_count is None:
+        return {"type": "error", "reason": "missing chunk count"}
 
     file_uuid = str(uuid.uuid4())
-    file_type = sniff(file_data)
+
+    file_part = {
+        "name": file_name,
+        "uuid": file_uuid,
+        "directory id": directory_id,
+        "chunk count": chunk_count
+    }
+
+    # Some chunks have arrived already
+    if request_id in pending_files:
+        pending_files[request_id].update(file_part)
+        file_part = pending_files[request_id]
+    # No chunks have arrived yet
+    else:
+        file_part["chunks"] = []
+        pending_files[request_id] = file_part
+
+    if file_part["chunk count"] == len(file_part["chunks"]):
+        await finish_file_upload(account, websocket, request_id)
+
+
+@register_handler("binary")
+async def _ (account, message, websocket):
+    request_id = message.get("request id", None)
+    if request_id is None:
+        return {"type": "error", "reason": "missing request id"}
+    chunk_number = message.get("chunk", None)
+    if chunk_number is None:
+        return {"type": "error", "reason": "missing chunk number"}
+    chunk_data = message.get("data", None)
+    if chunk_data is None:
+        return {"type": "error", "reason": "missing chunk data"}
+
+    if request_id in pending_files:
+        file_part = pending_files[request_id]
+    else:
+        file_part = {"chunks": []}
+        pending_files[request_id] = file_part
+
+    file_part["chunks"].append(chunk_data)
+    if file_part.get("chunk count", -1) == len(file_part["chunks"]):
+        await finish_file_upload(account, websocket, request_id)
+
+
+async def finish_file_upload(account, websocket, request_id):
+    file_part = pending_files[request_id]
+    file_name = file_part["name"]
+    file_uuid = file_part["uuid"]
+    file_type = sniff(file_part["chunks"][0])
+    directory_id = file_part["directory id"]
 
     with open(upload_root / file_uuid, "wb") as fp:
-        fp.write(file_data)
+        for chunk in file_part["chunks"]:
+            fp.write(chunk)
 
     execute("""
         INSERT INTO files (file_name, file_type, owner_id, parent_id, file_uuid)
         VALUES (%s, %s, %s, %s, %s)
     """, (file_name, file_type, account.user_id, directory_id, file_uuid))
 
-    return {"type": "event", "id": "files updated"}
+    del pending_files[request_id]
+    await websocket.send(json.dumps({"type": "event", "id": "files updated"}))
 
 
 @register_handler("get parent")
@@ -381,19 +431,36 @@ async def unknown_request(account, message, websocket):
 
 
 async def handle_connection(websocket, path):
+    try:
+        await main_handler(websocket, path)
+    finally:
+        connected_sockets.discard(websocket)
+
+async def main_handler(websocket, path):
     account = None
 
     while True:
         # Receive message
-        try:
-            msg = json.loads(await websocket.recv())
-        except json.JSONDecodeError:
-            msg = {}
-        except:
-            break
-        msg_type = msg.get("type", "invalid")
-        request_id = msg.get("request id", None)
+        frame = await websocket.recv()
+        if isinstance(frame, str):
+            try:
+                msg = json.loads(frame)
+            except json.JSONDecodeError:
+                msg = {}
+        elif isinstance(frame, bytes):
+            if len(frame) < 8:
+                raise ValueError("Frame smaller than minimum frame size of 8")
+            msg = {
+                "type": "binary",
+                "request id": int.from_bytes(frame[:4], 'big', signed=False),
+                "chunk": int.from_bytes(frame[4:8], 'big', signed=False),
+                "data": frame[8:]
+            }
+        else:
+            raise TypeError("Unknown frame type '{}' from websocket.recv()".format(type(frame)))
 
+        request_id = msg.get("request id", None)
+        msg_type = msg.get("type", "invalid")
         reply = None
 
         # Process message
@@ -414,10 +481,7 @@ async def handle_connection(websocket, path):
                     if account.user_name is None:
                         account.user_name = idinfo['email']
                         execute("UPDATE users SET user_name=%s WHERE user_id=%s", (idinfo['email'], account.user_id))
-                        try:
-                            await websocket.send(json.dumps({"type": "prompt username"}))
-                        except:
-                            break
+                        await websocket.send(json.dumps({"type": "prompt username"}))
                     reply = {"type": "auth success"}
                     connected_sockets.add(websocket)
                 except ValueError as e:
@@ -438,12 +502,7 @@ async def handle_connection(websocket, path):
         if reply is not None:
             if request_id is not None:
                 reply['request id'] = request_id
-            try:
-                await websocket.send(json.dumps(reply))
-            except:
-                break
-
-    connected_sockets.discard(websocket)
+            await websocket.send(json.dumps(reply))
 
 
 class Account:

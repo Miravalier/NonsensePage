@@ -476,18 +476,49 @@ function upload_file_dialog(file_window)
         let files = dialog_element.find("input.file").prop('files')
         for (let i=0; i < files.length; i++) {
             files[i].arrayBuffer().then(buffer => {
+                // Stop large files before getting a servor error
+                // reply for the client's convenience only
                 if (files[i].size > 5242880) {
-                    console.log("wow im a massive jag, maybe I shouldn't send a file that big");
+                    console.log("File too large to send");
                     return;
                 }
+
+                let request_id = Math.floor(Math.random()*4294967295);
+
+                // Split the file into chunks
+                let chunks = [];
+                for (let bytes_chunked = 0; bytes_chunked < files[i].size;) {
+                    // Calculate the size of the next chunk
+                    let chunk_size = Math.min(32768, files[i].size - bytes_chunked);
+                    // Generate a view of the chunk body
+                    let chunk = new Uint8Array(buffer, bytes_chunked, chunk_size);
+                    // Genereate a chunk header
+                    let chunk_header = new ArrayBuffer(8);
+                    let header_view = new DataView(chunk_header);
+                    header_view.setUint32(0, request_id);
+                    header_view.setUint32(4, chunks.length);
+                    // Concatenate the header to the body and queue it for sending
+                    let blob = new Blob([chunk_header, chunk], {type: "octet/stream"});
+                    chunks.push(blob);
+                    bytes_chunked += chunk_size;
+                }
+
+                // Send the file initiation message
                 connection.send(
                     JSON.stringify({
                         type: "upload file",
                         id: file_window.pwd_id,
-                        name: files[i].name
+                        name: files[i].name,
+                        "request id": request_id,
+                        "chunk count": chunks.length
                     })
                 );
-                connection.send(buffer);
+
+                // Send each chunk
+                for (let j=0; j < chunks.length; j++) {
+                    console.log(`Sending file part (${j+1}/${chunks.length}) of ${files[i].name}`);
+                    connection.send(chunks[j]);
+                }
             });
         }
         dialog_element.dialog("close");
