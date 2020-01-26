@@ -67,9 +67,11 @@ def main():
         previous_length = len(queued)
 
     # Perform installation
+    any_changes = False
     for target in queue:
         info = targets[target]
         changes = perform_install(Path(target), Path(info['destination']), args.verbose)
+        any_changes |= changes
         if changes:
             commands = info.get("install-commands", [])
             for command in commands:
@@ -81,6 +83,8 @@ def main():
                     print("info: executed '{}' from target '{}'".format(command, target))
         elif args.verbose:
             print("info: skipping target '{}', no changes".format(target))
+    if not any_changes:
+        print("No changes, nothing to install.")
 
 
 def perform_install(source, destination, verbose):
