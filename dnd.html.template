@@ -8,7 +8,7 @@
         <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"/>
         <!-- Project Resources -->
         <script src="/res/dnd/utils.js"></script>
-        <script src="/res/dnd/dnd.js?ver=0.1"></script>
+        <script src="/res/dnd/dnd.js?ver=1.$$VER$$"></script>
         <link rel="stylesheet" type="text/css" href="/res/dnd/dnd.css"/>
         <link rel="shortcut icon" href="/res/dnd/dnd.ico"/>
         <meta name="google-signin-client_id" content="667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com">
