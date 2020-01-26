@@ -272,6 +272,9 @@ function message_handler(message) {
         }
         connection_buffer = [];
     }
+    else if (message.type == "event registered") {
+        // Do nothing with event registered messages
+    }
     else if (message.type == "history reply") {
         let messages = message.messages;
         for (let i=messages.length-1; i >= 0; i--) {
@@ -773,6 +776,7 @@ function create_file_window(x, y, pwd_id)
     else {
         file_window.pwd_id = pwd_id;
     }
+
     file_window.register_event("files updated", function () {
         load_file_listing(file_window);
     });
@@ -862,7 +866,6 @@ function load_file_listing(file_window) {
                         on_reply(
                             {type: "open file", id: fileid},
                             function (reply) {
-                                console.log(reply); // DEBUG
                                 if (reply.type == "img") {
                                     create_image_viewer(e.clientX, e.clientY, reply.uuid);
                                 }
@@ -1027,7 +1030,7 @@ function load_layout() {
             var window_element = create_file_window(s_left, s_top, s_data);
         }
         else if (window_type == "chat") {
-            var window_element = create_chat_window(s_left, s_top);
+            var window_element = create_chat_window(s_left, s_top, s_data);
         }
         else {
             return;
