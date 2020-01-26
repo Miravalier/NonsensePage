@@ -100,8 +100,8 @@ function set_cookie(key, value, persist)
 
     if (persist)
     {
-        let cookie_date = new Date;
-        cookie_date.setFullYear(Date.getFullYear() + 10);
+        let cookie_date = new Date();
+        cookie_date.setFullYear(cookie_date.getFullYear() + 10);
         cookie_string += `; expires=${cookie_date.toUTCString()}`;
     }
 
@@ -389,7 +389,7 @@ function send_object(data)
 
 function send_string(data)
 {
-    if (connection.readyState == WebSocket.OPEN && connection_activated)
+    if (connection && connection.readyState == WebSocket.OPEN && connection_activated)
     {
         console.log(`Sending ${data}.`);
         connection.send(data);
@@ -439,8 +439,7 @@ function create_context_menu(x, y, options)
         }
     });
 
-    menu.css("left", x);
-    menu.css("top", y);
+    menu.css({"left": x, "top": y});
     return menu;
 }
 
@@ -610,7 +609,8 @@ function create_message(message_display, category, source, content)
 function create_chat_window(x, y)
 {
     let chat_window = create_window(x, y, 400, 400);
-    let drag_handle = $('<div class="drag_handle"></div>')
+    chat_window.window_type = "chat";
+    let drag_handle = $('<div class="drag_handle"></div>');
     chat_window.append(drag_handle);
 
     let message_display = $('<div class="message_display no_drag"></div>')
@@ -687,9 +687,16 @@ function create_chat_window(x, y)
     return chat_window;
 }
 
-function create_button_window(x, y)
+function create_button_window(x, y, buttons)
 {
     let button_window = create_window(x, y, 500, 100);
+    button_window.window_type = "button";
+    if (!buttons) {
+        button_window.buttons = [];
+    }
+    else {
+        button_window.buttons = buttons;
+    }
     let button_display = $(`<div class="button_display"></div>`);
     button_window.options['Button Tray'] = {
         'Add Button': (function () {
@@ -699,12 +706,14 @@ function create_button_window(x, y)
         })
     };
     button_window.append(button_display);
+    button_window.button_display = button_display;
     return button_window;
 }
 
 function create_text_viewer(x, y, content)
 {
     let text_window = create_window(x, y, 400, 400);
+    text_window.window_type == "text viewer";
     text_window.append($(`<div class="text_viewport">
         <pre class="opened_text no_drag">${content}</pre>
     </div>`));
@@ -714,6 +723,7 @@ function create_text_viewer(x, y, content)
 function create_image_viewer(x, y, uuid)
 {
     let image_window = create_window(x, y, 400, 400);
+    image_window.window_type == "image viewer";
     image_window.append($('<div class="drag_handle"></div>'));
     let image_viewport = $(`<div class="image_viewport">
         <img class="opened_image" src="/content/${uuid}"></img>
@@ -722,12 +732,20 @@ function create_image_viewer(x, y, uuid)
     return image_window;
 }
 
-function create_file_window(x, y)
+function create_file_window(x, y, pwd_id)
 {
     let file_window = create_window(x, y, 400, 400);
+    file_window.window_type = "file";
+    if (!pwd_id) {
+        file_window.pwd_id = 0;
+    }
+    else {
+        file_window.pwd_id = pwd_id;
+    }
     file_window.register_event("files updated", function () {
         load_file_listing(file_window);
     });
+
 
     file_window.options['Files'] = {
         'Add Subfolder': function () {
@@ -746,7 +764,6 @@ function create_file_window(x, y)
     file_window.viewport = file_viewport;
     file_window.append(file_viewport);
 
-    file_window.pwd_id = 0;
     load_file_listing(file_window);
 
     return file_window;
@@ -901,6 +918,7 @@ function init() {
     });
 }
 
+
 // Main function
 $("document").ready(function () {
     let tabletop = $("#tabletop");
@@ -916,10 +934,75 @@ $("document").ready(function () {
                 'File Explorer': create_file_window,
             },
             'UI': {
+                // [[type, left, top, width, height, data]]
+                'Save Layout': save_layout,
+                'Load Layout': load_layout,
                 'Cancel': () => {}
             }
         });
         e.preventDefault();
         e.stopPropagation();
     });
+    load_layout();
 });
+
+function save_layout() {
+    let saved_windows = [];
+    for (open_window of g_open_windows) {
+        let s_data = [
+            open_window.window_type,
+            open_window.css("left"),
+            open_window.css("top"),
+            open_window.css("width"),
+            open_window.css("height")
+        ];
+        if (open_window.window_type == "button") {
+            s_data.push(open_window.buttons);
+        }
+        else if (open_window.window_type == "file") {
+            s_data.push(open_window.pwd_id);
+        }
+        else if (open_window.window_type == "chat") {
+            s_data.push('');
+        }
+        else {
+            return;
+        }
+        saved_windows.push(s_data);
+    }
+    set_cookie("saved_layout", btoa(JSON.stringify(saved_windows)), true);
+}
+
+function load_layout() {
+    try {
+        var saved_windows = JSON.parse(atob(get_cookie("saved_layout")));
+    }
+    catch (e) {
+        return;
+    }
+
+    for (open_window of g_open_windows) {
+        open_window.remove_handlers.forEach(handler => {handler();});
+        open_window.remove();
+    }
+    g_open_windows.clear();
+
+    for (saved_window of saved_windows) {
+        let [window_type, s_left, s_top, s_width, s_height, s_data] = saved_window;
+        if (window_type == "button") {
+            var window_element = create_button_window(s_left, s_top, s_data);
+        }
+        else if (window_type == "file") {
+            var window_element = create_file_window(s_left, s_top, s_data);
+        }
+        else if (window_type == "chat") {
+            var window_element = create_chat_window(s_left, s_top);
+        }
+        else {
+            return;
+        }
+        window_element.css("width", s_width);
+        window_element.css("height", s_height);
+        window_element.css({left: s_left, top: s_top});
+    }
+}
