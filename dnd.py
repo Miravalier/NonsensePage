@@ -19,7 +19,7 @@ connected_sockets = set()
 event_groups = {}
 request_handlers = {}
 upload_root = Path("/var/www/miravalier/content/")
-pending_files = {}
+pending_blobs = {}
 
 with open("/etc/oauth/oauth.json") as fp:
     GOOGLE_OAUTH = json.load(fp)
@@ -119,6 +119,56 @@ def register_handler(message_type):
     return sub_register_handler
 
 
+def register_binary_handler(message_type, callback):
+    def sub_register_binary_handler(func):
+        async def wrapper(account, message, websocket):
+            # Make sure the message has a request id
+            request_id = message.get("request id", None)
+            if request_id is None:
+                return {"type": "error", "reason": "missing request id"}
+
+            # Call the wrapped function
+            reply = await func(account, message, websocket)
+
+            # If the message has fully arrived, trigger the callback
+            blob = pending_blobs[request_id]
+            if blob.get("chunk count", -1) == len(blob["chunks"]):
+                callback_reply = await callback(account, message, websocket)
+                del pending_blobs[request_id]
+                if callback_reply is not None:
+                    callback_reply["request id"] = request_id
+                    await websocket.send(json.dumps(callback_reply))
+            # Save the callback if the message has not arrived
+            else:
+                blob["callback"] = callback
+
+            # Return the wrapped function's reply to main handler
+            return reply
+        request_handlers[message_type] = wrapper
+        return wrapper
+    return sub_register_binary_handler
+
+
+async def file_upload_callback(account, message, websocket):
+    request_id = message["request id"]
+    file_part = pending_blobs[request_id]
+    file_name = file_part["name"]
+    file_uuid = file_part["uuid"]
+    file_type = sniff(file_part["chunks"][0])
+    directory_id = file_part["directory id"]
+
+    with open(upload_root / file_uuid, "wb") as fp:
+        for chunk in file_part["chunks"]:
+            fp.write(chunk)
+
+    execute("""
+        INSERT INTO files (file_name, file_type, owner_id, parent_id, file_uuid)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (file_name, file_type, account.user_id, directory_id, file_uuid))
+
+    return {"type": "event", "id": "files updated"}
+
+
 @register_handler("download file")
 async def _ (account, message, websocket):
     file_id = message.get("id", None)
@@ -161,7 +211,7 @@ async def _ (account, message, websocket):
         return {"type": file_type, "uuid": file_uuid}
 
 
-@register_handler("upload file")
+@register_binary_handler("upload file", file_upload_callback)
 async def _ (account, message, websocket):
     file_name = message.get("name", None)
     if file_name is None:
@@ -169,16 +219,16 @@ async def _ (account, message, websocket):
     directory_id = message.get("id", None)
     if directory_id is None:
         return {"type": "error", "reason": "missing directory id"}
-    request_id = message.get("request id", None)
-    if request_id is None:
-        return {"type": "error", "reason": "missing request id"}
     chunk_count = message.get("chunk count", None)
     if chunk_count is None:
         return {"type": "error", "reason": "missing chunk count"}
+    if chunk_count > 160:
+        return {"type": "error", "reason": "file too large"}
+    request_id = message["request id"]
 
     file_uuid = str(uuid.uuid4())
 
-    file_part = {
+    blob = {
         "name": file_name,
         "uuid": file_uuid,
         "directory id": directory_id,
@@ -186,16 +236,12 @@ async def _ (account, message, websocket):
     }
 
     # Some chunks have arrived already
-    if request_id in pending_files:
-        pending_files[request_id].update(file_part)
-        file_part = pending_files[request_id]
+    if request_id in pending_blobs:
+        pending_blobs[request_id].update(blob)
     # No chunks have arrived yet
     else:
-        file_part["chunks"] = []
-        pending_files[request_id] = file_part
-
-    if file_part["chunk count"] == len(file_part["chunks"]):
-        await finish_file_upload(account, websocket, request_id)
+        blob["chunks"] = []
+        pending_blobs[request_id] = blob
 
 
 @register_handler("binary")
@@ -203,42 +249,23 @@ async def _ (account, message, websocket):
     request_id = message.get("request id", None)
     if request_id is None:
         return {"type": "error", "reason": "missing request id"}
-    chunk_number = message.get("chunk", None)
-    if chunk_number is None:
-        return {"type": "error", "reason": "missing chunk number"}
     chunk_data = message.get("data", None)
     if chunk_data is None:
         return {"type": "error", "reason": "missing chunk data"}
 
-    if request_id in pending_files:
-        file_part = pending_files[request_id]
+    if request_id in pending_blobs:
+        blob = pending_blobs[request_id]
     else:
-        file_part = {"chunks": []}
-        pending_files[request_id] = file_part
+        blob = {"chunks": []}
+        pending_blobs[request_id] = blob
 
-    file_part["chunks"].append(chunk_data)
-    if file_part.get("chunk count", -1) == len(file_part["chunks"]):
-        await finish_file_upload(account, websocket, request_id)
-
-
-async def finish_file_upload(account, websocket, request_id):
-    file_part = pending_files[request_id]
-    file_name = file_part["name"]
-    file_uuid = file_part["uuid"]
-    file_type = sniff(file_part["chunks"][0])
-    directory_id = file_part["directory id"]
-
-    with open(upload_root / file_uuid, "wb") as fp:
-        for chunk in file_part["chunks"]:
-            fp.write(chunk)
-
-    execute("""
-        INSERT INTO files (file_name, file_type, owner_id, parent_id, file_uuid)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (file_name, file_type, account.user_id, directory_id, file_uuid))
-
-    del pending_files[request_id]
-    await websocket.send(json.dumps({"type": "event", "id": "files updated"}))
+    blob["chunks"].append(chunk_data)
+    if blob.get("chunk count", -1) == len(blob["chunks"]):
+        callback_reply = await blob["callback"](account, message, websocket)
+        del pending_blobs[request_id]
+        if callback_reply is not None:
+            callback_reply["request id"] = request_id
+            await websocket.send(json.dumps(callback_reply))
 
 
 @register_handler("get parent")
@@ -436,12 +463,16 @@ async def handle_connection(websocket, path):
     finally:
         connected_sockets.discard(websocket)
 
+
 async def main_handler(websocket, path):
     account = None
 
     while True:
         # Receive message
-        frame = await websocket.recv()
+        try:
+            frame = await websocket.recv()
+        except websockets.exceptions.ConnectionClosedOK:
+            break
         if isinstance(frame, str):
             try:
                 msg = json.loads(frame)
@@ -450,6 +481,7 @@ async def main_handler(websocket, path):
         elif isinstance(frame, bytes):
             if len(frame) < 8:
                 raise ValueError("Frame smaller than minimum frame size of 8")
+            frame = memoryview(frame)
             msg = {
                 "type": "binary",
                 "request id": int.from_bytes(frame[:4], 'big', signed=False),
@@ -544,7 +576,7 @@ def sniff(file_data):
         return result
 
     try:
-        sample = file_data[:64].decode('utf-8')
+        sample = bytes(file_data[:64]).decode('utf-8')
         if all(c.isprintable() or c.isspace() for c in sample):
             return "txt"
     except:

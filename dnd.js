@@ -1,6 +1,5 @@
 // Configuration parameters
-var attempts = 0;
-var attempt_limit = 10;
+var connection_delay = 500;
 
 // Mutable Globals
 var auth2 = null;
@@ -237,13 +236,10 @@ function global_handler(event)
 }
 
 function message_handler(message) {
-    if ('request id' in message) {
-        let pair = g_waiting_requests[message['request id']];
-        if (pair) {
-            let [request, callback] = pair;
-            callback(message);
-            delete g_waiting_requests[message['request id']];
-        }
+    if ('request id' in message && message['request id'] in g_waiting_requests) {
+        let [request, callback] = g_waiting_requests[message['request id']];
+        callback(message);
+        delete g_waiting_requests[message['request id']];
         return;
     }
 
@@ -253,7 +249,7 @@ function message_handler(message) {
         window.location.href = "/login";
     }
     else if (message.type == "auth success") {
-        attempts = 0;
+        connection_delay = 500;
         console.log("[!] Authentication accepted");
         connection_activated = true;
         for (event_id of Object.keys(g_event_handlers)) {
@@ -263,7 +259,6 @@ function message_handler(message) {
             });
         }
         for (msg of connection_buffer) {
-            console.log(`Sending ${msg} from the queue.`);
             connection.send(msg);
         }
         for (request_id of Object.keys(g_waiting_requests)) {
@@ -272,8 +267,13 @@ function message_handler(message) {
         }
         connection_buffer = [];
     }
+    else if (message.type == "directory listing") {
+        // Do nothing with event directory listings,
+        // these should be handled by waiting requests
+    }
     else if (message.type == "event registered") {
         // Do nothing with event registered messages
+        // these are worthless right now
     }
     else if (message.type == "history reply") {
         let messages = message.messages;
@@ -348,22 +348,18 @@ function activate_connection()
 
 function reacquire_connection()
 {
-    connection_activated = false;
     close_connection();
+    console.error("Reacquiring connection ...")
 
-    sleep(1000).then(() => {
-        if (attempts > attempt_limit)
-        {
-            console.error("Too many connection attempts.");
-            return;
-        }
+    sleep(connection_delay).then(() => {
         acquire_connection();
-        attempts++;
+        connection_delay += 500;
     })
 }
 
 function close_connection()
 {
+    connection_activated = false;
     connection.onopen = undefined;
     connection.onmessage = undefined;
     connection.onerror = undefined;
@@ -387,19 +383,15 @@ function simulate_server_reply(data)
 
 function send_object(data)
 {
-    send_string(JSON.stringify(data));
+    send_raw(JSON.stringify(data));
 }
 
-function send_string(data)
+function send_raw(data)
 {
-    if (connection && connection.readyState == WebSocket.OPEN && connection_activated)
-    {
-        console.log(`Sending ${data}.`);
+    if (connection && connection.readyState == WebSocket.OPEN && connection_activated) {
         connection.send(data);
     }
-    else
-    {
-        console.log(`Queueing ${data} - not yet authenticated`);
+    else {
         connection_buffer.push(data);
     }
 }
@@ -482,7 +474,7 @@ function upload_file_dialog(file_window)
                 // Stop large files before getting a servor error
                 // reply for the client's convenience only
                 if (files[i].size > 5242880) {
-                    console.log("File too large to send");
+                    console.error("File too large to send");
                     return;
                 }
 
@@ -507,20 +499,18 @@ function upload_file_dialog(file_window)
                 }
 
                 // Send the file initiation message
-                connection.send(
-                    JSON.stringify({
-                        type: "upload file",
-                        id: file_window.pwd_id,
-                        name: files[i].name,
-                        "request id": request_id,
-                        "chunk count": chunks.length
-                    })
-                );
+                send_object({
+                    type: "upload file",
+                    id: file_window.pwd_id,
+                    name: files[i].name,
+                    "request id": request_id,
+                    "chunk count": chunks.length
+                });
 
                 // Send each chunk
                 for (let j=0; j < chunks.length; j++) {
                     console.log(`Sending file part (${j+1}/${chunks.length}) of ${files[i].name}`);
-                    connection.send(chunks[j]);
+                    send_raw(chunks[j]);
                 }
             });
         }
@@ -642,18 +632,10 @@ function create_message(message_display, category, source, content)
 
 function create_chat_window(x, y, width, height)
 {
-    if (!x) {
-        x = 0;
-    }
-    if (!y) {
-        y = 0;
-    }
-    if (!width) {
-        width = 400;
-    }
-    if (!height) {
-        height = 400;
-    }
+    if (!x) x = 0;
+    if (!y) y = 0;
+    if (!width) width = 400
+    if (!height) height = 400;
     let chat_window = create_window(x, y, width, height);
     chat_window.window_type = "chat";
     let drag_handle = $('<div class="drag_handle"></div>');
@@ -716,6 +698,7 @@ function create_chat_window(x, y, width, height)
             return;
         }
         chat_window.message_set.add(message.id);
+        notify(`${message['display name']}: ${message.text}`);
 
         if (message.category == "Error") {
             create_message(message_display, "error", "Error", message.text);
@@ -735,21 +718,11 @@ function create_chat_window(x, y, width, height)
 
 function create_button_window(x, y, width, height, buttons)
 {
-    if (!x) {
-        x = 0;
-    }
-    if (!y) {
-        y = 0;
-    }
-    if (!width) {
-        width = 240;
-    }
-    if (!height) {
-        height = 64;
-    }
-    if (!buttons) {
-        buttons = [];
-    }
+    if (!x) x = 0;
+    if (!y) y = 0;
+    if (!width) width = 300;
+    if (!height) height = 64;
+    if (!buttons) buttons = [];
 
     let button_window = create_window(x, y, width, height);
     button_window.window_type = "button";
@@ -768,23 +741,51 @@ function create_button_window(x, y, width, height, buttons)
     return button_window;
 }
 
-function create_text_viewer(x, y, content)
+function create_text_viewer(x, y, width, height, file)
 {
-    let text_window = create_window(x, y, 400, 400);
-    text_window.window_type == "text viewer";
+    if (!x) x = 0;
+    if (!y) y = 0;
+    if (!width) width = 400;
+    if (!height) height = 400;
+    let text_window = create_window(x, y, width, height);
+    text_window.window_type = "text viewer";
+    text_window.options[file.name] = {
+        'Download': function () {
+            on_reply(
+                {type: "download file", id: file.id},
+                function (reply) {
+                    save_file(file.name, "octet/stream", reply.data);
+                }
+            );
+        }
+    };
     text_window.append($(`<div class="text_viewport">
-        <pre class="opened_text no_drag">${content}</pre>
+        <pre class="opened_text no_drag">${file.content}</pre>
     </div>`));
     return text_window;
 }
 
-function create_image_viewer(x, y, uuid)
+function create_image_viewer(x, y, width, height, file)
 {
-    let image_window = create_window(x, y, 400, 400);
-    image_window.window_type == "image viewer";
+    if (!x) x = 0;
+    if (!y) y = 0;
+    if (!width) width = 400;
+    if (!height) height = 400;
+    let image_window = create_window(x, y, width, height);
+    image_window.window_type = "image viewer";
+    image_window.options[file.name] = {
+        'Download': function () {
+            on_reply(
+                {type: "download file", id: file.id},
+                function (reply) {
+                    save_file(file.name, "octet/stream", reply.data);
+                }
+            );
+        }
+    };
     image_window.append($('<div class="drag_handle"></div>'));
     let image_viewport = $(`<div class="image_viewport">
-        <img class="opened_image" src="/content/${uuid}"></img>
+        <img class="opened_image" src="/content/${file.uuid}"></img>
     </div>`);
     image_window.append(image_viewport);
     return image_window;
@@ -792,21 +793,11 @@ function create_image_viewer(x, y, uuid)
 
 function create_file_window(x, y, width, height, pwd_id)
 {
-    if (!x) {
-        x = 0;
-    }
-    if (!y) {
-        y = 0;
-    }
-    if (!width) {
-        width = 400;
-    }
-    if (!height) {
-        height = 400;
-    }
-    if (!pwd_id) {
-        pwd_id = 0;
-    }
+    if (!x) x = 0;
+    if (!y) y = 0;
+    if (!width) width = 400
+    if (!height) height = 400;
+    if (!pwd_id) pwd_id = 0;
 
     let file_window = create_window(x, y, width, height);
     file_window.window_type = "file";
@@ -901,11 +892,22 @@ function load_file_listing(file_window) {
                             {type: "open file", id: fileid},
                             function (reply) {
                                 if (reply.type == "img") {
-                                    create_image_viewer(e.clientX, e.clientY, reply.uuid);
+                                    var view_creator = create_image_viewer;
                                 }
                                 else if (reply.type == "txt") {
-                                    create_text_viewer(e.clientX, e.clientY, reply.content);
+                                    var view_creator = create_text_viewer;
                                 }
+                                else {
+                                    console.log(`No viewer to open file ${reply.type}`);
+                                    return;
+                                }
+                                let file = {
+                                    name: filename,
+                                    id: fileid,
+                                    type: filetype
+                                };
+                                Object.assign(file, reply);
+                                view_creator(e.clientX, e.clientY, 400, 400, file)
                             }
                         );
                     }
@@ -987,33 +989,6 @@ function init() {
 }
 
 
-// Main function
-$("document").ready(function () {
-    let tabletop = $("#tabletop");
-    tabletop.on("click", function (e) {
-        $("#g_context_menu").remove();
-        e.stopPropagation();
-    });
-    tabletop.on("contextmenu", function (e) {
-        create_context_menu(e.clientX, e.clientY, {
-            'New Window': {
-                'Chat': create_chat_window,
-                'Button Tray': create_button_window,
-                'File Explorer': create_file_window,
-            },
-            'UI': {
-                // [[type, left, top, width, height, data]]
-                'Save Layout': save_layout,
-                'Load Layout': load_layout,
-                'Cancel': () => {}
-            }
-        });
-        e.preventDefault();
-        e.stopPropagation();
-    });
-    load_layout();
-});
-
 function save_layout() {
     let saved_windows = [];
     for (open_window of g_open_windows) {
@@ -1070,3 +1045,69 @@ function load_layout() {
         var window_element = window_creator(s_left, s_top, s_width, s_height, s_data);
     }
 }
+
+
+var g_focus = true;
+const notification_options = {
+    badge: "/res/dnd/dnd.ico"
+};
+function notify(message) {
+    // Only send if another tab is selected
+    if (g_focus) {
+        return;
+    }
+
+    if (!("Notification" in window)) {
+        console.error("Notification silenced, no browser support.");
+    }
+    else if (Notification.permission == "granted") {
+        var notification = new Notification(message, notification_options);
+    }
+    else if (Notification.permission != "denied") {
+        Notification.requestPermission().then(function (permission) {
+            if (permission == "granted") {
+                var notification = new Notification(message, notification_options);
+            }
+        });
+    }
+}
+
+
+// Main function
+$("document").ready(function () {
+    let tabletop = $("#tabletop");
+    tabletop.on("click", function (e) {
+        $("#g_context_menu").remove();
+        e.stopPropagation();
+    });
+    tabletop.on("contextmenu", function (e) {
+        create_context_menu(e.clientX, e.clientY, {
+            'New Window': {
+                'Chat': create_chat_window,
+                'Button Tray': create_button_window,
+                'File Explorer': create_file_window,
+            },
+            'UI': {
+                // [[type, left, top, width, height, data]]
+                'Save Layout': save_layout,
+                'Load Layout': load_layout,
+                'Cancel': () => {}
+            }
+        });
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    load_layout();
+    $(window).on("blur", function () {
+        g_focus = false;
+    });
+    $(window).on("focus", function () {
+        g_focus = true;
+    });
+    if (!("Notification" in window)) {
+        console.error("Notification silenced, no browser support.");
+    }
+    else if (Notification.permission != "granted") {
+        Notification.requestPermission();
+    }
+});
