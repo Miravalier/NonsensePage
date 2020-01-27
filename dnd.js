@@ -19,39 +19,76 @@ const sleep = (milliseconds) => {
  ************/
 
 var g_commands = {
-    '/clear': function (args) {
-        if (args.length != 1) {
-            error_message("usage is /clear");
-            return;
+    '': [
+    ],
+    '/clear': [
+        [],
+        function (args) {
+            send_object({"type": "clear history"});
         }
-        send_object({"type": "clear history"});
-    },
-    '/theme': function (args) {
-        if (args.length != 2) {
-            error_message("usage is /theme <fantasy | tech | icy>");
-            return;
+    ],
+    '/theme': [
+        [["fantasy | tech | icy", s => s]],
+        function (args) {
+            $("#background").attr("class", args[1]);
+            $("#watermark").attr("class", args[1]);
+            system_message(`'${args[1]}' theme applied.`);
         }
-        $("#background").attr("class", args[1]);
-        $("#watermark").attr("class", args[1]);
-        system_message(`'${args[1]}' theme applied.`);
-    }
+    ]
 };
+
+function param_usage(params, start_index)
+{
+    if (start_index) {
+        return params.slice(start_index-1).map(p => `<${p[0]}>`).join(" ")
+    }
+    else {
+        return params.map(p => `<${p[0]}>`).join(" ")
+    }
+}
 
 function window_autocomplete(window_element)
 {
     let string = window_element.text_input.value;
-    let options = Object.keys(g_commands);
-    let i=0;
-    while (options.length > 1 && i < string.length)
-    {
-        options = options.filter(o=>o.startsWith(string));
-        i++;
+    if (string[0] !== '/') {
+        window_element.suggestion.setAttribute("placeholder", "");
+        return;
     }
+
+    let args = string_to_args(string);
+    let cmd = args[0];
+    let options = Object.keys(g_commands).filter(o=>o.startsWith(cmd));
     if (options.length == 1) {
         let match = options[0];
+        let [params, callback] = g_commands[match];
+        if (args.length == 1) {
+            window_element.suggestion.setAttribute(
+                "placeholder", " ".repeat(string.length) + match.substr(string.length, match.length)
+            );
+        }
+        else if (args.length - 1 < params.length) {
+            window_element.suggestion.setAttribute(
+                "placeholder",
+                " ".repeat(Math.max(string.length)+1) + param_usage(params, args.length)
+            );
+        }
+        else if (args.length - 1 > params.length) {
+            window_element.suggestion.setAttribute(
+                "placeholder",
+                " ".repeat(string.length + 1) + "!"
+            );
+        }
+        else {
+            window_element.suggestion.setAttribute(
+                "placeholder",
+                ""
+            );
+        }
+    }
+    else if (options.length == 0) {
         window_element.suggestion.setAttribute(
             "placeholder",
-            " ".repeat(string.length) + match.substr(string.length, match.length)
+            " ".repeat(string.length + 1) + "!"
         );
     }
     else {
@@ -69,15 +106,32 @@ function window_execute_command(window_element)
     }
     else if (message[0] == '/')
     {
-        let args = string_to_args(message);
-        let command = args[0];
-        if (command in g_commands)
-        {
-            g_commands[command](args);
+        try {
+            let args = string_to_args(message);
+
+            let command = args[0];
+            if (!(command in g_commands)) {
+                throw new TypeError(`'${command}' is not a real command.`);
+            }
+
+            let [params, callback] = g_commands[command];
+            if (args.length == params.length+1) {
+                throw new TypeError(`usage: ${command} ${param_usage(params)}`);
+            }
+
+            for (let i=0; i < params.length; i++) {
+                try {
+                    args[i+1] = params[i][1](args[i+1]);
+                }
+                catch (e) {
+                    throw new TypeError(`Invalid parameter '${args[i+1]}'.\nusage: ${command} ${param_usage(params)}`);
+                }
+            }
+
+            callback(args);
         }
-        else
-        {
-            error_message(`Unrecognized command '${command}'`);
+        catch (e) {
+            error_message(e.message);
         }
     }
     else
@@ -677,7 +731,6 @@ function create_chat_window(x, y, width, height)
 
     suggestion.setAttribute('class', 'message_suggestion no_drag');
     suggestion.setAttribute('type', 'text');
-    suggestion.setAttribute('name', 'suggestion');
     suggestion.setAttribute('autocomplete', 'off');
     suggestion.setAttribute('readonly', true);
 
@@ -833,7 +886,7 @@ function create_file_window(x, y, width, height, pwd_id)
 }
 
 
-g_waiting_requests = {};
+var g_waiting_requests = {};
 function on_reply(request, callback) {
     let request_id = Math.floor(Math.random()*4294967295);
     request["request id"] = request_id;
@@ -1051,12 +1104,14 @@ function load_layout() {
 
 
 var g_focus = true;
+var g_notification_sent = false;
 const notification_options = {
     badge: "/res/dnd/dnd.ico"
 };
 function notify(message) {
-    // Only send if another tab is selected
-    if (g_focus) {
+    // Only send if another tab is selected and
+    // no notifications have been sent yet.
+    if (g_focus || g_notification_sent) {
         return;
     }
 
@@ -1108,6 +1163,7 @@ $("document").ready(function () {
     });
     $(window).on("focus", function () {
         g_focus = true;
+        g_notification_sent = false;
     });
     if (!("Notification" in window)) {
         console.error("Notification silenced, no browser support.");
