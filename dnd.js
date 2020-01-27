@@ -283,7 +283,8 @@ function message_handler(message) {
                 "category": category,
                 "text": content,
                 "id": message_id,
-                "display name": display_name
+                "display name": display_name,
+                "historical": true
             });
         }
     }
@@ -291,9 +292,9 @@ function message_handler(message) {
         query_dialog(
             "Select Username",
             "Username:",
-            (function(value) {
+            function(value) {
                 send_object({type: "update username", name: value});
-            })
+            }
         );
     }
     else if (message.type == "event") {
@@ -698,7 +699,9 @@ function create_chat_window(x, y, width, height)
             return;
         }
         chat_window.message_set.add(message.id);
-        notify(`${message['display name']}: ${message.text}`);
+        if (!message.historical) {
+            notify(`${message['display name']}: ${message.text}`);
+        }
 
         if (message.category == "Error") {
             create_message(message_display, "error", "Error", message.text);
