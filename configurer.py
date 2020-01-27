@@ -34,16 +34,21 @@ def main():
 
 
 def generate_version():
-    with open(".version", "r+") as fp:
-        major, minor = fp.read().strip().split('.')
-        minor = int(minor) + 1
-        major = int(major)
-        if minor > 9999:
-            minor = 0
-            major += 1
-        version = "{:02}.{:04}".format(major, minor)
-        fp.seek(0)
-        fp.write(version)
+    try:
+        with open(".version", "r+") as fp:
+            major, minor = fp.read().strip().split('.')
+            minor = int(minor) + 1
+            major = int(major)
+            if minor > 9999:
+                minor = 0
+                major += 1
+            version = "{:02}.{:04}".format(major, minor)
+            fp.seek(0)
+            fp.write(version)
+    except OSError:
+        with open(".version", "w") as fp:
+            version = "00.0001"
+            fp.write(version)
     return version.encode('ascii')
 
 

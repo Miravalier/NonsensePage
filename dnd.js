@@ -1075,6 +1075,8 @@ function notify(message) {
 
 // Main function
 $("document").ready(function () {
+    var g_version = $("meta[name='version']").attr('content');
+    console.log("TOWNHALL v"+g_version);
     let tabletop = $("#tabletop");
     tabletop.on("click", function (e) {
         $("#g_context_menu").remove();
