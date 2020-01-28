@@ -1,16 +1,9 @@
-"use strict";
+import * as utils from "./utils.js";
 
 // Mutable Globals
-var g_auth2 = null;
-var g_connection = null;
-var g_connection_buffer = [];
-var g_connection_activated = false;
-var g_event_handlers = {};
-var g_waiting_requests = {};
 var g_open_windows = new Set();
 var g_focus = true;
 var g_notification_sent = false;
-var g_connection_delay = 500;
 var g_commands = {
     '': [
     ],
@@ -65,7 +58,7 @@ function window_autocomplete(window_element)
     }
     let string = window_element.text_input.value.trim();
 
-    let args = string_to_args(string);
+    let args = utils.string_to_args(string);
     let cmd = args[0];
     let options = Object.keys(g_commands).filter(o=>o.startsWith(cmd));
     if (options.length == 1) {
@@ -118,7 +111,7 @@ function window_execute_command(window_element)
     else if (message[0] == '/')
     {
         try {
-            let args = string_to_args(message);
+            let args = utils.string_to_args(message);
 
             let command = args[0];
             if (!(command in g_commands)) {
@@ -147,20 +140,11 @@ function window_execute_command(window_element)
     }
     else
     {
-        send_object({type: "chat message", text: message});
+        send_object({type: "chat message", "display name": "", text: message});
     }
 
     window_element.text_input.value = "";
     window_element.suggestion.placeholder = "";
-}
-
-
-function window_register_event(event_id, event_handler)
-{
-    register_event(event_id, event_handler);
-    this.remove_handlers.push(function () {
-        deregister_event(event_id, event_handler);
-    });
 }
 
 
@@ -178,6 +162,7 @@ function set_cookie(key, value, persist)
     document.cookie = cookie_string;
 }
 
+
 function get_cookie(key)
 {
     var cookie_regex = new RegExp(`${key}=(.+?)\s*(;|$)`);
@@ -193,276 +178,27 @@ function get_cookie(key)
 }
 
 
-function register_event(event_id, event_handler)
-{
-    if (event_id in g_event_handlers)
-    {
-        g_event_handlers[event_id].push(event_handler);
-    }
-    else
-    {
-        send_object({
-            type: "register event",
-            id: event_id
-        });
-        g_event_handlers[event_id] = [event_handler];
-    }
-}
-
-function deregister_event(event_id, event_handler)
-{
-
-    // Remove event handler from event
-    let handlers = g_event_handlers[event_id];
-    let index = handlers.indexOf(event_handler)
-    if (index != -1)
-    {
-        handlers.splice(index, 1);
-    }
-
-    // If this was the last event handler, remove the list
-    // and inform the server.
-    if (handlers.length == 0)
-    {
-        send_object({
-            type: "deregister event",
-            id: event_id
-        });
-        delete g_event_handlers[event_id];
-    }
-}
-
-function error_message(text)
-{
-    local_event(-1, "chat message", {category: "Error", text: text, id: -1});
-}
-
-function system_message(text)
-{
-    local_event(-1, "chat message", {category: "System", text: text, id: -1});
-}
-
-function local_event(sim_user, event_id, event_data)
-{
-    if (event_id in g_event_handlers)
-    {
-        let message = {
-            user: sim_user,
-            id: event_id,
-            data: event_data
-        };
-        for (let handler of g_event_handlers[event_id])
-        {
-            handler(message);
-        }
-    }
-    else
-    {
-        console.log(`Simulated un-handled event '${event_id}'`);
-    }
-}
-
-
-function trigger_event(event_id, event_data)
-{
-    send_object({
-        type: "trigger event",
-        id: event_id,
-        data: event_data
+function error_message(text) {
+    local_object({
+        type: "chat message",
+        category: "Error",
+        "display name": "Error",
+        text: text,
+        id: -1
     });
 }
 
-function global_handler(event)
-{
-    if (event.data instanceof Blob) {
-        event.data.arrayBuffer().then(buffer => {
-            let view = new DataView(buffer);
-            let request_id = view.getUint32(0);
-            let binary_data = new Uint8Array(buffer, 4, buffer.byteLength-4);
-            var message = {type: "binary", "request id": request_id, data: binary_data}
-            message_handler(message);
-        });
-    }
-    else if (event.data instanceof ArrayBuffer) {
-        let view = new DataView(event.data);
-        let request_id = view.getUint32(0);
-        let binary_data = new Uint8Array(event.data, 4, event.data.byteLength-4);
-        var message = {type: "binary", "request id": request_id, data: binary_data}
-        message_handler(message);
-    }
-    else {
-        try {
-            var message = JSON.parse(event.data);
-        }
-        catch (e) {
-            console.error(`Server message is not valid JSON: ${event.data}`);
-            return;
-        }
-        message_handler(message);
-    }
+
+function system_message(text) {
+    local_object({
+        type: "chat message",
+        category: "System",
+        "display name": "System",
+        text: text,
+        id: -1
+    });
 }
 
-function message_handler(message) {
-    if ('request id' in message && message['request id'] in g_waiting_requests) {
-        let [request, callback] = g_waiting_requests[message['request id']];
-        callback(message);
-        delete g_waiting_requests[message['request id']];
-        return;
-    }
-
-    if (message.type == "auth failure") {
-        console.error("Authentication not accepted: " + message.reason);
-        set_cookie("source", "/dnd")
-        window.location.href = "/login";
-    }
-    else if (message.type == "auth success") {
-        g_connection_delay = 500;
-        console.log("[!] Authentication accepted");
-        g_connection_activated = true;
-        for (let event_id of Object.keys(g_event_handlers)) {
-            send_object({
-                type: "register event",
-                id: event_id
-            });
-        }
-        for (let msg of g_connection_buffer) {
-            g_connection.send(msg);
-        }
-        for (let request_id of Object.keys(g_waiting_requests)) {
-            let [request, callback] = g_waiting_requests[request_id];
-            send_object(request);
-        }
-        g_connection_buffer = [];
-    }
-    else if (message.type == "directory listing") {
-        // Do nothing with event directory listings,
-        // these should be handled by waiting requests
-    }
-    else if (message.type == "event registered") {
-        // Do nothing with event registered messages
-        // these are worthless right now
-    }
-    else if (message.type == "history reply") {
-        let messages = message.messages;
-        for (let i=messages.length-1; i >= 0; i--) {
-            let [message_id, sender_id, category, display_name, content] = messages[i];
-            local_event(sender_id, "chat message", {
-                "category": category,
-                "text": content,
-                "id": message_id,
-                "display name": display_name,
-                "historical": true
-            });
-        }
-    }
-    else if (message.type == "prompt username") {
-        query_dialog(
-            "Select Username",
-            "Username:",
-            function(value) {
-                send_object({type: "update username", name: value});
-            }
-        );
-    }
-    else if (message.type == "event") {
-        if (message.id in g_event_handlers)
-        {
-            for (let handler of g_event_handlers[message.id])
-            {
-                handler(message);
-            }
-        }
-        else
-        {
-            console.log(`Received un-handled event '${message.id}' from '${message.user}'`);
-        }
-    }
-    else if (message.type == "error") {
-        console.error("Error from server: " + message.reason);
-        if ('request' in message) {
-            console.log("Unknown request was: " + message.request);
-        };
-    }
-    else if (message.type == "debug") {
-        console.warn("Debug from server: " + message.reason);
-    }
-    else
-    {
-        console.log(`Unknown Message: ${event.data}`);
-    }
-}
-
-function send_auth_packet(auth2) {
-    var google_user = auth2.currentUser.get();
-    var id_token = google_user.getAuthResponse().id_token;
-
-    g_connection.send(
-        JSON.stringify({
-            type: "auth",
-            auth_token: id_token
-        })
-    )
-
-    console.log("[!] Auth request sent")
-}
-
-function activate_connection()
-{
-    g_connection.onopen = undefined;
-
-    console.log("[!] Loading google oauth2");
-    send_auth_packet(g_auth2);
-}
-
-function reacquire_connection()
-{
-    close_connection();
-    console.error("Reacquiring connection ...")
-
-    sleep(g_connection_delay).then(() => {
-        acquire_connection();
-        g_connection_delay += 500;
-    })
-}
-
-function close_connection()
-{
-    g_connection_activated = false;
-    g_connection.onopen = undefined;
-    g_connection.onmessage = undefined;
-    g_connection.onerror = undefined;
-    g_connection.onclose = undefined;
-    g_connection = null;
-}
-
-function acquire_connection()
-{
-    g_connection = new WebSocket("wss://miravalier.net:3030/");
-    g_connection.onopen = activate_connection;
-    g_connection.onmessage = global_handler;
-    g_connection.onerror = reacquire_connection;
-    g_connection.onclose = reacquire_connection;
-}
-
-function simulate_server_reply(data)
-{
-    message_handler(data);
-}
-
-function send_object(data)
-{
-    send_raw(JSON.stringify(data));
-}
-
-function send_raw(data)
-{
-    if (g_connection && g_connection.readyState == WebSocket.OPEN && g_connection_activated) {
-        g_connection.send(data);
-    }
-    else {
-        g_connection_buffer.push(data);
-    }
-}
 
 function create_context_menu(x, y, options)
 {
@@ -650,7 +386,6 @@ function create_window(x, y, width, height)
         handles: 'all'
     });
     window_element.remove_handlers = [];
-    window_element.register_event = window_register_event;
 
     window_element.options = {
         "UI": {
@@ -741,13 +476,12 @@ function create_chat_window(x, y, width, height)
 
     chat_window.message_set = new Set();
 
-    chat_window.register_event("clear history", function (clear_event) {
+    register_message("clear history", function (message) {
         chat_window.message_set.clear();
         message_display.html("");
     });
 
-    chat_window.register_event("chat message", function (chat_event) {
-        let message = chat_event.data;
+    register_message("chat message", function (message) {
         if (message.id != -1 && chat_window.message_set.has(message.id)) {
             // Discard messages we've already received unless
             // their id is -1 (internal)
@@ -861,7 +595,7 @@ function create_file_window(x, y, width, height, pwd_id)
     file_window.window_type = "file";
     file_window.pwd_id = pwd_id;
 
-    file_window.register_event("files updated", function () {
+    register_message("files updated", function () {
         load_file_listing(file_window);
     });
 
@@ -1034,18 +768,6 @@ function save_file(name, type, data) {
 };
 
 
-function init() {
-    gapi.load('auth2', function() {
-        gapi.auth2.init({
-            client_id: "667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com"
-        }).then(function (value) {
-            g_auth2 = value;
-            acquire_connection();
-        });
-    });
-}
-
-
 function save_layout() {
     let saved_windows = [];
     for (let open_window of g_open_windows) {
@@ -1149,7 +871,7 @@ $("document").ready(function () {
         e.preventDefault();
         e.stopPropagation();
     });
-    load_layout();
+
     $(window).on("blur", function () {
         g_focus = false;
     });
@@ -1163,4 +885,30 @@ $("document").ready(function () {
     else if (Notification.permission != "granted") {
         Notification.requestPermission();
     }
+
+    register_message("history reply", message => {
+        let messages = message.messages;
+        for (let i=messages.length-1; i >= 0; i--) {
+            let [message_id, sender_id, category, display_name, content] = messages[i];
+            local_object(sender_id, "chat message", {
+                "category": category,
+                "text": content,
+                "id": message_id,
+                "display name": display_name,
+                "historical": true
+            });
+        }
+    });
+
+    register_message("prompt username", message => {
+        query_dialog(
+            "Select Username",
+            "Username:",
+            function(value) {
+                send_object({type: "update username", name: value});
+            }
+        );
+    });
+
+    load_layout();
 });

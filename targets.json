@@ -9,9 +9,6 @@
         "dnd.html": {
             "destination": "/var/www/miravalier/"
         },
-        "dnd.js": {
-            "destination": "/var/www/miravalier/res/dnd/"
-        },
         "dnd.py": {
             "destination": "/var/wss/",
             "install-commands": ["service dnd.wss restart"],

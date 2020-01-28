@@ -1,4 +1,4 @@
-args_to_string = function (xs) {
+export function args_to_string(xs) {
     return xs.map(function (s) {
         if (s && typeof s === 'object') {
             return s.op.replace(/(.)/g, '\\$1');
@@ -30,7 +30,7 @@ for (var i = 0; i < 4; i++) {
     TOKEN += (Math.pow(16,8)*Math.random()).toString(16);
 }
 
-string_to_args = function (s, env, opts) {
+export function string_to_args(s, env, opts) {
     var mapped = parse(s, env, opts);
     if (typeof env !== 'function') return mapped;
     return mapped.reduce(function (acc, s) {

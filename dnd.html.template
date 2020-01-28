@@ -7,8 +7,9 @@
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
         <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"/>
         <!-- Project -->
-        <script src="/res/dnd/utils.js?ver=1.$$VER$$"></script>
-        <script src="/res/dnd/dnd.js?ver=1.$$VER$$"></script>
+        <script src="/res/dnd/connection.js?ver=1.$$VER$$"></script>
+        <script type="module" src="/res/dnd/dnd.js?ver=1.$$VER$$"></script>
+        <script type="module" src="/res/dnd/entity.js?ver=1.$$VER$$"></script>
         <link rel="stylesheet" type="text/css" href="/res/dnd/dnd.css?ver=1.$$VER$$"/>
         <link rel="shortcut icon" href="/res/dnd/dnd.ico"/>
         <meta name="google-signin-client_id" content="667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com">
