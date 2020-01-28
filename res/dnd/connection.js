@@ -95,7 +95,7 @@ function message_sorter(message) {
         }
     }
     else {
-        console.log(`Unhandled Message: ${message}`);
+        console.log(`Unhandled Message: ${JSON.stringify(message)}`);
     }
 }
 

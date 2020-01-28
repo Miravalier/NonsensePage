@@ -890,7 +890,8 @@ $("document").ready(function () {
         let messages = message.messages;
         for (let i=messages.length-1; i >= 0; i--) {
             let [message_id, sender_id, category, display_name, content] = messages[i];
-            local_object(sender_id, "chat message", {
+            local_object({
+                type: "chat message",
                 "category": category,
                 "text": content,
                 "id": message_id,

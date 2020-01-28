@@ -16,7 +16,6 @@ from functools import lru_cache
 
 
 connected_sockets = set()
-event_groups = {}
 request_handlers = {}
 upload_root = Path("/var/www/miravalier/content/")
 pending_blobs = {}
@@ -166,7 +165,7 @@ async def file_upload_callback(account, message, websocket):
         VALUES (%s, %s, %s, %s, %s)
     """, (file_name, file_type, account.user_id, directory_id, file_uuid))
 
-    return {"type": "event", "id": "files updated"}
+    return {"type": "files updated"}
 
 
 @register_handler("download file")
@@ -299,27 +298,6 @@ async def _ (account, message, websocket):
     }
 
 
-@register_handler("register event")
-async def _ (account, message, websocket):
-    event_id = message.get("id", None)
-    if event_id in event_groups:
-        event_groups[event_id].add(websocket)
-    else:
-        event_groups[event_id] = {websocket}
-        await broadcast({"type": "event created", "id": event_id})
-    return {"type": "event registered", "id": event_id}
-
-
-@register_handler("deregister event")
-async def _ (account, message, websocket):
-    event_id = message.get("id", None)
-    if event_id not in event_groups:
-        return {"type": "error", "reason": "non-existent event id"}
-    event_groups[event_id].discard(websocket)
-    if not event_groups[event_id]:
-        del event_groups[event_id]
-
-
 @register_handler("update username")
 async def _ (account, message, websocket):
     new_name = message.get("name", None)
@@ -352,7 +330,7 @@ async def _ (account, message, websocket):
     if file_uuid:
         os.unlink(str(upload_root / file_uuid))
 
-    return {"type": "event", "id": "files updated"}
+    return {"type": "files updated"}
 
 
 def delete_children(file_id):
@@ -382,7 +360,7 @@ async def _ (account, message, websocket):
         VALUES (%s, %s, %s, %s)
     """, (directory_name, "directory", account.user_id, directory_id))
 
-    return {"type": "event", "id": "files updated"}
+    return {"type": "files updated"}
 
 
 @register_handler("rename file")
@@ -398,7 +376,7 @@ async def _ (account, message, websocket):
         UPDATE files SET file_name=%s WHERE file_id=%s
     """, (file_name, file_id))
 
-    return {"type": "event", "id": "files updated"}
+    return {"type": "files updated"}
 
 
 @register_handler("chat message")
@@ -413,28 +391,14 @@ async def _ (account, message, websocket):
     ''', (account.user_id, category, display_name, text))
 
     await broadcast({
-        "type": "event", "user": account.user_id, "id": "chat message", "data": {
-            "category": category, "display name": display_name, "id": result[0], "text": text
-        }
+        "type": "chat message", "category": category, "display name": display_name, "id": result[0], "text": text
     })
-
-
-@register_handler("trigger event")
-async def _ (account, message, websocket):
-    event_id = message.get("id", None)
-    event_data = message.get("data", None)
-    if event_id not in event_groups:
-        return {"type": "error", "reason": "non-existent event id"}
-    await broadcast(
-        {"type": "event", "user": account.user_id, "id": event_id, "data": event_data},
-        event_groups[event_id]
-    )
 
 
 @register_handler("clear history")
 async def _ (account, message, websocket):
     execute("DELETE FROM messages");
-    await broadcast({"type": "event", "id": "clear history"})
+    await broadcast({"type": "clear history"})
 
 
 @register_handler("request history")
@@ -446,11 +410,6 @@ async def _ (account, message, websocket):
             FROM messages ORDER BY message_id DESC LIMIT 100
         ''')
     }
-
-
-@register_handler("list events")
-async def _ (account, message, websocket):
-    return {"type": "event list", "events": list(event_groups.keys())}
 
 
 async def unknown_request(account, message, websocket):
