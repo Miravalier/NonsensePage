@@ -34,11 +34,6 @@ const g_window_type_map = {
     "chat": create_chat_window
 };
 
-const sleep = (milliseconds) => {
-    return new Promise(resolve => setTimeout(resolve, milliseconds))
-}
-
-
 function param_usage(params, start_index)
 {
     if (start_index) {
@@ -119,7 +114,7 @@ function window_execute_command(window_element)
             }
 
             let [params, callback] = g_commands[command];
-            if (args.length == params.length+1) {
+            if (args.length != params.length+1) {
                 throw new TypeError(`usage: ${command} ${param_usage(params)}`);
             }
 
@@ -140,7 +135,7 @@ function window_execute_command(window_element)
     }
     else
     {
-        send_object({type: "chat message", "display name": "", text: message});
+        send_object({type: "chat message", text: message});
     }
 
     window_element.text_input.value = "";
@@ -910,6 +905,8 @@ $("document").ready(function () {
             }
         );
     });
+
+    register_message("directory listing", () => {});
 
     load_layout();
 });

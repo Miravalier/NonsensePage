@@ -150,6 +150,10 @@ function acquire_connection() {
  * EXTERNAL USE *
  ****************/
 
+const sleep = (milliseconds) => {
+    return new Promise(resolve => setTimeout(resolve, milliseconds))
+}
+
 
 function local_object(data) {
     message_sorter(data);
