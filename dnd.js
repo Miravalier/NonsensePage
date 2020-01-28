@@ -1,23 +1,16 @@
-// Configuration parameters
-var connection_delay = 500;
+"use strict";
 
 // Mutable Globals
-var auth2 = null;
-var connection = null;
-var connection_buffer = [];
-var connection_activated = false;
+var g_auth2 = null;
+var g_connection = null;
+var g_connection_buffer = [];
+var g_connection_activated = false;
 var g_event_handlers = {};
-
-const sleep = (milliseconds) => {
-  return new Promise(resolve => setTimeout(resolve, milliseconds))
-}
-
-// Constants
-
-/************
- * D&D Code *
- ************/
-
+var g_waiting_requests = {};
+var g_open_windows = new Set();
+var g_focus = true;
+var g_notification_sent = false;
+var g_connection_delay = 500;
 var g_commands = {
     '': [
     ],
@@ -37,6 +30,22 @@ var g_commands = {
     ]
 };
 
+// Constant Globals
+const g_notification_options = {
+    badge: "/res/dnd/dnd.ico"
+};
+
+const g_window_type_map = {
+    "button": create_button_window,
+    "file": create_file_window,
+    "chat": create_chat_window
+};
+
+const sleep = (milliseconds) => {
+    return new Promise(resolve => setTimeout(resolve, milliseconds))
+}
+
+
 function param_usage(params, start_index)
 {
     if (start_index) {
@@ -49,11 +58,12 @@ function param_usage(params, start_index)
 
 function window_autocomplete(window_element)
 {
-    let string = window_element.text_input.value;
-    if (string[0] !== '/') {
+    window_element.tab_complete = null;
+    if (window_element.text_input.value[0] !== '/') {
         window_element.suggestion.setAttribute("placeholder", "");
         return;
     }
+    let string = window_element.text_input.value.trim();
 
     let args = string_to_args(string);
     let cmd = args[0];
@@ -61,15 +71,16 @@ function window_autocomplete(window_element)
     if (options.length == 1) {
         let match = options[0];
         let [params, callback] = g_commands[match];
-        if (args.length == 1) {
+        if (cmd != match) {
+            window_element.tab_complete = match.substr(string.length, match.length)
             window_element.suggestion.setAttribute(
-                "placeholder", " ".repeat(string.length) + match.substr(string.length, match.length)
+                "placeholder", " ".repeat(string.length) + window_element.tab_complete
             );
         }
         else if (args.length - 1 < params.length) {
             window_element.suggestion.setAttribute(
                 "placeholder",
-                " ".repeat(Math.max(string.length)+1) + param_usage(params, args.length)
+                " ".repeat(string.length + 1) + param_usage(params, args.length)
             );
         }
         else if (args.length - 1 > params.length) {
@@ -143,9 +154,15 @@ function window_execute_command(window_element)
     window_element.suggestion.placeholder = "";
 }
 
-/****************
- * Utility Code *
- ****************/
+
+function window_register_event(event_id, event_handler)
+{
+    register_event(event_id, event_handler);
+    this.remove_handlers.push(function () {
+        deregister_event(event_id, event_handler);
+    });
+}
+
 
 function set_cookie(key, value, persist)
 {
@@ -175,10 +192,6 @@ function get_cookie(key)
     }
 }
 
-
-/*******************
- * Connection Code *
- *******************/
 
 function register_event(event_id, event_handler)
 {
@@ -238,7 +251,7 @@ function local_event(sim_user, event_id, event_data)
             id: event_id,
             data: event_data
         };
-        for (handler of g_event_handlers[event_id])
+        for (let handler of g_event_handlers[event_id])
         {
             handler(message);
         }
@@ -303,23 +316,23 @@ function message_handler(message) {
         window.location.href = "/login";
     }
     else if (message.type == "auth success") {
-        connection_delay = 500;
+        g_connection_delay = 500;
         console.log("[!] Authentication accepted");
-        connection_activated = true;
-        for (event_id of Object.keys(g_event_handlers)) {
+        g_connection_activated = true;
+        for (let event_id of Object.keys(g_event_handlers)) {
             send_object({
                 type: "register event",
                 id: event_id
             });
         }
-        for (msg of connection_buffer) {
-            connection.send(msg);
+        for (let msg of g_connection_buffer) {
+            g_connection.send(msg);
         }
-        for (request_id of Object.keys(g_waiting_requests)) {
+        for (let request_id of Object.keys(g_waiting_requests)) {
             let [request, callback] = g_waiting_requests[request_id];
             send_object(request);
         }
-        connection_buffer = [];
+        g_connection_buffer = [];
     }
     else if (message.type == "directory listing") {
         // Do nothing with event directory listings,
@@ -354,7 +367,7 @@ function message_handler(message) {
     else if (message.type == "event") {
         if (message.id in g_event_handlers)
         {
-            for (handler of g_event_handlers[message.id])
+            for (let handler of g_event_handlers[message.id])
             {
                 handler(message);
             }
@@ -383,7 +396,7 @@ function send_auth_packet(auth2) {
     var google_user = auth2.currentUser.get();
     var id_token = google_user.getAuthResponse().id_token;
 
-    connection.send(
+    g_connection.send(
         JSON.stringify({
             type: "auth",
             auth_token: id_token
@@ -395,10 +408,10 @@ function send_auth_packet(auth2) {
 
 function activate_connection()
 {
-    connection.onopen = undefined;
+    g_connection.onopen = undefined;
 
     console.log("[!] Loading google oauth2");
-    send_auth_packet(auth2);
+    send_auth_packet(g_auth2);
 }
 
 function reacquire_connection()
@@ -406,29 +419,29 @@ function reacquire_connection()
     close_connection();
     console.error("Reacquiring connection ...")
 
-    sleep(connection_delay).then(() => {
+    sleep(g_connection_delay).then(() => {
         acquire_connection();
-        connection_delay += 500;
+        g_connection_delay += 500;
     })
 }
 
 function close_connection()
 {
-    connection_activated = false;
-    connection.onopen = undefined;
-    connection.onmessage = undefined;
-    connection.onerror = undefined;
-    connection.onclose = undefined;
-    connection = null;
+    g_connection_activated = false;
+    g_connection.onopen = undefined;
+    g_connection.onmessage = undefined;
+    g_connection.onerror = undefined;
+    g_connection.onclose = undefined;
+    g_connection = null;
 }
 
 function acquire_connection()
 {
-    connection = new WebSocket("wss://miravalier.net:3030/");
-    connection.onopen = activate_connection;
-    connection.onmessage = global_handler;
-    connection.onerror = reacquire_connection;
-    connection.onclose = reacquire_connection;
+    g_connection = new WebSocket("wss://miravalier.net:3030/");
+    g_connection.onopen = activate_connection;
+    g_connection.onmessage = global_handler;
+    g_connection.onerror = reacquire_connection;
+    g_connection.onclose = reacquire_connection;
 }
 
 function simulate_server_reply(data)
@@ -443,23 +456,20 @@ function send_object(data)
 
 function send_raw(data)
 {
-    if (connection && connection.readyState == WebSocket.OPEN && connection_activated) {
-        connection.send(data);
+    if (g_connection && g_connection.readyState == WebSocket.OPEN && g_connection_activated) {
+        g_connection.send(data);
     }
     else {
-        connection_buffer.push(data);
+        g_connection_buffer.push(data);
     }
 }
 
-/************
- * GUI Code *
- ************/
 function create_context_menu(x, y, options)
 {
     $("#g_context_menu").remove();
 
     let menu_html = "";
-    Object.keys(options).forEach(function(category_name) {
+    Object.keys(options).forEach(function (category_name) {
         let category = options[category_name]
         menu_html += `<li class="ui-state-disabled unselectable"><div>${category_name}</div></li>`;
         Object.keys(category).forEach(function (option_name) {
@@ -468,16 +478,13 @@ function create_context_menu(x, y, options)
     });
 
     // Create menu html
-    var list = document.createElement('ul');
-    list.id = "g_context_menu";
-    list.innerHTML = menu_html;
+    var context_menu = $(`<ul id="g_context_menu">${menu_html}</ul>`);
 
     // Append html to DOM
-    $("#tabletop").append(list);
+    $("#tabletop").append(context_menu);
 
     // Create menu widget
-    menu = $(list)
-    menu.menu({
+    context_menu.menu({
         select: function (eventObject, ui) {
             let category = ui.item.data("category");
             let option = ui.item.text();
@@ -485,12 +492,12 @@ function create_context_menu(x, y, options)
             if (callback) {
                 callback(x, y);
             }
-            menu.remove();
+            context_menu.remove();
         }
     });
 
-    menu.css({"left": x, "top": y});
-    return menu;
+    context_menu.css({"left": x, "top": y});
+    return context_menu;
 }
 
 function confirm_dialog(prompt, callback)
@@ -621,7 +628,6 @@ function query_dialog(title, prompt, callback)
 }
 
 
-g_open_windows = new Set();
 function create_window(x, y, width, height)
 {
     let window_element = $(`
@@ -633,7 +639,7 @@ function create_window(x, y, width, height)
         snap: ".dnd_window",
         cancel: ".no_drag",
         drag: function (e) {
-            for (open_window of g_open_windows) {
+            for (let open_window of g_open_windows) {
                 open_window.css("zIndex", 0);
             }
             window_element.css("zIndex", 1);
@@ -666,14 +672,6 @@ function create_window(x, y, width, height)
     return window_element;
 }
 
-window_register_event = function (event_id, event_handler)
-{
-    register_event(event_id, event_handler);
-    this.remove_handlers.push(function () {
-        deregister_event(event_id, event_handler);
-    });
-}
-
 function create_message(message_display, category, source, content)
 {
     let message = $(`
@@ -693,6 +691,7 @@ function create_chat_window(x, y, width, height)
     if (!height) height = 400;
     let chat_window = create_window(x, y, width, height);
     chat_window.window_type = "chat";
+    chat_window.tab_complete = null;
     let drag_handle = $('<div class="drag_handle"></div>');
     chat_window.append(drag_handle);
 
@@ -715,8 +714,11 @@ function create_chat_window(x, y, width, height)
             e.preventDefault();
         }
         else if (e.key == "Tab") {
-            text_input.value += suggestion.placeholder.trim();
-            suggestion.placeholder = "";
+            if (chat_window.tab_complete) {
+                text_input.value += chat_window.tab_complete;
+                chat_window.tab_complete = null;
+                window_autocomplete(chat_window);
+            }
             e.preventDefault();
         }
     });
@@ -886,7 +888,6 @@ function create_file_window(x, y, width, height, pwd_id)
 }
 
 
-var g_waiting_requests = {};
 function on_reply(request, callback) {
     let request_id = Math.floor(Math.random()*4294967295);
     request["request id"] = request_id;
@@ -1038,7 +1039,7 @@ function init() {
         gapi.auth2.init({
             client_id: "667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com"
         }).then(function (value) {
-            auth2 = value;
+            g_auth2 = value;
             acquire_connection();
         });
     });
@@ -1047,7 +1048,7 @@ function init() {
 
 function save_layout() {
     let saved_windows = [];
-    for (open_window of g_open_windows) {
+    for (let open_window of g_open_windows) {
         let s_data = [
             open_window.window_type,
             parseFloat(open_window.css("left")),
@@ -1072,11 +1073,7 @@ function save_layout() {
     set_cookie("saved_layout", btoa(JSON.stringify(saved_windows)), true);
 }
 
-g_window_type_map = {
-    "button": create_button_window,
-    "file": create_file_window,
-    "chat": create_chat_window
-}
+
 function load_layout() {
     try {
         var saved_windows = JSON.parse(atob(get_cookie("saved_layout")));
@@ -1085,13 +1082,13 @@ function load_layout() {
         return;
     }
 
-    for (open_window of g_open_windows) {
+    for (let open_window of g_open_windows) {
         open_window.remove_handlers.forEach(handler => {handler();});
         open_window.remove();
     }
     g_open_windows.clear();
 
-    for (saved_window of saved_windows) {
+    for (let saved_window of saved_windows) {
         let [window_type, s_left, s_top, s_width, s_height, s_data] = saved_window;
 
         let window_creator = g_window_type_map[window_type];
@@ -1103,11 +1100,6 @@ function load_layout() {
 }
 
 
-var g_focus = true;
-var g_notification_sent = false;
-const notification_options = {
-    badge: "/res/dnd/dnd.ico"
-};
 function notify(message) {
     // Only send if another tab is selected and
     // no notifications have been sent yet.
@@ -1119,12 +1111,12 @@ function notify(message) {
         console.error("Notification silenced, no browser support.");
     }
     else if (Notification.permission == "granted") {
-        var notification = new Notification(message, notification_options);
+        var notification = new Notification(message, g_notification_options);
     }
     else if (Notification.permission != "denied") {
         Notification.requestPermission().then(function (permission) {
             if (permission == "granted") {
-                var notification = new Notification(message, notification_options);
+                var notification = new Notification(message, g_notification_options);
             }
         });
     }
