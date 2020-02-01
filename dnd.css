@@ -268,7 +268,7 @@ div#background {
 }
 
 #background.tech {
-    background-image: url('/res/dnd/tech.png');
+    background-image: url('/res/dnd/tech.svg');
 }
 
 #background.icy {

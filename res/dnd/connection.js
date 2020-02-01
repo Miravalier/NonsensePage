@@ -6,7 +6,7 @@ var g_auth2 = null;
 var g_connection = null;
 var g_connection_buffer = [];
 var g_connection_activated = false;
-var g_waiting_requests = {};
+var g_waiting_promises = {};
 var g_message_handlers = {};
 var g_connection_delay = 500;
 
@@ -55,17 +55,20 @@ function global_handler(event)
 
 
 function message_sorter(message) {
-    if ('request id' in message && message['request id'] in g_waiting_requests) {
-        let [request, callback] = g_waiting_requests[message['request id']];
+    // Resolve promises
+    let message_request_id = message["request id"];
+    if (message_request_id in g_waiting_promises) {
+        let [data, resolve] = g_waiting_promises[message_request_id];
         if (message.type == "error") {
             console.error("Error received in reply to request from server: " + message.reason);
-            console.error("Request was: " + JSON.stringify(request));
+            console.error("Request was: " + JSON.stringify(data));
         }
-        callback(message);
-        delete g_waiting_requests[message['request id']];
+        resolve(message);
+        delete g_waiting_promises[message_request_id];
         return;
     }
 
+    // Handle other messages
     if (message.type == "auth failure") {
         console.error("Authentication not accepted: " + message.reason);
         set_cookie("source", "/dnd")
@@ -78,9 +81,9 @@ function message_sorter(message) {
         for (let msg of g_connection_buffer) {
             g_connection.send(msg);
         }
-        for (let request_id of Object.keys(g_waiting_requests)) {
-            let [request, callback] = g_waiting_requests[request_id];
-            send_object(request);
+        for (let request_id of Object.keys(g_waiting_promises)) {
+            let [data, resolve] = g_waiting_promises[request_id];
+            send_object(data);
         }
         g_connection_buffer = [];
     }
@@ -179,11 +182,13 @@ function send_raw(data) {
 }
 
 
-function on_reply(request, callback) {
+function send_request(data) {
     let request_id = Math.floor(Math.random()*4294967295);
-    request["request id"] = request_id;
-    g_waiting_requests[request_id] = [request, callback];
-    send_object(request);
+    data["request id"] = request_id;
+    return new Promise((resolve, reject) => {
+        g_waiting_promises[request_id] = [data, resolve];
+        send_object(data);
+    });
 }
 
 

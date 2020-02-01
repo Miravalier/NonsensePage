@@ -231,26 +231,29 @@ function create_context_menu(x, y, options)
     return context_menu;
 }
 
-function confirm_dialog(prompt, callback)
+function confirm_dialog(prompt)
 {
     let dialog_element = $(`<div title="Confirm">
         ${prompt}
     </div>`);
     $("#tabletop").append(dialog_element);
-    dialog_element.dialog({
-        resizable: false,
-        height: "auto",
-        width: 400,
-        modal: true,
-        buttons: {
-            Confirm: function() {
-                callback();
-                $(this).dialog("close");
-            },
-            Cancel: function() {
-                $(this).dialog("close");
+    return new Promise((resolve, reject) => {
+        dialog_element.dialog({
+            resizable: false,
+            height: "auto",
+            width: 400,
+            modal: true,
+            buttons: {
+                Confirm: function() {
+                    resolve(true);
+                    $(this).dialog("close");
+                },
+                Cancel: function() {
+                    resolve(false);
+                    $(this).dialog("close");
+                }
             }
-        }
+        });
     });
 }
 
@@ -325,36 +328,44 @@ function upload_file_dialog(file_window)
     });
 }
 
-function query_dialog(title, prompt, callback)
+function query_dialog(title, prompt)
 {
     let dialog_element = $(`<div title="${title}">
         ${prompt}
         <input type="text" class="name"></input>
     </div>`);
     $("#tabletop").append(dialog_element);
-    dialog_element.dialog({
-        resizable: false,
-        height: "auto",
-        width: 400,
-        modal: true,
-        buttons: {
-            Confirm: function() {
+    return new Promise((resolve, reject) => {
+        dialog_element.dialog({
+            resizable: false,
+            height: "auto",
+            width: 400,
+            modal: true,
+            buttons: {
+                Confirm: function() {
+                    let value = dialog_element.find("input.name").val().trim();
+                    if (value) {
+                        resolve(value);
+                    }
+                    else {
+                        resolve(null);
+                    }
+                    $(this).dialog("close");
+                }
+            }
+        });
+        dialog_element.on("keydown", function(e) {
+            if (e.key == "Enter") {
                 let value = dialog_element.find("input.name").val().trim();
                 if (value) {
-                    callback(value);
+                    resolve(value);
+                }
+                else {
+                    resolve(null);
                 }
                 $(this).dialog("close");
             }
-        }
-    });
-    dialog_element.on("keydown", function(e) {
-        if (e.key == "Enter") {
-            let value = dialog_element.find("input.name").val().trim();
-            if (value) {
-                callback(value);
-            }
-            $(this).dialog("close");
-        }
+        });
     });
 }
 
@@ -546,13 +557,9 @@ function create_text_viewer(x, y, width, height, file)
     let text_window = create_window(x, y, width, height);
     text_window.window_type = "text viewer";
     text_window.options[file.name] = {
-        'Download': function () {
-            on_reply(
-                {type: "download file", id: file.id},
-                function (reply) {
-                    save_file(file.name, "octet/stream", reply.data);
-                }
-            );
+        'Download': async function () {
+            let reply = await send_request({type: "download file", id: file.id});
+            save_file(file.name, "octet/stream", reply.data);
         }
     };
     text_window.append($(`<div class="text_viewport">
@@ -570,13 +577,9 @@ function create_image_viewer(x, y, width, height, file)
     let image_window = create_window(x, y, width, height);
     image_window.window_type = "image viewer";
     image_window.options[file.name] = {
-        'Download': function () {
-            on_reply(
-                {type: "download file", id: file.id},
-                function (reply) {
-                    save_file(file.name, "octet/stream", reply.data);
-                }
-            );
+        'Download': async function () {
+            let reply = await send_request({type: "download file", id: file.id});
+            save_file(file.name, "octet/stream", reply.data);
         }
     };
     image_window.append($('<div class="drag_handle"></div>'));
@@ -604,10 +607,9 @@ function create_file_window(x, y, width, height, pwd_id)
     });
 
     file_window.options['Files'] = {
-        'Add Subfolder': function () {
-            query_dialog("Add Subfolder", "Name:", function(value) {
-                send_object({type: "add subfolder", id: file_window.pwd_id, name: value});
-            });
+        'Add Subfolder': async function () {
+            let name = await query_dialog("Add Subfolder", "Name:");
+            send_object({type: "add subfolder", id: file_window.pwd_id, name: name});
         },
         'Upload File': function () {
             upload_file_dialog(file_window);
@@ -626,162 +628,119 @@ function create_file_window(x, y, width, height, pwd_id)
 }
 
 
-function on_reply(request, callback) {
-    let request_id = Math.floor(Math.random()*4294967295);
-    request["request id"] = request_id;
-    g_waiting_requests[request_id] = [request, callback];
-    send_object(request);
-}
-
-
-function load_file_listing(file_window) {
-    on_reply(
-        {type: "ls", id: file_window.pwd_id},
-        (function (reply) {
-            file_window.viewport.empty();
-            // Add parent node return (back button)
-            if (file_window.pwd_id != 0)
-            {
-                let button = $(`
-                    <div class="directory file_button no_drag">
-                        <img width=24px height=24px src="/res/dnd/icons/back.svg"></img>
-                        <p>Back</p>
-                    </div>
-                `);
-                button.dblclick(function (e) {
-                    on_reply(
-                        {type: "get parent", id: file_window.pwd_id},
-                        (subreply) => {
-                            file_window.pwd_id = subreply.parent;
-                            load_file_listing(file_window);
-                        }
-                    );
+async function load_file_listing(file_window) {
+    file_window.viewport.empty();
+    let reply = await send_request({type: "ls", id: file_window.pwd_id});
+    // Add parent node return (back button)
+    if (file_window.pwd_id != 0)
+    {
+        let button = $(`
+            <div class="directory file_button no_drag">
+                <img width=24px height=24px src="/res/dnd/icons/back.svg"></img>
+                <p>Back</p>
+            </div>
+        `);
+        button.dblclick(async function (e) {
+            let subreply = await send_request({type: "get parent", id: file_window.pwd_id});
+            file_window.pwd_id = subreply.parent;
+            load_file_listing(file_window);
+        });
+        button.droppable({
+            drop: async function (e, ui) {
+                let subreply = await send_request({type: "get parent", id: file_window.pwd_id});
+                send_object({
+                    type: "move file",
+                    id: ui.draggable.data("fileid"),
+                    destination: subreply.parent
                 });
-                button.droppable({
-                    drop: (e, ui) => {
-                        on_reply(
-                            {type: "get parent", id: file_window.pwd_id},
-                            (subreply) => {
-                                send_object({
-                                    type: "move file",
-                                    id: ui.draggable.data("fileid"),
-                                    destination: subreply.parent
-                                });
-                            }
-                        );
-                    }
-                });
-                file_window.viewport.prepend(button);
-
             }
-            // Add child nodes
-            reply.nodes.forEach(node => {
-                let [filename, fileid, filetype] = node;
-                let button = $(`
-                    <div class="${filetype} file_button no_drag">
-                        <img width=24px height=24px src="/res/dnd/icons/${filetype}.svg"></img>
-                        <p>${filename}</p>
-                    </div>
-                `);
-                button.data("fileid", fileid);
-                if (filetype == 'directory') {
-                    button.droppable({
-                        drop: (e, ui) => {
-                            send_object({
-                                type: "move file",
-                                id: ui.draggable.data("fileid"),
-                                destination: fileid
-                            });
-                        }
+        });
+        file_window.viewport.prepend(button);
+
+    }
+    // Add child nodes
+    reply.nodes.forEach(node => {
+        let [filename, fileid, filetype] = node;
+        let button = $(`
+            <div class="${filetype} file_button no_drag">
+                <img width=24px height=24px src="/res/dnd/icons/${filetype}.svg"></img>
+                <p>${filename}</p>
+            </div>
+        `);
+        button.data("fileid", fileid);
+        if (filetype == 'directory') {
+            button.droppable({
+                drop: (e, ui) => {
+                    send_object({
+                        type: "move file",
+                        id: ui.draggable.data("fileid"),
+                        destination: fileid
                     });
                 }
-                button.dblclick(function (e) {
-                    if (filetype == 'directory') {
-                        file_window.pwd_id = fileid
-                        load_file_listing(file_window);
-                    }
-                    else if (filetype == 'raw') {
-                        on_reply(
-                            {type: "download file", id: fileid},
-                            function (reply) {
-                                save_file(filename, "octet/stream", reply.data);
-                            }
-                        );
-                    }
-                    else {
-                        on_reply(
-                            {type: "open file", id: fileid},
-                            function (reply) {
-                                if (reply.type == "img") {
-                                    var view_creator = create_image_viewer;
-                                }
-                                else if (reply.type == "txt") {
-                                    var view_creator = create_text_viewer;
-                                }
-                                else {
-                                    console.log(`No viewer to open file ${reply.type}`);
-                                    return;
-                                }
-                                let file = {
-                                    name: filename,
-                                    id: fileid,
-                                    type: filetype
-                                };
-                                Object.assign(file, reply);
-                                view_creator(e.clientX, e.clientY, 400, 400, file)
-                            }
-                        );
-                    }
-                });
-                button.draggable({
-                    cursorAt: { top: 0, left: 0 },
-                    helper: "clone"
-                });
-                button.on("contextmenu", function (e) {
-                    let file_menu = {};
-                    file_menu[filename] = {
-                            'Download': (function () {
-                                on_reply(
-                                    {type: "download file", id: fileid},
-                                    function (reply) {
-                                        save_file(filename, "octet/stream", reply.data);
-                                    }
-                                );
-                            }),
-                            'Rename': (function () {
-                                query_dialog(
-                                    `Rename ${filename}`,
-                                    "Name:",
-                                    (value) => {
-                                        send_object({
-                                            type: "rename file",
-                                            id: fileid,
-                                            name: value
-                                        });
-                                    }
-                                );
-                            }),
-                            'Delete': () => {
-                                confirm_dialog(
-                                    `Are you sure you want to delete ${filename}?
-                                    This cannot be undone.`,
-                                    () => {
-                                        send_object({
-                                            type: "delete file",
-                                            id: fileid
-                                        });
-                                    }
-                                );
-                            }
-                    };
-                    create_context_menu(e.clientX, e.clientY, file_menu);
-                    e.preventDefault();
-                    e.stopPropagation();
-                });
-                file_window.viewport.append(button);
             });
-        })
-    );
+        }
+        button.dblclick(async function (e) {
+            if (filetype == 'directory') {
+                file_window.pwd_id = fileid
+                load_file_listing(file_window);
+            }
+            else if (filetype == 'raw') {
+                let subreply = await send_request({type: "download file", id: fileid});
+                save_file(filename, "octet/stream", subreply.data);
+            }
+            else {
+                let subreply = await send_request({type: "open file", id: fileid});
+                if (subreply.type == "img") {
+                    var view_creator = create_image_viewer;
+                }
+                else if (subreply.type == "txt") {
+                    var view_creator = create_text_viewer;
+                }
+                else {
+                    console.log(`No viewer to open file ${subreply.type}`);
+                    return;
+                }
+                let file = {
+                    name: filename,
+                    id: fileid,
+                    type: filetype
+                };
+                Object.assign(file, subreply);
+                view_creator(e.clientX, e.clientY, 400, 400, file)
+            }
+        });
+        button.draggable({
+            cursorAt: { top: 0, left: 0 },
+            helper: "clone"
+        });
+        button.on("contextmenu", function (e) {
+            let file_menu = {};
+            file_menu[filename] = {
+                'Download': async function () {
+                    let reply = await send_request({type: "download file", id: file.id});
+                    save_file(file.name, "octet/stream", reply.data);
+                },
+                'Rename': async function () {
+                    let name = await query_dialog(`Rename ${filename}`, "Name:");
+                    send_object({
+                        type: "rename file",
+                        id: fileid,
+                        name: name
+                    });
+                },
+                'Delete': async function () {
+                    let prompt = `Are you sure you want to delete ${filename}? This cannot be undone.`;
+                    if (await confirm_dialog(prompt)) {
+                        send_object({type: "delete file", id: fileid});
+                    }
+                }
+            };
+            create_context_menu(e.clientX, e.clientY, file_menu);
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        file_window.viewport.append(button);
+    });
 }
 
 
@@ -936,14 +895,9 @@ $("document").ready(function () {
         }
     });
 
-    register_message("prompt username", message => {
-        query_dialog(
-            "Select Username",
-            "Username:",
-            function(value) {
-                send_object({type: "update username", name: value});
-            }
-        );
+    register_message("prompt username", async function (message) {
+        let username = await query_dialog("Select Username", "Username:");
+        send_object({type: "update username", name: username});
     });
 
     register_message("directory listing", () => {});
