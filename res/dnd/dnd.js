@@ -630,23 +630,37 @@ function load_file_listing(file_window) {
         {type: "ls", id: file_window.pwd_id},
         (function (reply) {
             file_window.viewport.empty();
-            // Add parent node return
+            // Add parent node return (back button)
             if (file_window.pwd_id != 0)
             {
                 let button = $(`
-                    <button type="button" class="directory">
+                    <div class="directory file_button no_drag">
                         <img width=24px height=24px src="/res/dnd/icons/back.svg"></img>
                         <p>Back</p>
-                    </button>
+                    </div>
                 `);
                 button.dblclick(function (e) {
                     on_reply(
                         {type: "get parent", id: file_window.pwd_id},
-                        (function (subreply) {
+                        (subreply) => {
                             file_window.pwd_id = subreply.parent;
                             load_file_listing(file_window);
-                        })
+                        }
                     );
+                });
+                button.droppable({
+                    drop: (e, ui) => {
+                        on_reply(
+                            {type: "get parent", id: file_window.pwd_id},
+                            (subreply) => {
+                                send_object({
+                                    type: "move file",
+                                    id: ui.draggable.data("fileid"),
+                                    destination: subreply.parent
+                                });
+                            }
+                        );
+                    }
                 });
                 file_window.viewport.prepend(button);
 
@@ -655,11 +669,23 @@ function load_file_listing(file_window) {
             reply.nodes.forEach(node => {
                 let [filename, fileid, filetype] = node;
                 let button = $(`
-                    <button type="button" class="${filetype}">
+                    <div class="${filetype} file_button no_drag">
                         <img width=24px height=24px src="/res/dnd/icons/${filetype}.svg"></img>
                         <p>${filename}</p>
-                    </button>
+                    </div>
                 `);
+                button.data("fileid", fileid);
+                if (filetype == 'directory') {
+                    button.droppable({
+                        drop: (e, ui) => {
+                            send_object({
+                                type: "move file",
+                                id: ui.draggable.data("fileid"),
+                                destination: fileid
+                            });
+                        }
+                    });
+                }
                 button.dblclick(function (e) {
                     if (filetype == 'directory') {
                         file_window.pwd_id = fileid
@@ -698,6 +724,10 @@ function load_file_listing(file_window) {
                         );
                     }
                 });
+                button.draggable({
+                    cursorAt: { top: 0, left: 0 },
+                    helper: "clone"
+                });
                 button.on("contextmenu", function (e) {
                     let file_menu = {};
                     file_menu[filename] = {
@@ -713,27 +743,27 @@ function load_file_listing(file_window) {
                                 query_dialog(
                                     `Rename ${filename}`,
                                     "Name:",
-                                    (function (value) {
+                                    (value) => {
                                         send_object({
                                             type: "rename file",
                                             id: fileid,
                                             name: value
                                         });
-                                    })
+                                    }
                                 );
                             }),
-                            'Delete': (function () {
+                            'Delete': () => {
                                 confirm_dialog(
                                     `Are you sure you want to delete ${filename}?
                                     This cannot be undone.`,
-                                    (function () {
+                                    () => {
                                         send_object({
                                             type: "delete file",
                                             id: fileid
                                         });
-                                    })
+                                    }
                                 );
-                            })
+                            }
                     };
                     create_context_menu(e.clientX, e.clientY, file_menu);
                     e.preventDefault();

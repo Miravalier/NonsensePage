@@ -57,6 +57,10 @@ function global_handler(event)
 function message_sorter(message) {
     if ('request id' in message && message['request id'] in g_waiting_requests) {
         let [request, callback] = g_waiting_requests[message['request id']];
+        if (message.type == "error") {
+            console.error("Error received in reply to request from server: " + message.reason);
+            console.error("Request was: " + JSON.stringify(request));
+        }
         callback(message);
         delete g_waiting_requests[message['request id']];
         return;
@@ -83,7 +87,7 @@ function message_sorter(message) {
     else if (message.type == "error") {
         console.error("Error from server: " + message.reason);
         if ('request' in message) {
-            console.log("Unknown request was: " + message.request);
+            console.log("Error request was: " + message.request);
         };
     }
     else if (message.type == "debug") {

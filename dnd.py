@@ -14,16 +14,25 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 from functools import lru_cache
 
+# Constants
+ATTR_NUMBER =  0b000;
+ATTR_STRING =  0b001;
+ATTR_ENTITY =  0b010;
+ATTR_UNUSED =  0b011;
+ATTR_TYPE   =  0b011;
+ATTR_ARRAY  =  0b100;
 
-connected_sockets = set()
-request_handlers = {}
+# Configuration
 upload_root = Path("/var/www/miravalier/content/")
-pending_blobs = {}
 
 with open("/etc/oauth/oauth.json") as fp:
     GOOGLE_OAUTH = json.load(fp)
+    GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH['CLIENT_ID']
 
-GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH['CLIENT_ID']
+# Mutable Globals
+connected_sockets = set()
+request_handlers = {}
+pending_blobs = {}
 
 
 def main():
@@ -165,6 +174,17 @@ async def file_upload_callback(account, message, websocket):
         VALUES (%s, %s, %s, %s, %s)
     """, (file_name, file_type, account.user_id, directory_id, file_uuid))
 
+    return {"type": "files updated"}
+
+
+@register_handler("move file")
+async def _ (account, message, websocket):
+    file_id = message.get("id", None)
+    destination = message.get("destination", None)
+    if file_id is None or destination is None:
+        return {"type": "error", "reason": "move file missing id"}
+
+    execute("UPDATE files SET parent_id=%s WHERE file_id=%s", (destination, file_id))
     return {"type": "files updated"}
 
 

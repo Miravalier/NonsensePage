@@ -23,7 +23,7 @@ html, body {
     height: 16px;
 }
 
-.file_viewport button {
+.file_viewport .file_button {
     margin: 1px;
     border: 1px solid;
     border-color: darkgrey grey grey darkgrey;
@@ -33,6 +33,11 @@ html, body {
     flex-flow: row nowrap;
     align-items: center;
     justify-content: flex-start;
+    background: white;
+}
+
+.file_button * {
+    margin: 4px;
 }
 
 .text_viewport {
@@ -79,10 +84,10 @@ html, body {
 }
 
 h1, h2, h3, h4, h5, h6, p, img, .unselectable {
-    -webkit-user-select: none; /* Safari */
-    -moz-user-select: none; /* Firefox */
-    -ms-user-select: none; /* IE10+/Edge */
-    user-select: none; /* Standard */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none; 
+    user-select: none;
 }
 
 h1, h2, h3, h4, h5, h6 {
