@@ -17,6 +17,9 @@
         "dnd.css": {
             "destination": "/var/www/miravalier/res/dnd/"
         },
+        "dnd.js": {
+            "destination": "/var/www/miravalier/res/dnd"
+        },
         "systemd": {
             "destination": "/etc",
             "install-commands": ["systemctl daemon-reload"]
