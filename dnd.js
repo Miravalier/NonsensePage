@@ -252,6 +252,9 @@ function confirm_dialog(prompt)
                     resolve(false);
                     $(this).dialog("close");
                 }
+            },
+            close: function() {
+                resolve(false);
             }
         });
     });
@@ -294,6 +297,8 @@ function upload_file_dialog(file_window)
                     bytes_chunked += chunk_size;
                 }
 
+                console.log(`Sending file ${files[i].name}`);
+
                 // Send the file initiation message
                 send_object({
                     type: "upload file",
@@ -305,7 +310,6 @@ function upload_file_dialog(file_window)
 
                 // Send each chunk
                 for (let j=0; j < chunks.length; j++) {
-                    console.log(`Sending file part (${j+1}/${chunks.length}) of ${files[i].name}`);
                     send_raw(chunks[j]);
                 }
             });
@@ -352,6 +356,9 @@ function query_dialog(title, prompt)
                     }
                     $(this).dialog("close");
                 }
+            },
+            close: function() {
+                resolve(null);
             }
         });
         dialog_element.on("keydown", function(e) {
@@ -609,6 +616,10 @@ function create_file_window(x, y, width, height, pwd_id)
     file_window.options['Files'] = {
         'Add Subfolder': async function () {
             let name = await query_dialog("Add Subfolder", "Name:");
+            if (!name) {
+                console.log("Canceled add subfolder.");
+                return;
+            }
             send_object({type: "add subfolder", id: file_window.pwd_id, name: name});
         },
         'Upload File': function () {
@@ -640,23 +651,23 @@ async function load_file_listing(file_window) {
                 <p>Back</p>
             </div>
         `);
+        file_window.viewport.prepend(button);
         button.dblclick(async function (e) {
             let subreply = await send_request({type: "get parent", id: file_window.pwd_id});
             file_window.pwd_id = subreply.parent;
             load_file_listing(file_window);
         });
         button.droppable({
-            drop: async function (e, ui) {
-                let subreply = await send_request({type: "get parent", id: file_window.pwd_id});
-                send_object({
-                    type: "move file",
-                    id: ui.draggable.data("fileid"),
-                    destination: subreply.parent
+            drop: (e, ui) => {
+                send_request({type: "get parent", id: file_window.pwd_id}).then(subreply => {
+                    send_object({
+                        type: "move file",
+                        id: ui.draggable.data("fileid"),
+                        destination: subreply.parent
+                    });
                 });
             }
         });
-        file_window.viewport.prepend(button);
-
     }
     // Add child nodes
     reply.nodes.forEach(node => {
@@ -722,6 +733,10 @@ async function load_file_listing(file_window) {
                 },
                 'Rename': async function () {
                     let name = await query_dialog(`Rename ${filename}`, "Name:");
+                    if (!name) {
+                        console.log("Canceled rename.");
+                        return;
+                    }
                     send_object({
                         type: "rename file",
                         id: fileid,
@@ -730,9 +745,11 @@ async function load_file_listing(file_window) {
                 },
                 'Delete': async function () {
                     let prompt = `Are you sure you want to delete ${filename}? This cannot be undone.`;
-                    if (await confirm_dialog(prompt)) {
-                        send_object({type: "delete file", id: fileid});
+                    if (!(await confirm_dialog(prompt))) {
+                        console.log("Canceled file delete.");
+                        return;
                     }
+                    send_object({type: "delete file", id: fileid});
                 }
             };
             create_context_menu(e.clientX, e.clientY, file_menu);
@@ -897,6 +914,10 @@ $("document").ready(function () {
 
     register_message("prompt username", async function (message) {
         let username = await query_dialog("Select Username", "Username:");
+        if (!username) {
+            console.log("Canceled username selection.");
+            return;
+        }
         send_object({type: "update username", name: username});
     });
 
