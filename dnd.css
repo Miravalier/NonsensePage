@@ -181,6 +181,14 @@ h1, h2, h3, h4, h5, h6 {
     user-select: auto; /* Standard */
 }
 
+.any_message h5 {
+    display: inline;
+    font-family: 'Nunito Sans', sans-serif;
+    font-weight: normal;
+    font-style: italic;
+    margin-right: 4px;
+}
+
 .any_message h4 {
     -webkit-user-select: auto; /* Safari */
     -moz-user-select: auto; /* Firefox */
@@ -201,6 +209,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .received_message {
+    border: grey solid 1px;
+    background: white;
+    border-radius: 4px;
+    padding: 2px;
+    margin: 2px;
 }
 
 .error_message {

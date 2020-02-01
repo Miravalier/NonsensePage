@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.7
 import asyncio
+import datetime
 import ssl
 import websockets
 import json
@@ -404,14 +405,18 @@ async def _ (account, message, websocket):
     text = message.get("text", "")
     category = message.get("category", "ooc")
     display_name = message.get("display name", account.user_name)
+
+    sent_time = datetime.datetime.now()
+
     result = execute_and_return('''
-        INSERT INTO messages (message_id, sender_id, category, display_name, content)
-        VALUES (DEFAULT, %s, %s, %s, %s)
+        INSERT INTO messages (message_id, sender_id, category, display_name, content, sent_time)
+        VALUES (DEFAULT, %s, %s, %s, %s, %s)
         RETURNING message_id
-    ''', (account.user_id, category, display_name, text))
+    ''', (account.user_id, category, display_name, text, sent_time))
 
     await broadcast({
-        "type": "chat message", "category": category, "display name": display_name, "id": result[0], "text": text
+        "type": "chat message", "category": category, "display name": display_name,
+        "id": result[0], "text": text, "timestamp": sent_time.utctimetuple()
     })
 
 
@@ -425,10 +430,10 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     return {
         "type": "history reply",
-        "messages": query('''
-            SELECT message_id, sender_id, category, display_name, content
+        "messages": [(a, b, c, d, e, f.utctimetuple()) for a, b, c, d, e, f in query('''
+            SELECT message_id, sender_id, category, display_name, content, sent_time
             FROM messages ORDER BY message_id DESC LIMIT 100
-        ''')
+        ''')]
     }
 
 

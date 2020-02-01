@@ -1,3 +1,14 @@
+export function strftime(ts) {
+    let stamp_time = new Date(ts[0], ts[1]-1, ts[2], ts[3], ts[4], ts[5]);
+    let current_time = new Date();
+    if (Math.abs(current_time - stamp_time) < 86400000) {
+        return stamp_time.toLocaleTimeString();
+    }
+    else {
+        return stamp_time.toLocaleDateString();
+    }
+}
+
 export function args_to_string(xs) {
     return xs.map(function (s) {
         if (s && typeof s === 'object') {

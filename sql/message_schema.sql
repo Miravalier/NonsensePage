@@ -5,5 +5,6 @@ CREATE TABLE messages (
     category            text,
     display_name        text,
     content             text,
+    sent_time           timestamp,
     message_id serial   PRIMARY KEY
 );

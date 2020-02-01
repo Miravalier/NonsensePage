@@ -1,4 +1,4 @@
-import * as utils from "./utils.js";
+import * as utils from "./utils.js?ver=util-0";
 
 // Mutable Globals
 var g_open_windows = new Set();
@@ -402,13 +402,22 @@ function create_window(x, y, width, height)
     return window_element;
 }
 
-function create_message(message_display, category, source, content)
+function create_message(message_display, category, timestamp, source, content)
 {
-    let message = $(`
-        <div class="any_message ${category}_message">
-            <h4>${source}:</h4><p>${content}</p>
-        </div>
-    `);
+    if (timestamp) {
+        var message = $(`
+            <div class="any_message ${category}_message">
+                <h5>${utils.strftime(timestamp)}</h5><h4>${source}:</h4><p>${content}</p>
+            </div>
+        `);
+    }
+    else {
+        var message = $(`
+            <div class="any_message ${category}_message">
+                <h4>${source}:</h4><p>${content}</p>
+            </div>
+        `);
+    }
     message_display.append(message);
     message_display.scrollTop(message_display.prop('scrollHeight'));
 }
@@ -488,13 +497,13 @@ function create_chat_window(x, y, width, height)
         }
 
         if (message.category == "Error") {
-            create_message(message_display, "error", "Error", message.text);
+            create_message(message_display, "error", message.timestamp, "Error", message.text);
         }
         else if (message.category == "System") {
-            create_message(message_display, "system", "System", message.text);
+            create_message(message_display, "system", message.timestamp, "System", message.text);
         }
         else {
-            create_message(message_display, "received", message["display name"], message.text);
+            create_message(message_display, "received", message.timestamp, message["display name"], message.text);
         }
     });
 
@@ -914,13 +923,14 @@ $("document").ready(function () {
     register_message("history reply", message => {
         let messages = message.messages;
         for (let i=messages.length-1; i >= 0; i--) {
-            let [message_id, sender_id, category, display_name, content] = messages[i];
+            let [message_id, sender_id, category, display_name, content, timestamp] = messages[i];
             local_object({
                 type: "chat message",
                 "category": category,
                 "text": content,
                 "id": message_id,
                 "display name": display_name,
+                "timestamp": timestamp,
                 "historical": true
             });
         }
