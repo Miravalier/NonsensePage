@@ -1,13 +1,13 @@
 .DEFAULT_GOAL = install
 
-configure:
+dnd.html: dnd.html.template
 	cp dnd.html.template dnd.html
 	./configurer.py dnd.html $(VERBOSITY)
 
-install: configure
+install: dnd.html
 	sudo ./installer.py $(VERBOSITY)
 
 verbose: VERBOSITY := -v
 verbose: install
 
-.PHONY: configure install verbose
+.PHONY: install verbose
