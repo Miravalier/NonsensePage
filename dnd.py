@@ -262,28 +262,6 @@ async def _ (account, message, websocket):
     await websocket.send(file_data)
 
 
-@register_handler("open file")
-async def _ (account, message, websocket):
-    file_id = message.get("id", None)
-    if file_id is None:
-        return {"type": "error", "reason": "open request missing file id"}
-
-    try:
-        file_type, file_uuid = single_query("SELECT file_type, file_uuid FROM files WHERE file_id=%s", (file_id,))
-    except:
-        return {"type": "error", "reason": "file id {} does not exist".format(file_id)}
-
-    if file_type == 'txt' or file_type == 'entity schema':
-        try:
-            with open(upload_root / file_uuid, "r") as fp:
-                file_content = html.escape(fp.read())
-            return {"type": file_type, "content": file_content}
-        except OSError:
-            return {"type": "error", "reason": "file not backed by uuid"}
-    else:
-        return {"type": file_type, "uuid": file_uuid}
-
-
 @register_binary_handler("upload file", file_upload_callback)
 async def _ (account, message, websocket):
     file_name = message.get("name", None)
@@ -364,7 +342,7 @@ async def _ (account, message, websocket):
         "type": "directory listing",
         "nodes": query(
             """
-                SELECT file_name, file_id, file_type FROM files
+                SELECT file_name, file_id, file_type, file_uuid FROM files
                 WHERE parent_id=%s
             """,
             (directory_id,)

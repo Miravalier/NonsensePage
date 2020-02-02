@@ -616,9 +616,14 @@ function create_entity_schema_viewer(x, y, width, height, file)
             save_file(file.name, "octet/stream", reply.data);
         }
     };
+
     text_window.append($(`<div class="text_viewport">
-        <pre class="opened_text no_drag">${file.content}</pre>
+        <pre class="opened_text no_drag"></pre>
     </div>`));
+    $.get(`/content/${file.uuid}`, (data) => {
+        text_window.find("pre").text(data);
+    });
+
     return text_window;
 }
 
@@ -637,9 +642,14 @@ function create_text_viewer(x, y, width, height, file)
             save_file(file.name, "octet/stream", reply.data);
         }
     };
+
     text_window.append($(`<div class="text_viewport">
-        <pre class="opened_text no_drag">${file.content}</pre>
+        <pre class="opened_text no_drag"></pre>
     </div>`));
+    $.get(`/content/${file.uuid}`, (data) => {
+        text_window.find("pre").text(data);
+    });
+
     return text_window;
 }
 
@@ -714,7 +724,11 @@ function create_file_window(x, y, width, height, pwd_id)
     return file_window;
 }
 
-
+var g_view_creators = {
+    "img": create_image_viewer,
+    "txt": create_text_viewer,
+    "entity schema": create_entity_schema_viewer
+};
 async function load_file_listing(file_window) {
     file_window.viewport.empty();
     let reply = await send_request({type: "ls", id: file_window.pwd_id});
@@ -747,7 +761,7 @@ async function load_file_listing(file_window) {
     }
     // Add child nodes
     reply.nodes.forEach(node => {
-        let [filename, fileid, filetype] = node;
+        let [filename, fileid, filetype, fileuuid] = node;
         let button = $(`
             <div class="${filetype} file_button no_drag">
                 <img width=24px height=24px src="/res/dnd/icons/${filetype}.svg"></img>
@@ -776,27 +790,17 @@ async function load_file_listing(file_window) {
                 save_file(filename, "octet/stream", subreply.data);
             }
             else {
-                let subreply = await send_request({type: "open file", id: fileid});
-                if (subreply.type == "img") {
-                    var view_creator = create_image_viewer;
-                }
-                else if (subreply.type == "txt") {
-                    var view_creator = create_text_viewer;
-                }
-                else if (subreply.type == "entity schema") {
-                    var view_creator = create_entity_schema_viewer;
-                }
-                else {
-                    console.log(`No viewer to open file ${subreply.type}`);
+                let view_creator = g_view_creators[filetype];
+                if (!view_creator) {
+                    console.log(`No viewer to open '${filetype}' file`);
                     return;
                 }
-                let file = {
+                view_creator(e.clientX, e.clientY, 400, 400, {
                     name: filename,
                     id: fileid,
-                    type: filetype
-                };
-                Object.assign(file, subreply);
-                view_creator(e.clientX, e.clientY, 400, 400, file)
+                    type: filetype,
+                    uuid: fileuuid
+                });
             }
         });
         button.draggable({
