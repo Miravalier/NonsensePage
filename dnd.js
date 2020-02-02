@@ -604,25 +604,10 @@ function create_button_window(x, y, width, height, buttons)
 
 function create_entity_schema_viewer(x, y, width, height, file)
 {
-    if (!x) x = 0;
-    if (!y) y = 0;
-    if (!width) width = 400;
-    if (!height) height = 400;
-    let text_window = create_window(x, y, width, height);
-    text_window.window_type = "text viewer";
-    text_window.options[file.name] = {
-        'Download': async function () {
-            let reply = await send_request({type: "download file", id: file.id});
-            save_file(file.name, "octet/stream", reply.data);
-        }
+    let text_window = create_text_viewer(x, y, width, height, file);
+    text_window.options[file.name]['Download'] = async function () {
+        save_file_uuid(file.name + ".js", file.uuid);
     };
-
-    text_window.append($(`<div class="text_viewport">
-        <pre class="opened_text no_drag"></pre>
-    </div>`));
-    $.get(`/content/${file.uuid}`, (data) => {
-        text_window.find("pre").text(data);
-    });
 
     return text_window;
 }
@@ -638,8 +623,7 @@ function create_text_viewer(x, y, width, height, file)
     text_window.window_type = "text viewer";
     text_window.options[file.name] = {
         'Download': async function () {
-            let reply = await send_request({type: "download file", id: file.id});
-            save_file(file.name, "octet/stream", reply.data);
+            save_file_uuid(file.name + ".txt", file.uuid);
         }
     };
 
@@ -663,8 +647,7 @@ function create_image_viewer(x, y, width, height, file)
     image_window.window_type = "image viewer";
     image_window.options[file.name] = {
         'Download': async function () {
-            let reply = await send_request({type: "download file", id: file.id});
-            save_file(file.name, "octet/stream", reply.data);
+            save_file_uuid(file.name, file.uuid);
         }
     };
     image_window.append($('<div class="drag_handle"></div>'));
@@ -786,8 +769,7 @@ async function load_file_listing(file_window) {
                 load_file_listing(file_window);
             }
             else if (filetype == 'raw') {
-                let subreply = await send_request({type: "download file", id: fileid});
-                save_file(filename, "octet/stream", subreply.data);
+                save_file_uuid(filename, fileuuid);
             }
             else {
                 let view_creator = g_view_creators[filetype];
@@ -810,9 +792,8 @@ async function load_file_listing(file_window) {
         button.on("contextmenu", function (e) {
             let file_menu = {};
             file_menu[filename] = {
-                'Download': async function () {
-                    let reply = await send_request({type: "download file", id: file.id});
-                    save_file(file.name, "octet/stream", reply.data);
+                'Download': function () {
+                    save_file_uuid(filename, fileuuid);
                 },
                 'Rename': async function () {
                     let name = await query_dialog(`Rename ${filename}`, "Name:");
@@ -844,7 +825,21 @@ async function load_file_listing(file_window) {
 }
 
 
-function save_file(name, type, data) {
+function save_file_uuid(name, uuid) {
+    let a = document.createElement("a");
+    document.body.appendChild(a);
+
+    a.style = "display: none";
+    a.href = `/content/${uuid}`;
+    a.download = name;
+
+    a.click();
+
+    document.body.removeChild(a);
+}
+
+
+function save_file_blob(name, type, data) {
     let blob = new Blob([data], {type: type});
     let a = document.createElement("a");
     document.body.appendChild(a);
