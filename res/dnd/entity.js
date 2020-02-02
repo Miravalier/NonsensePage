@@ -18,23 +18,20 @@ export class Entity {
         let attributes = [];
         for (let name of attrs) {
             // Name, Type
-            attributes.push(name, this.attributes[name]);
+            attributes.push([name, this.attributes[name]]);
         }
-        on_reply(
-            {
-                type: "get attrs",
-                entity: this.entity_id,
-                attrs: attributes
-            },
-            callback
-        );
+        return send_request({
+            type: "get attrs",
+            entity: this.entity_id,
+            attrs: attributes
+        });
     }
 
     set_attrs(options) {
         let attributes = [];
         for (let name of Object.keys(options)) {
-            // Name, Value, Type
-            attributes.push([name, options[name], this.attributes[name]]);
+            // Name, Type, Value
+            attributes.push([name, this.attributes[name], options[name]]);
         }
         send_object({
             type: "set attrs",
@@ -53,3 +50,4 @@ export class Entity {
 
 /* Abstract Properties */
 Entity.prototype.attributes = {};
+Entity.prototype.layout = [];

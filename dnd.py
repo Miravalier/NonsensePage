@@ -17,12 +17,24 @@ from google.auth.transport import requests
 from functools import lru_cache
 
 # Constants
-ATTR_NUMBER =  0b000;
-ATTR_STRING =  0b001;
-ATTR_ENTITY =  0b010;
-ATTR_UNUSED =  0b011;
-ATTR_TYPE   =  0b011;
-ATTR_ARRAY  =  0b100;
+ATTR_NUMBER =  0b000
+ATTR_STRING =  0b001
+ATTR_ENTITY =  0b010
+ATTR_UNUSED =  0b011
+ATTR_TYPE   =  0b011
+ATTR_ARRAY  =  0b100
+
+attr_type_map = {
+    ATTR_NUMBER: "numeric_attrs",
+    ATTR_STRING: "string_attrs",
+    ATTR_ENTITY: "entity_attrs"
+}
+
+attr_defaults = {
+    ATTR_NUMBER: 0,
+    ATTR_STRING: "",
+    ATTR_ENTITY: 0
+}
 
 # Configuration
 upload_root = Path("/var/www/miravalier/content/")
@@ -179,29 +191,99 @@ async def file_upload_callback(account, message, websocket):
     return {"type": "files updated"}
 
 
+@register_handler("init attrs")
+async def _ (account, message, websocket):
+    entity_id = message.get("entity", None)
+    attrs = message.get("attrs", None)
+    if entity_id is None or attrs is None:
+        return {"type": "error", "reason": "init attrs missing parameters"}
+
+    for attr_name, attr_type in attrs:
+        attr_array = attr_type & ATTR_ARRAY != 0
+        attr_type &= ATTR_TYPE
+        if attr_type not in attr_type_map:
+            return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
+        if not attr_array:
+            execute("""
+                INSERT INTO {} (attr_name, attr_value, entity_id)
+                VALUES (%s, %s, %s)
+            """.format(attr_type_map[attr_type]), (attr_name, attr_defaults[attr_type], entity_id))
+
+
+@register_handler("get attrs")
+async def _ (account, message, websocket):
+    entity_id = message.get("entity", None)
+    attrs = message.get("attrs", None)
+    if entity_id is None or attrs is None:
+        return {"type": "error", "reason": "get attrs missing parameters"}
+
+    results = {}
+
+    for attr_name, attr_type in attrs:
+        attr_array = attr_type & ATTR_ARRAY != 0
+        attr_type &= ATTR_TYPE
+        if attr_type not in attr_type_map:
+            return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
+        if attr_array:
+            results[attr_name] = [v[0] for v in query("""
+                SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
+            """.format(attr_type_map[attr_type]), (attr_name, entity_id))]
+        else:
+            results[attr_name] = single_query("""
+                SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
+            """.format(attr_type_map[attr_type]), (attr_name, entity_id))
+
+    return {"type": "attrs", "results": results}
+
+
+@register_handler("set attrs")
+async def _ (account, message, websocket):
+    entity_id = message.get("entity", None)
+    attrs = message.get("attrs", None)
+    if entity_id is None or attrs is None:
+        return {"type": "error", "reason": "set attrs missing parameters"}
+
+    for attr_name, attr_type, attr_value in attrs:
+        attr_array = attr_type & ATTR_ARRAY != 0
+        attr_type &= ATTR_TYPE
+        if attr_type not in attr_type_map:
+            return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
+        if attr_array:
+            execute("""
+                DELETE FROM {} WHERE attr_name=%s AND entity_id=%s
+            """.format(attr_type_map[attr_type]), (attr_name, entity_id))
+            for sub_value in attr_value:
+                execute("""
+                    INSERT INTO {} (attr_name, attr_value, entity_id)
+                    VALUES (%s, %s, %s)
+                """.format(attr_type_map[attr_type]), (attr_name, attr_value, entity_id))
+        else:
+            execute("""
+                UPDATE {} SET attr_value=%s WHERE attr_name=%s AND entity_id=%s
+            """.format(attr_type_map[attr_type]), (attr_value, attr_name, entity_id))
+
+
 file_templates = {
-    "txt": "",
-    "token": None,
-    "map": None,
     "entity schema": textwrap.dedent("""
         //ENTITY-SCHEMA
         import * as Entity from "/res/dnd/entity.js";
 
-        export default class EntityType extends Entity.Entity {
+        export default class {0} extends Entity.Entity {{
             /* Method Overrides */
-            //init()                  {}
-            //on_viewer_open()        {}
-            //on_map_select()         {}
-            //on_map_drop(e)          {} // e: source_map, target_map
-            //on_change_attribute(e)  {} // e: attr, old_value, new_value
-        }
+            //init()                  {{}}
+            //on_viewer_open()        {{}}
+            //on_map_select()         {{}}
+            //on_map_drop(e)          {{}} // e: source_map, target_map
+            //on_change_attribute(e)  {{}} // e: attr, old_value, new_value
+        }}
 
         /* Property Overrides */
-        Character.prototype.attributes = { 
+        {0}.prototype.attributes = {{
             "attribute key": Entity.ATTR_NUMBER
-        };
-    """).lstrip(),
-    "entity": None
+        }};
+
+        {0}.prototype.layout = [];
+    """).lstrip()
 }
 @register_handler("create file")
 async def _ (account, message, websocket):
@@ -211,14 +293,11 @@ async def _ (account, message, websocket):
     if parent_id is None or file_type is None or file_name is None:
         return {"type": "error", "reason": "create file missing parameters"}
 
-    if file_type not in file_templates:
-        return {"type": "error", "reason": "unrecognized file type"}
-
     file_uuid = str(uuid.uuid4())
 
-    if file_templates[file_type] is not None:
+    if file_type in file_templates:
         with open(upload_root / file_uuid, "w") as fp:
-            fp.write(file_templates[file_type])
+            fp.write(file_templates[file_type].format(file_name.replace(" ","")))
 
     execute("""
         INSERT INTO files (file_name, file_type, owner_id, parent_id, file_uuid)
@@ -378,7 +457,7 @@ async def _ (account, message, websocket):
     deleted = 1
     if file_type == "directory":
         deleted += delete_children(file_id)
-    execute("DELETE FROM files WHERE file_id=%s", (file_id,));
+    execute("DELETE FROM files WHERE file_id=%s", (file_id,))
     if file_uuid:
         os.unlink(str(upload_root / file_uuid))
 
@@ -453,7 +532,7 @@ async def _ (account, message, websocket):
 
 @register_handler("clear history")
 async def _ (account, message, websocket):
-    execute("DELETE FROM messages");
+    execute("DELETE FROM messages")
     await broadcast({"type": "clear history"})
 
 
