@@ -332,6 +332,52 @@ function upload_file_dialog(file_window)
     });
 }
 
+
+function create_file_dialog()
+{
+    let dialog_element = $(`<div title="Create File">
+        Type:
+        <select class="file_type">
+            <option value="txt">Text</option>
+            <option value="token">Token</option>
+            <option value="map">Map</option>
+            <option value="entity schema">Entity Schema</option>
+            <option value="entity">Entity</option>
+        </select>
+        <br>
+        Name:
+        <input type="text" class="name"></input>
+    </div>`);
+    $("#tabletop").append(dialog_element);
+    return new Promise((resolve, reject) => {
+        let confirm_function = function() {
+            let name = dialog_element.find("input.name").val().trim();
+            let file_type = dialog_element.find("select.file_type").val();
+            if (name && file_type)
+                resolve([name, file_type]);
+            else
+                resolve([null, null]);
+            dialog_element.dialog("close");
+        }
+        dialog_element.dialog({
+            resizable: false,
+            height: "auto",
+            width: 400,
+            modal: true,
+            buttons: {
+                Confirm: confirm_function
+            },
+            close: function() {
+                resolve([null, null]);
+            }
+        });
+        dialog_element.on("keydown", function(e) {
+            if (e.key == "Enter") confirm_function();
+        });
+    });
+}
+
+
 function query_dialog(title, prompt)
 {
     let dialog_element = $(`<div title="${title}">
@@ -555,6 +601,28 @@ function create_button_window(x, y, width, height, buttons)
     return button_window;
 }
 
+
+function create_entity_schema_viewer(x, y, width, height, file)
+{
+    if (!x) x = 0;
+    if (!y) y = 0;
+    if (!width) width = 400;
+    if (!height) height = 400;
+    let text_window = create_window(x, y, width, height);
+    text_window.window_type = "text viewer";
+    text_window.options[file.name] = {
+        'Download': async function () {
+            let reply = await send_request({type: "download file", id: file.id});
+            save_file(file.name, "octet/stream", reply.data);
+        }
+    };
+    text_window.append($(`<div class="text_viewport">
+        <pre class="opened_text no_drag">${file.content}</pre>
+    </div>`));
+    return text_window;
+}
+
+
 function create_text_viewer(x, y, width, height, file)
 {
     if (!x) x = 0;
@@ -614,13 +682,21 @@ function create_file_window(x, y, width, height, pwd_id)
     });
 
     file_window.options['Files'] = {
-        'Add Subfolder': async function () {
-            let name = await query_dialog("Add Subfolder", "Name:");
+        'Add Folder': async function () {
+            let name = await query_dialog("Add Folder", "Name:");
             if (!name) {
                 console.log("Canceled add subfolder.");
                 return;
             }
             send_object({type: "add subfolder", id: file_window.pwd_id, name: name});
+        },
+        'Create File': async function () {
+            let [name, type] = await create_file_dialog();
+            if (!name || !type) {
+                console.log("Canceled create file.");
+                return;
+            }
+            send_object({type: "create file", id: file_window.pwd_id, name: name, filetype: type});
         },
         'Upload File': function () {
             upload_file_dialog(file_window);
@@ -706,6 +782,9 @@ async function load_file_listing(file_window) {
                 }
                 else if (subreply.type == "txt") {
                     var view_creator = create_text_viewer;
+                }
+                else if (subreply.type == "entity schema") {
+                    var view_creator = create_entity_schema_viewer;
                 }
                 else {
                     console.log(`No viewer to open file ${subreply.type}`);

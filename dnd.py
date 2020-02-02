@@ -9,6 +9,7 @@ import psycopg2 as psql
 import uuid
 import sys
 import os
+import textwrap
 from pathlib import Path
 from contextlib import contextmanager
 from google.oauth2 import id_token
@@ -178,6 +179,55 @@ async def file_upload_callback(account, message, websocket):
     return {"type": "files updated"}
 
 
+file_templates = {
+    "txt": "",
+    "token": None,
+    "map": None,
+    "entity schema": textwrap.dedent("""
+        //ENTITY-SCHEMA
+        import * as Entity from "/res/dnd/entity.js";
+
+        export default class EntityType extends Entity.Entity {
+            /* Method Overrides */
+            //init()                  {}
+            //on_viewer_open()        {}
+            //on_map_select()         {}
+            //on_map_drop(e)          {} // e: source_map, target_map
+            //on_change_attribute(e)  {} // e: attr, old_value, new_value
+        }
+
+        /* Property Overrides */
+        Character.prototype.attributes = { 
+            "attribute key": Entity.ATTR_NUMBER
+        };
+    """).lstrip(),
+    "entity": None
+}
+@register_handler("create file")
+async def _ (account, message, websocket):
+    parent_id = message.get("id", None)
+    file_type = message.get("filetype", None)
+    file_name = message.get("name", None)
+    if parent_id is None or file_type is None or file_name is None:
+        return {"type": "error", "reason": "create file missing parameters"}
+
+    if file_type not in file_templates:
+        return {"type": "error", "reason": "unrecognized file type"}
+
+    file_uuid = str(uuid.uuid4())
+
+    if file_templates[file_type] is not None:
+        with open(upload_root / file_uuid, "w") as fp:
+            fp.write(file_templates[file_type])
+
+    execute("""
+        INSERT INTO files (file_name, file_type, owner_id, parent_id, file_uuid)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (file_name, file_type, account.user_id, parent_id, file_uuid))
+
+    return {"type": "files updated"}
+
+
 @register_handler("move file")
 async def _ (account, message, websocket):
     file_id = message.get("id", None)
@@ -220,13 +270,13 @@ async def _ (account, message, websocket):
     except:
         return {"type": "error", "reason": "file id {} does not exist".format(file_id)}
 
-    if file_type == 'txt':
+    if file_type == 'txt' or file_type == 'entity schema':
         try:
             with open(upload_root / file_uuid, "r") as fp:
                 file_content = html.escape(fp.read())
             return {"type": file_type, "content": file_content}
         except OSError:
-            return {"type": "error", "reason": "txt file not backed by uuid"}
+            return {"type": "error", "reason": "file not backed by uuid"}
     else:
         return {"type": file_type, "uuid": file_uuid}
 
@@ -514,10 +564,15 @@ async def main_handler(websocket, path):
 
             reply = await handler(account, msg, websocket)
 
+        # Ensure requests have replies
+        if request_id is not None:
+            if reply is not None:
+                reply['request id'] = request_id
+            else:
+                reply = {"type": "no reply", "request id": request_id}
+
         # Send reply
         if reply is not None:
-            if request_id is not None:
-                reply['request id'] = request_id
             await websocket.send(json.dumps(reply))
 
 
