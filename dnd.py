@@ -235,6 +235,9 @@ async def _ (account, message, websocket):
     if file_id is None or destination is None:
         return {"type": "error", "reason": "move file missing id"}
 
+    if file_id == destination:
+        return {"type": "error", "reason": "a file cannot be its own parent"}
+
     execute("UPDATE files SET parent_id=%s WHERE file_id=%s", (destination, file_id))
     return {"type": "files updated"}
 

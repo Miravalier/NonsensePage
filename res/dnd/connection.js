@@ -71,7 +71,6 @@ function message_sorter(message) {
     // Handle other messages
     if (message.type == "auth failure") {
         console.error("Authentication not accepted: " + message.reason);
-        set_cookie("source", "/dnd")
         window.location.href = "/login";
     }
     else if (message.type == "auth success") {
