@@ -333,6 +333,50 @@ function upload_file_dialog(file_window)
 }
 
 
+async function create_entity_dialog()
+{
+    let reply = await send_request({type: "active schemas"});
+    let schemas = reply.schemas.map(sch => `
+        <option value="${sch.id}">${sch.name}</option>
+    `).join("");
+
+    let dialog_element = $(`
+        <div title="Create Entity">
+            Schema: <select class="entity_schema">${schemas}</select>
+            <br>
+            Name: <input type="text" class="name"></input>
+        </div>
+    `);
+    $("#tabletop").append(dialog_element);
+    return new Promise((resolve, reject) => {
+        let confirm_function = function() {
+            let name = dialog_element.find("input.name").val().trim();
+            let schema = dialog_element.find("select.entity_schema").val();
+            if (name && schema)
+                resolve([name, schema]);
+            else
+                resolve([null, null]);
+            dialog_element.dialog("close");
+        }
+        dialog_element.dialog({
+            resizable: false,
+            height: "auto",
+            width: 400,
+            modal: true,
+            buttons: {
+                Confirm: confirm_function
+            },
+            close: function() {
+                resolve([null, null]);
+            }
+        });
+        dialog_element.on("keydown", function(e) {
+            if (e.key == "Enter") confirm_function();
+        });
+    });
+}
+
+
 function create_file_dialog()
 {
     let dialog_element = $(`<div title="Create File">
@@ -602,6 +646,15 @@ function create_button_window(x, y, width, height, buttons)
 }
 
 
+function create_entity_viewer(x, y, width, height, file)
+{
+    let entity_viewer = create_text_viewer(x, y, width, height, file);
+    entity_viewer.options = {};
+
+    return entity_viewer;
+}
+
+
 function create_entity_schema_viewer(x, y, width, height, file)
 {
     let text_window = create_text_viewer(x, y, width, height, file);
@@ -693,6 +746,14 @@ function create_file_window(x, y, width, height, pwd_id)
         },
         'Upload File': function () {
             upload_file_dialog(file_window);
+        },
+        'Create Entity': async function () {
+            let [name, schema] = await create_entity_dialog();
+            if (!name || !schema) {
+                console.log("Canceled create entity.");
+                return;
+            }
+            send_object({type: "create entity", id: file_window.pwd_id, name: name, schema: schema});
         }
     };
 
@@ -710,7 +771,8 @@ function create_file_window(x, y, width, height, pwd_id)
 var g_view_creators = {
     "img": create_image_viewer,
     "txt": create_text_viewer,
-    "entity schema": create_entity_schema_viewer
+    "entity schema": create_entity_schema_viewer,
+    "entity": create_entity_viewer
 };
 async function load_file_listing(file_window) {
     file_window.viewport.empty();

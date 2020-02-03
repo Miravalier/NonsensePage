@@ -283,7 +283,8 @@ file_templates = {
         }};
 
         {0}.prototype.layout = [];
-    """).lstrip()
+    """).lstrip(),
+    "txt": ""
 }
 @register_handler("create file")
 async def _ (account, message, websocket):
@@ -293,11 +294,12 @@ async def _ (account, message, websocket):
     if parent_id is None or file_type is None or file_name is None:
         return {"type": "error", "reason": "create file missing parameters"}
 
-    file_uuid = str(uuid.uuid4())
-
     if file_type in file_templates:
+        file_uuid = str(uuid.uuid4())
         with open(upload_root / file_uuid, "w") as fp:
             fp.write(file_templates[file_type].format(file_name.replace(" ","")))
+    else:
+        file_uuid = None
 
     execute("""
         INSERT INTO files (file_name, file_type, owner_id, parent_id, file_uuid)
