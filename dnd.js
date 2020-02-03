@@ -335,9 +335,9 @@ function upload_file_dialog(file_window)
 
 async function create_entity_dialog()
 {
-    let reply = await send_request({type: "active files", filetype: "entity schema"});
-    if (reply.files.length > 0) {
-        let schemas = reply.files.map(file => `
+    let reply = await send_request({type: "list schema"});
+    if (reply.schemas.length > 0) {
+        let schemas = reply.schemas.map(file => `
             <option value="${file[0]}">${file[1]}</option>
         `).join("");
         var dialog_element = $(`
@@ -351,9 +351,7 @@ async function create_entity_dialog()
     else {
         var dialog_element = $(`
             <div title="Create Entity">
-                Schema: <span>No Active Schemas</span>
-                <br>
-                Name: <input type="text" class="name"></input>
+                Error: No Entity Schemas
             </div>
         `);
     }
@@ -361,12 +359,19 @@ async function create_entity_dialog()
     $("#tabletop").append(dialog_element);
     return new Promise((resolve, reject) => {
         let confirm_function = function() {
-            let name = dialog_element.find("input.name").val().trim();
-            let schema = parseInt(dialog_element.find("select.entity_schema").val());
-            if (name && schema)
-                resolve([name, schema]);
-            else
+            try {
+                let name = dialog_element.find("input.name").val().trim();
+                let schema = parseInt(dialog_element.find("select.entity_schema").val());
+                if (name && schema) {
+                    resolve([name, schema]);
+                }
+                else {
+                    resolve([null, null]);
+                }
+            }
+            catch (e) {
                 resolve([null, null]);
+            }
             dialog_element.dialog("close");
         }
         dialog_element.dialog({
@@ -656,10 +661,29 @@ function create_button_window(x, y, width, height, buttons)
 }
 
 
-function create_entity_viewer(x, y, width, height, file)
+function create_layout_element(element) {
+}
+
+
+async function create_entity_viewer(x, y, width, height, file)
 {
-    let entity_viewer = create_text_viewer(x, y, width, height, file);
-    entity_viewer.options = {};
+    if (!x) x = 0;
+    if (!y) y = 0;
+    if (!width) width = 400;
+    if (!height) height = 400;
+
+    let entity_viewer = create_window(x, y, width, height);
+    entity_viewer.window_type = "entity viewer";
+
+    let reply = await send_request({type: "get schema", id: file.id});
+    let EntityType = await get_schema(reply.id);
+    let entity = new EntityType(file.id);
+
+    let elements = entity.layout.map(e => create_layout_element(e));
+
+    entity_viewer.append($(`
+        <div class="entity_viewport">${elements.join("")}</div>
+    `));
 
     return entity_viewer;
 }
@@ -669,12 +693,6 @@ function create_entity_schema_viewer(x, y, width, height, file)
 {
     let text_window = create_text_viewer(x, y, width, height, file);
     text_window.options[file.name] = {
-        'Activate': async function () {
-            send_object({type: "activate file", id: file.id});
-        },
-        'Deactivate': async function () {
-            send_object({type: "deactivate file", id: file.id});
-        },
         'Download': async function () {
             save_file_uuid(file.name + ".js", file.uuid);
         }
@@ -701,9 +719,14 @@ function create_text_viewer(x, y, width, height, file)
     text_window.append($(`<div class="text_viewport">
         <pre class="opened_text no_drag"></pre>
     </div>`));
-    $.get(`/content/${file.uuid}`, (data) => {
-        text_window.find("pre").text(data);
-    });
+    $.get(
+        `/content/${file.uuid}`,
+        {},
+        (data) => {
+            text_window.find("pre").text(data);
+        },
+        "text"
+    );
 
     return text_window;
 }
@@ -766,12 +789,26 @@ function create_file_window(x, y, width, height, pwd_id)
             upload_file_dialog(file_window);
         },
         'Create Entity': async function () {
-            let [name, schema] = await create_entity_dialog();
-            if (!name || !schema) {
+            let [name, schema_id] = await create_entity_dialog();
+            if (!name || !schema_id) {
                 console.log("Canceled create entity.");
                 return;
             }
-            send_object({type: "create entity", id: file_window.pwd_id, name: name, schema: schema});
+            let reply = await send_request({
+                type: "create entity",
+                id: file_window.pwd_id,
+                name: name,
+                schema: schema_id
+            });
+            if (reply.type == "error") {
+                return;
+            }
+            let entity_id = reply.id;
+            let EntityType = await get_schema(schema_id);
+            let entity = new EntityType(entity_id);
+            let attrs = Object.keys(entity.attributes).map(k => [k, entity.attributes[k]]);
+            send_object({type: "init attrs", entity: entity_id, attrs: attrs});
+            local_object({type: "files updated"});
         }
     };
 
@@ -784,6 +821,19 @@ function create_file_window(x, y, width, height, pwd_id)
     load_file_listing(file_window);
 
     return file_window;
+}
+
+var g_schemas = {};
+async function get_schema(schema_id) {
+    if (schema_id in g_schemas) {
+        var module = g_schemas[schema_id];
+    }
+    else {
+        let reply = await send_request({type: "get uuid", id: schema_id});
+        var module = await import(`/content/${reply.uuid}`);
+        g_schemas[schema_id] = module;
+    }
+    return module.default;
 }
 
 var g_view_creators = {
@@ -1080,6 +1130,7 @@ $("document").ready(function () {
     });
 
     register_message("directory listing", () => {});
+    register_message("no reply", () => {});
 
     load_layout();
 });

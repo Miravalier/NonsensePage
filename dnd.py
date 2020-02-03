@@ -175,9 +175,10 @@ async def file_upload_callback(account, message, websocket):
     request_id = message["request id"]
     file_part = pending_blobs[request_id]
     file_name = file_part["name"]
-    file_uuid = file_part["uuid"]
     file_type = sniff(file_part["chunks"][0])
     directory_id = file_part["directory id"]
+
+    file_uuid = str(uuid.uuid4()) + file_extensions[file_type]
 
     with open(upload_root / file_uuid, "wb") as fp:
         for chunk in file_part["chunks"]:
@@ -265,18 +266,18 @@ async def _ (account, message, websocket):
 
 @register_handler("activate file")
 async def _ (account, message, websocket):
-    schema_id = message.get("id", None)
-    if schema_id is None:
-        return {"type": "error", "reason": "activate schema missing schema id"}
-    execute("UPDATE files SET active=TRUE WHERE file_id=%s", (schema_id,))
+    file_id = message.get("id", None)
+    if file_id is None:
+        return {"type": "error", "reason": "activate file missing file id"}
+    execute("UPDATE files SET active=TRUE WHERE file_id=%s", (file_id,))
 
 
 @register_handler("deactivate file")
 async def _ (account, message, websocket):
-    schema_id = message.get("id", None)
-    if schema_id is None:
-        return {"type": "error", "reason": "deactivate schema missing schema id"}
-    execute("UPDATE files SET active=FALSE WHERE file_id=%s", (schema_id,))
+    file_id = message.get("id", None)
+    if file_id is None:
+        return {"type": "error", "reason": "deactivate file missing file id"}
+    execute("UPDATE files SET active=FALSE WHERE file_id=%s", (file_id,))
 
 
 @register_handler("active files")
@@ -313,12 +314,18 @@ file_templates = {
 
         /* Property Overrides */
         {0}.prototype.attributes = {{
-            "attribute key": Entity.ATTR_NUMBER
+            "hp": Entity.ATTR_NUMBER
         }};
 
         {0}.prototype.layout = [];
     """).lstrip(),
     "txt": ""
+}
+file_extensions = {
+    "entity schema": ".js",
+    "txt": ".txt",
+    "raw": ".raw",
+    "img": ".img"
 }
 @register_handler("create file")
 async def _ (account, message, websocket):
@@ -329,7 +336,7 @@ async def _ (account, message, websocket):
         return {"type": "error", "reason": "create file missing parameters"}
 
     if file_type in file_templates:
-        file_uuid = str(uuid.uuid4())
+        file_uuid = str(uuid.uuid4()) + file_extensions[file_type]
         with open(upload_root / file_uuid, "w") as fp:
             fp.write(file_templates[file_type].format(file_name.replace(" ","")))
     else:
@@ -341,6 +348,36 @@ async def _ (account, message, websocket):
     """, (file_name, file_type, account.user_id, parent_id, file_uuid))
 
     return {"type": "files updated"}
+
+
+@register_handler("create entity")
+async def _ (account, message, websocket):
+    parent_id = message.get("id", None)
+    schema_id = message.get("schema", None)
+    entity_name = message.get("name", None)
+    if parent_id is None or schema_id is None or entity_name is None:
+        return {"type": "error", "reason": "create entity missing parameters"}
+
+    schema = single_query(
+        "SELECT file_id FROM files WHERE file_id=%s AND file_type=%s",
+        (schema_id, "entity schema")
+    )
+    if not schema:
+        return {"type": "error", "reason": "invalid schema id"}
+
+    file_id = execute_and_return("""
+        INSERT INTO files (file_name, file_type, owner_id, parent_id)
+        VALUES (%s, %s, %s, %s)
+        RETURNING file_id
+    """, (entity_name, "entity", account.user_id, parent_id))[0]
+
+    execute("""
+        INSERT INTO entities (entity_id, schema_id)
+        VALUES (%s, %s)
+    """, (file_id, schema_id))
+
+    return {"type": "new entity", "id": file_id}
+
 
 
 @register_handler("move file")
@@ -392,11 +429,8 @@ async def _ (account, message, websocket):
         return {"type": "error", "reason": "file too large"}
     request_id = message["request id"]
 
-    file_uuid = str(uuid.uuid4())
-
     blob = {
         "name": file_name,
-        "uuid": file_uuid,
         "directory id": directory_id,
         "chunk count": chunk_count
     }
@@ -432,6 +466,36 @@ async def _ (account, message, websocket):
         if callback_reply is not None:
             callback_reply["request id"] = request_id
             await websocket.send(json.dumps(callback_reply))
+
+
+@register_handler("list schema")
+async def _ (account, message, websocket):
+    return {
+        "type": "list schema",
+        "schemas": query("SELECT file_id, file_name FROM files WHERE file_type='entity schema'")
+    }
+
+
+@register_handler("get schema")
+async def _ (account, message, websocket):
+    entity_id = message.get("id", None)
+    if entity_id is None:
+        return {"type": "error", "reason": "missing entity id"}
+    schema_id = single_query("SELECT schema_id FROM entities WHERE entity_id=%s", (entity_id,))
+    return {"type": "schema", "id": schema_id}
+
+
+@register_handler("get uuid")
+async def _ (account, message, websocket):
+    file_id = message.get("id", None)
+    if file_id is None or type(file_id) is not int:
+        return {"type": "error", "reason": "missing file id"}
+
+    return {
+        "type": "file uuid",
+        "id": file_id,
+        "uuid": single_query("SELECT file_uuid FROM files WHERE file_id=%s", (file_id,))
+    }
 
 
 @register_handler("get parent")
@@ -489,28 +553,36 @@ async def _ (account, message, websocket):
     file_id = message.get("id", None)
     if file_id is None:
         return {"type": "error", "reason": "delete file missing file id"}
+
     file_uuid, file_type = single_query("SELECT file_uuid, file_type FROM files WHERE file_id=%s", (file_id,))
-    deleted = 1
-    if file_type == "directory":
-        deleted += delete_children(file_id)
-    execute("DELETE FROM files WHERE file_id=%s", (file_id,))
-    if file_uuid:
-        os.unlink(str(upload_root / file_uuid))
+    delete_file(file_uuid, file_id, file_type)
 
     return {"type": "files updated"}
 
 
-def delete_children(file_id):
-    deleted = 0
+def delete_file(file_uuid, file_id, file_type):
+    # Recursively delete children
     children = query("SELECT file_uuid, file_id, file_type FROM files WHERE parent_id=%s", (file_id,))
     for child_uuid, child_id, child_type in children:
-        if child_type == "directory":
-            deleted += delete_children(child_id)
-        if child_uuid:
-            os.unlink(str(upload_root / child_uuid))
-        deleted += 1
-    execute("DELETE FROM files WHERE parent_id=%s", (file_id,))
-    return deleted
+        delete_file(child_uuid, child_id, child_type)
+    # Delete attached information
+    if file_type == "entity schema":
+        instances = query("""
+            SELECT file_uuid, file_id, file_type
+            FROM entities JOIN files ON entity_id=file_id
+            WHERE schema_id=%s
+        """, (file_id,))
+        for child_uuid, child_id, child_type in instances:
+            delete_file(child_uuid, child_id, child_type)
+    if file_type == "entity":
+        execute("DELETE FROM entities WHERE entity_id=%s", (file_id,))
+        execute("DELETE FROM numeric_attrs WHERE entity_id=%s", (file_id,))
+        execute("DELETE FROM string_attrs WHERE entity_id=%s", (file_id,))
+        execute("DELETE FROM entity_attrs WHERE entity_id=%s", (file_id,))
+    if file_uuid:
+        os.unlink(str(upload_root / file_uuid))
+    # Delete this file
+    execute("DELETE FROM files WHERE file_id=%s", (file_id,))
 
 
 @register_handler("add subfolder")
@@ -558,11 +630,11 @@ async def _ (account, message, websocket):
         INSERT INTO messages (message_id, sender_id, category, display_name, content, sent_time)
         VALUES (DEFAULT, %s, %s, %s, %s, %s)
         RETURNING message_id
-    ''', (account.user_id, category, display_name, text, sent_time))
+    ''', (account.user_id, category, display_name, text, sent_time))[0]
 
     await broadcast({
         "type": "chat message", "category": category, "display name": display_name,
-        "id": result[0], "text": text, "timestamp": sent_time.utctimetuple()
+        "id": result, "text": text, "timestamp": sent_time.utctimetuple()
     })
 
 
@@ -712,7 +784,9 @@ def sniff(file_data):
 
     try:
         sample = bytes(file_data[:64]).decode('utf-8')
-        if all(c.isprintable() or c.isspace() for c in sample):
+        if sample.startswith("//ENTITY-SCHEMA"):
+            return "entity schema"
+        elif all(c.isprintable() or c.isspace() for c in sample):
             return "txt"
     except:
         pass

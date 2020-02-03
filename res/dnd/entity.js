@@ -10,7 +10,6 @@ export class Entity {
     /* Internal Use */
     constructor(entity_id) {
         this.entity_id = entity_id;
-        console.log(`Constructing ${this.constructor.name} with id ${this.entity_id}`);
     }
 
     /* For use in abstract methods */
