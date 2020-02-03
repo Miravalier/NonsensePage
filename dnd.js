@@ -335,23 +335,34 @@ function upload_file_dialog(file_window)
 
 async function create_entity_dialog()
 {
-    let reply = await send_request({type: "active schemas"});
-    let schemas = reply.schemas.map(sch => `
-        <option value="${sch.id}">${sch.name}</option>
-    `).join("");
+    let reply = await send_request({type: "active files", filetype: "entity schema"});
+    if (reply.files.length > 0) {
+        let schemas = reply.files.map(file => `
+            <option value="${file[0]}">${file[1]}</option>
+        `).join("");
+        var dialog_element = $(`
+            <div title="Create Entity">
+                Schema: <select class="entity_schema">${schemas}</select>
+                <br>
+                Name: <input type="text" class="name"></input>
+            </div>
+        `);
+    }
+    else {
+        var dialog_element = $(`
+            <div title="Create Entity">
+                Schema: <span>No Active Schemas</span>
+                <br>
+                Name: <input type="text" class="name"></input>
+            </div>
+        `);
+    }
 
-    let dialog_element = $(`
-        <div title="Create Entity">
-            Schema: <select class="entity_schema">${schemas}</select>
-            <br>
-            Name: <input type="text" class="name"></input>
-        </div>
-    `);
     $("#tabletop").append(dialog_element);
     return new Promise((resolve, reject) => {
         let confirm_function = function() {
             let name = dialog_element.find("input.name").val().trim();
-            let schema = dialog_element.find("select.entity_schema").val();
+            let schema = parseInt(dialog_element.find("select.entity_schema").val());
             if (name && schema)
                 resolve([name, schema]);
             else
@@ -386,7 +397,6 @@ function create_file_dialog()
             <option value="token">Token</option>
             <option value="map">Map</option>
             <option value="entity schema">Entity Schema</option>
-            <option value="entity">Entity</option>
         </select>
         <br>
         Name:
@@ -658,8 +668,16 @@ function create_entity_viewer(x, y, width, height, file)
 function create_entity_schema_viewer(x, y, width, height, file)
 {
     let text_window = create_text_viewer(x, y, width, height, file);
-    text_window.options[file.name]['Download'] = async function () {
-        save_file_uuid(file.name + ".js", file.uuid);
+    text_window.options[file.name] = {
+        'Activate': async function () {
+            send_object({type: "activate file", id: file.id});
+        },
+        'Deactivate': async function () {
+            send_object({type: "deactivate file", id: file.id});
+        },
+        'Download': async function () {
+            save_file_uuid(file.name + ".js", file.uuid);
+        }
     };
 
     return text_window;

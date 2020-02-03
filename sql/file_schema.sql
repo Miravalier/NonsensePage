@@ -6,5 +6,6 @@ CREATE TABLE files (
     owner_id            integer,
     permission_id       integer,
     parent_id           integer,
+    active              boolean,
     file_id     serial  PRIMARY KEY
 );

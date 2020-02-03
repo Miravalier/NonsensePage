@@ -263,6 +263,40 @@ async def _ (account, message, websocket):
             """.format(attr_type_map[attr_type]), (attr_value, attr_name, entity_id))
 
 
+@register_handler("activate file")
+async def _ (account, message, websocket):
+    schema_id = message.get("id", None)
+    if schema_id is None:
+        return {"type": "error", "reason": "activate schema missing schema id"}
+    execute("UPDATE files SET active=TRUE WHERE file_id=%s", (schema_id,))
+
+
+@register_handler("deactivate file")
+async def _ (account, message, websocket):
+    schema_id = message.get("id", None)
+    if schema_id is None:
+        return {"type": "error", "reason": "deactivate schema missing schema id"}
+    execute("UPDATE files SET active=FALSE WHERE file_id=%s", (schema_id,))
+
+
+@register_handler("active files")
+async def _ (account, message, websocket):
+    file_type = message.get("filetype", None)
+    if file_type is None:
+        return {
+            "type": "active files",
+            "files": query("SELECT file_id, file_name FROM files WHERE active=TRUE")
+        }
+    else:
+        return {
+            "type": "active files",
+            "files": query(
+                "SELECT file_id, file_name FROM files WHERE active=TRUE AND file_type=%s",
+                (file_type,)
+            )
+        }
+
+
 file_templates = {
     "entity schema": textwrap.dedent("""
         //ENTITY-SCHEMA
