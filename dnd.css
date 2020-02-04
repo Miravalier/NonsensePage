@@ -72,9 +72,9 @@ html, body {
     flex-flow: column nowrap;
 }
 
-dev.column_section {
+div.column_section {
     display: flex;
-    flex-flow: row wrap;
+    flex-flow: column nowrap;
     border: 1px solid;
     border-color: darkgrey;
     border-radius: 2px;
@@ -82,7 +82,7 @@ dev.column_section {
     margin: 0.25em;
 }
 
-dev.row_section {
+div.row_section {
     display: flex;
     flex-flow: row wrap;
     border: 1px solid;
