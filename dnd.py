@@ -200,10 +200,8 @@ async def _ (account, message, websocket):
         return {"type": "error", "reason": "init attrs missing parameters"}
 
     for attr_name, attr_type in attrs:
-        if type(attr_type) is list:
-            attr_type, attr_schema = attr_type
-        else:
-            attr_schema = None
+        if isinstance(attr_type, list):
+            attr_type, _ = attr_type
         attr_array = attr_type & ATTR_ARRAY != 0
         attr_type &= ATTR_TYPE
         if attr_type not in attr_type_map:
@@ -225,6 +223,8 @@ async def _ (account, message, websocket):
     results = {}
 
     for attr_name, attr_type in attrs:
+        if isinstance(attr_type, list):
+            attr_type, _ = attr_type
         attr_array = attr_type & ATTR_ARRAY != 0
         attr_type &= ATTR_TYPE
         if attr_type not in attr_type_map:
@@ -249,6 +249,8 @@ async def _ (account, message, websocket):
         return {"type": "error", "reason": "set attrs missing parameters"}
 
     for attr_name, attr_type, attr_value in attrs:
+        if isinstance(attr_type, list):
+            attr_type, _ = attr_type
         attr_array = attr_type & ATTR_ARRAY != 0
         attr_type &= ATTR_TYPE
         if attr_type not in attr_type_map:
@@ -495,15 +497,18 @@ async def _ (account, message, websocket):
     schema_name = message.get("schema name", None)
 
     if entity_id is not None:
-        schema_id, schema_uuid = single_query(
-            """
-            SELECT file_id, file_uuid
-            FROM entities JOIN files
-            ON schema_id=file_id
-            WHERE entity_id=%s
-            """,
-            (entity_id,)
-        )
+        try:
+            schema_id, schema_uuid = single_query(
+                """
+                SELECT file_id, file_uuid
+                FROM entities JOIN files
+                ON schema_id=file_id
+                WHERE entity_id=%s
+                """,
+                (entity_id,)
+            )
+        except:
+            raise ValueError(repr(entity_id))
     elif schema_id is not None:
         schema_id, schema_uuid = single_query(
             "SELECT file_id, file_uuid FROM files WHERE file_id=%s",

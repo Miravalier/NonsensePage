@@ -1,3 +1,4 @@
+import * as Entity from "./entity.js?ver=ent-0";
 import * as utils from "./utils.js?ver=util-0";
 
 // Mutable Globals
@@ -663,7 +664,10 @@ function create_button_window(x, y, width, height, buttons)
 
 async function create_layout_element(viewer, entity, element) {
     if (element.type == "section") {
-        let section = $(`<div class="entity_section"></div>`);
+        let section = $(`<div class="section"></div>`);
+        if (element.title) {
+            section.append($(`<h3 class="section_title">${element.title}</h3>`));
+        }
         for (let subelement of element.children) {
             section.append(await create_layout_element(viewer, entity, subelement));
         }
@@ -685,7 +689,7 @@ async function create_layout_element(viewer, entity, element) {
         attribute.append($(`<input class="text" type="text"></input>`));
         return attribute;
     }
-    else if (element.type == "numeric attribute") {
+    else if (element.type == "number attribute") {
         let attribute = $(`<div class="attribute"></div>`);
         if (element.name) {
             attribute.append($(`<h4 class="label">${element.name}</h4>`));
@@ -697,6 +701,7 @@ async function create_layout_element(viewer, entity, element) {
         // Generate sub entity
         let attr_reply = await entity.get_attrs([element.key]);
         let sub_entity_id = attr_reply.results[element.key];
+        console.log(`Entity Attribute key '${element.key}' sub_entity_id is '${sub_entity_id}'`);
         let SubEntityType = await get_schema(sub_entity_id);
         let sub_entity = new SubEntityType(sub_entity_id);
         // Nest sub entity layout
@@ -729,6 +734,9 @@ async function create_layout_element(viewer, entity, element) {
             button.text(element.name);
         }
         return button;
+    }
+    else {
+        console.error(`Unrecognized viewer element type: '${element.type}'`);
     }
 }
 
@@ -899,14 +907,28 @@ async function spawn_entity(name, parent_id, schema) {
     // Initialize entity attributes
     let attrs = Object.keys(entity.attributes).map(k => [k, entity.attributes[k]]);
     send_object({type: "init attrs", entity: entity_id, attrs: attrs});
-    // Recursively spawn any entity attributes
+    // Recursively spawn any non-array entity attributes
     for (let attr of attrs) {
-        if (typeof(attr[1]) == "object")
+        let [name, type] = attr;
+        if (typeof(type) != "number") {
+            var [attr_type, attr_schema] = type;
+        }
+        else {
+            var attr_type = type;
+            var attr_schema = null;
+        }
+        if (((attr_type & Entity.ATTR_ARRAY) == 0) && attr_schema)
         {
-            let [attr_type, attr_schema] = attr[1];
-            spawn_entity("", entity_id, attr_schema)
+            // Update parent with id of sub entity attribute
+            let sub_entity_id = await spawn_entity(name, entity_id, attr_schema);
+            let update = {};
+            update[attr[0]] = sub_entity_id;
+            console.log(update)
+            entity.set_attrs(update);
         }
     }
+
+    return entity_id;
 }
 
 
@@ -916,7 +938,7 @@ async function get_schema(item) {
         var module = g_schemas[item];
     }
     else {
-        if (typeof item == "number") {
+        if (typeof(item) == "number") {
             var schema_reply = await send_request({type: "get schema", "entity id": item});
         }
         else {

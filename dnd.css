@@ -45,9 +45,9 @@ html, body {
 }
 
 .text_viewport, .image_viewport {
+    display: flex;
     justify-content: flex-start;
     align-items: flex-start;
-    display: flex;
     position: absolute;
     top: 0.5em;
     bottom: 0.5em;
@@ -55,8 +55,29 @@ html, body {
     right: 0.5em;
     overflow: scroll;
     border: 1px solid;
-    border-color: darkgrey lightgrey lightgrey darkgrey;
+    border-color: darkgrey;
     border-radius: 2px;
+}
+
+.entity_viewport {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    position: absolute;
+    top: 0.5em;
+    bottom: 0.5em;
+    left: 0.5em;
+    right: 0.5em;
+    overflow: scroll;
+    flex-flow: column nowrap;
+}
+
+.section {
+    border: 1px solid;
+    border-color: darkgrey;
+    border-radius: 2px;
+    padding: 0.5em;
+    margin: 0.25em;
 }
 
 #tabletop {
