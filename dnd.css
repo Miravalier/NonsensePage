@@ -92,11 +92,13 @@ div.row {
     display: flex;
     flex-flow: row wrap;
     padding: 0.25em;
+    justify-content: center;
 }
 
 div.row_section {
     display: flex;
     flex-flow: row wrap;
+    justify-content: center;
     border: 1px solid;
     border-color: darkgrey;
     border-radius: 2px;
@@ -262,9 +264,34 @@ h1, h2, h3, h4, h5, h6 {
     margin: 2px;
 }
 
+input {
+    border-radius: 2px;
+}
+
 div.attribute {
     display: flex;
     flex-flow: row nowrap;
+    align-items: center;
+    margin: 2px;
+    background: #999999;
+    border-radius: 4px;
+}
+
+input.boolean {
+    height: 1.5em;
+    width: 1.5em;
+}
+
+input.formula {
+    width: 4em;
+}
+
+input.numeric {
+    width: 4em;
+}
+
+input.text {
+    width: 16em;
 }
 
 button.viewer_button {

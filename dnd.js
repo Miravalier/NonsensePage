@@ -704,7 +704,7 @@ async function create_layout_element(viewer, entity, element) {
         return section;
     }
     else if (element.type == "boolean attribute") {
-        let attribute = $(`<div class="attribute"></div>`);
+        let attribute = $(`<div class="attribute no_drag"></div>`);
         if (element.name) {
             attribute.append($(`<h4 class="label">${element.name}</h4>`));
         }
@@ -712,15 +712,23 @@ async function create_layout_element(viewer, entity, element) {
         return attribute;
     }
     else if (element.type == "text attribute") {
-        let attribute = $(`<div class="attribute"></div>`);
+        let attribute = $(`<div class="attribute no_drag"></div>`);
         if (element.name) {
             attribute.append($(`<h4 class="label">${element.name}</h4>`));
         }
         attribute.append($(`<input class="text" type="text"></input>`));
         return attribute;
     }
+    else if (element.type == "formula attribute") {
+        let attribute = $(`<div class="attribute no_drag"></div>`);
+        if (element.name) {
+            attribute.append($(`<h4 class="label">${element.name}</h4>`));
+        }
+        attribute.append($(`<input class="formula" type="text"></input>`));
+        return attribute;
+    }
     else if (element.type == "number attribute") {
-        let attribute = $(`<div class="attribute"></div>`);
+        let attribute = $(`<div class="attribute no_drag"></div>`);
         if (element.name) {
             attribute.append($(`<h4 class="label">${element.name}</h4>`));
         }
@@ -735,7 +743,7 @@ async function create_layout_element(viewer, entity, element) {
         let SubEntityType = await get_schema(sub_entity_id);
         let sub_entity = new SubEntityType(sub_entity_id);
         // Nest sub entity layout
-        let div = $(`<div class="subentity"></div>`);
+        let div = $(`<div class="subentity no_drag"></div>`);
         for (let subelement of sub_entity.layout) {
             div.append(await create_layout_element(viewer, entity, subelement));
         }
@@ -747,7 +755,7 @@ async function create_layout_element(viewer, entity, element) {
         let attr_reply = await entity.get_attrs([element.key]);
         let sub_entity_ids = attr_reply.results[element.key];
         for (let sub_entity_id of sub_entity_ids) {
-            let div = $(`<div class="subentity"></div>`);
+            let div = $(`<div class="subentity no_drag"></div>`);
             let SubEntityType = await get_schema(sub_entity_id);
             let sub_entity = new SubEntityType(sub_entity_id);
             // Nest sub entity layout
@@ -759,7 +767,7 @@ async function create_layout_element(viewer, entity, element) {
         return array_div;
     }
     else if (element.type == "button") {
-        let button = $(`<button class="viewer_button" type="button"></button>`);
+        let button = $(`<button class="viewer_button no_drag" type="button"></button>`);
         if (element.name) {
             button.text(element.name);
         }
@@ -1215,7 +1223,7 @@ $("document").ready(function () {
     let tabletop = $("#tabletop");
     tabletop.on("click", function (e) {
         $("#g_context_menu").remove();
-        e.stopPropagation();
+        //e.stopPropagation();
     });
     tabletop.on("contextmenu", function (e) {
         create_context_menu(e.clientX, e.clientY, {
