@@ -683,6 +683,26 @@ async function create_layout_element(viewer, entity, element) {
         }
         return section;
     }
+    else if (element.type == "row") {
+        let section = $(`<div class="row"></div>`);
+        if (element.title) {
+            section.append($(`<h3 class="section_title">${element.title}</h3>`));
+        }
+        for (let subelement of element.children) {
+            section.append(await create_layout_element(viewer, entity, subelement));
+        }
+        return section;
+    }
+    else if (element.type == "column") {
+        let section = $(`<div class="column"></div>`);
+        if (element.title) {
+            section.append($(`<h3 class="section_title">${element.title}</h3>`));
+        }
+        for (let subelement of element.children) {
+            section.append(await create_layout_element(viewer, entity, subelement));
+        }
+        return section;
+    }
     else if (element.type == "boolean attribute") {
         let attribute = $(`<div class="attribute"></div>`);
         if (element.name) {

@@ -18,10 +18,15 @@ Equipment.prototype.attributes = {
 
 Equipment.prototype.layout = [
     {
-        type: "button",
-        name: "Use",
-        effect: function (weapon, character) {}
-    },
-    {type: "text attribute", name: "Name", key: "name"},
-    {type: "text attribute", name: "Effect", key: "effect"}
+        type: "row",
+        children: [
+            {
+                type: "button",
+                name: "Use",
+                effect: function (weapon, character) {}
+            },
+            {type: "text attribute", name: "Name", key: "name"},
+            {type: "text attribute", name: "Effect", key: "effect"}
+        ]
+    }
 ]

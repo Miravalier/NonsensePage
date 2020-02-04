@@ -72,6 +72,12 @@ html, body {
     flex-flow: column nowrap;
 }
 
+div.column {
+    display: flex;
+    flex-flow: column nowrap;
+    padding: 0.25em;
+}
+
 div.column_section {
     display: flex;
     flex-flow: column nowrap;
@@ -80,6 +86,12 @@ div.column_section {
     border-radius: 2px;
     padding: 0.5em;
     margin: 0.25em;
+}
+
+div.row {
+    display: flex;
+    flex-flow: row wrap;
+    padding: 0.25em;
 }
 
 div.row_section {
