@@ -663,8 +663,18 @@ function create_button_window(x, y, width, height, buttons)
 
 
 async function create_layout_element(viewer, entity, element) {
-    if (element.type == "section") {
-        let section = $(`<div class="section"></div>`);
+    if (element.type == "row section") {
+        let section = $(`<div class="row_section"></div>`);
+        if (element.title) {
+            section.append($(`<h3 class="section_title">${element.title}</h3>`));
+        }
+        for (let subelement of element.children) {
+            section.append(await create_layout_element(viewer, entity, subelement));
+        }
+        return section;
+    }
+    else if (element.type == "column section") {
+        let section = $(`<div class="column_section"></div>`);
         if (element.title) {
             section.append($(`<h3 class="section_title">${element.title}</h3>`));
         }

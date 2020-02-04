@@ -72,7 +72,19 @@ html, body {
     flex-flow: column nowrap;
 }
 
-.section {
+dev.column_section {
+    display: flex;
+    flex-flow: row wrap;
+    border: 1px solid;
+    border-color: darkgrey;
+    border-radius: 2px;
+    padding: 0.5em;
+    margin: 0.25em;
+}
+
+dev.row_section {
+    display: flex;
+    flex-flow: row wrap;
     border: 1px solid;
     border-color: darkgrey;
     border-radius: 2px;
@@ -241,11 +253,6 @@ h1, h2, h3, h4, h5, h6 {
 div.attribute {
     display: flex;
     flex-flow: row nowrap;
-}
-
-div.section {
-    display: flex;
-    flex-flow: row wrap;
 }
 
 button.viewer_button {

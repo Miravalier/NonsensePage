@@ -27,35 +27,35 @@ Character.prototype.attributes = {
 
 Character.prototype.layout = [
     {
-        type: "section",
+        type: "row section",
         children: [
             {type: "text attribute", name: "Name", key: "name"},
             {type: "text attribute", name: "Pronoun", key: "pronoun"}
         ]
     },
     {
-        type: "section",
+        type: "column section",
         title: "Equipped Ranged",
         children: [
             {type: "entity attribute", key: "equipped ranged", schema: "Weapon"}
         ]
     },
     {
-        type: "section",
+        type: "column section",
         title: "Equipped Melee",
         children: [
             {type: "entity attribute", key: "equipped melee", schema: "Weapon"}
         ]
     },
     {
-        type: "section",
+        type: "column section",
         title: "Weapons",
         children: [
             {type: "entity array attribute", key: "weapons", schema: "Weapon"}
         ]
     },
     {
-        type: "section",
+        type: "column section",
         title: "Equipment",
         children: [
             {type: "entity array attribute", key: "equipment", schema: "Equipment"}
