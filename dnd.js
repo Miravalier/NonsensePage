@@ -712,7 +712,7 @@ async function create_layout_element(viewer, entity, element) {
         return div;
     }
     else if (element.type == "entity array attribute") {
-        let array_div = $(`<div class="array"></div>`);
+        let array_div = $(`<div class="viewer_array"></div>`);
         // Generate sub entity
         let attr_reply = await entity.get_attrs([element.key]);
         let sub_entity_ids = attr_reply.results[element.key];
@@ -729,7 +729,7 @@ async function create_layout_element(viewer, entity, element) {
         return array_div;
     }
     else if (element.type == "button") {
-        let button = $(`<button class="entity_button" type="button"></button>`);
+        let button = $(`<button class="viewer_button" type="button"></button>`);
         if (element.name) {
             button.text(element.name);
         }

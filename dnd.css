@@ -238,6 +238,24 @@ h1, h2, h3, h4, h5, h6 {
     margin: 2px;
 }
 
+div.attribute {
+    display: flex;
+    flex-flow: row nowrap;
+}
+
+div.section {
+    display: flex;
+    flex-flow: row wrap;
+}
+
+button.viewer_button {
+}
+
+div.viewer_array {
+    display: flex;
+    flex-flow: column nowrap;
+}
+
 .error_message {
     font-style: italic;
     color: red;
