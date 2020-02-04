@@ -27,7 +27,7 @@ Weapon.prototype.layout = [
         children: [
             {type: "boolean attribute", name: "Ranged", key: "ranged"},
             {type: "text attribute", name: "Name", key: "name"},
-            {type: "number attribute", name: "Damage", key: "damage"},
+            {type: "formula attribute", name: "Damage", key: "damage"},
             {type: "number attribute", name: "Accuracy", key: "accuracy"},
             {type: "number attribute", name: "Heat", key: "heat"},
             {type: "number attribute", name: "Piercing", key: "piercing"},
