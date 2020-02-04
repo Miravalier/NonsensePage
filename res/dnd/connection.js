@@ -191,8 +191,20 @@ function send_request(data) {
 }
 
 
-function register_message(message_type, message_handler)
-{
+function deregister_message(message_type, message_handler) {
+    let handler_list = g_message_handlers[message_type];
+    if (!handler_list) {
+        return;
+    }
+
+    let index = handler_list.indexOf(message_handler);
+    if (index != -1) {
+        handler_list.splice(index, 1);
+    }
+}
+
+
+function register_message(message_type, message_handler) {
     if (message_type in g_message_handlers) {
         g_message_handlers[message_type].push(message_handler);
     }

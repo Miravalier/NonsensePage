@@ -908,7 +908,7 @@ function create_text_viewer(x, y, width, height, file)
     };
 
     text_window.append($(`<div class="text_viewport">
-        <pre class="opened_text no_drag"></pre>
+        <pre class="opened_text no_drag" contenteditable="true"></pre>
     </div>`));
     $.get(
         `/content/${file.uuid}`,
