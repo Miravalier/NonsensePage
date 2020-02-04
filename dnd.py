@@ -230,7 +230,7 @@ async def _ (account, message, websocket):
         if attr_type not in attr_type_map:
             return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
         if attr_array:
-            results[attr_name] = [v[0] for v in query("""
+            results[attr_name] = [v[0] if v is not None else None for v in query("""
                 SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
             """.format(attr_type_map[attr_type]), (attr_name, entity_id))]
         else:
@@ -567,6 +567,14 @@ async def _ (account, message, websocket):
             (directory_id,)
         )
     }
+
+
+@register_handler("swap messages")
+async def _ (account, message, websocket):
+    ids = message.get("ids", None)
+    if not isinstance(ids, list) or len(ids) != 2:
+        return {"type": "error", "reason": "invalid id parameter"}
+    await broadcast({"type": "swap messages", "ids": ids});
 
 
 @register_handler("update username")
