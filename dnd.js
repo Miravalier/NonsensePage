@@ -661,7 +661,75 @@ function create_button_window(x, y, width, height, buttons)
 }
 
 
-function create_layout_element(element) {
+async function create_layout_element(viewer, entity, element) {
+    if (element.type == "section") {
+        let section = $(`<div class="entity_section"></div>`);
+        for (let subelement of element.children) {
+            section.append(await create_layout_element(viewer, entity, subelement));
+        }
+        return section;
+    }
+    else if (element.type == "boolean attribute") {
+        let attribute = $(`<div class="attribute"></div>`);
+        if (element.name) {
+            attribute.append($(`<h4 class="label">${element.name}</h4>`));
+        }
+        attribute.append($(`<input class="boolean" type="checkbox" value="1"></input>`));
+        return attribute;
+    }
+    else if (element.type == "text attribute") {
+        let attribute = $(`<div class="attribute"></div>`);
+        if (element.name) {
+            attribute.append($(`<h4 class="label">${element.name}</h4>`));
+        }
+        attribute.append($(`<input class="text" type="text"></input>`));
+        return attribute;
+    }
+    else if (element.type == "numeric attribute") {
+        let attribute = $(`<div class="attribute"></div>`);
+        if (element.name) {
+            attribute.append($(`<h4 class="label">${element.name}</h4>`));
+        }
+        attribute.append($(`<input class="numeric" type="number"></input>`));
+        return attribute;
+    }
+    else if (element.type == "entity attribute") {
+        // Generate sub entity
+        let attr_reply = await entity.get_attrs([element.key]);
+        let sub_entity_id = attr_reply.results[element.key];
+        let SubEntityType = await get_schema(sub_entity_id);
+        let sub_entity = new SubEntityType(sub_entity_id);
+        // Nest sub entity layout
+        let div = $(`<div class="subentity"></div>`);
+        for (let subelement of sub_entity.layout) {
+            div.append(await create_layout_element(viewer, entity, subelement));
+        }
+        return div;
+    }
+    else if (element.type == "entity array attribute") {
+        let array_div = $(`<div class="array"></div>`);
+        // Generate sub entity
+        let attr_reply = await entity.get_attrs([element.key]);
+        let sub_entity_ids = attr_reply.results[element.key];
+        for (let sub_entity_id of sub_entity_ids) {
+            let div = $(`<div class="subentity"></div>`);
+            let SubEntityType = await get_schema(sub_entity_id);
+            let sub_entity = new SubEntityType(sub_entity_id);
+            // Nest sub entity layout
+            for (let subelement of sub_entity.layout) {
+                div.append(await create_layout_element(viewer, entity, subelement));
+            }
+            array_div.append(div);
+        }
+        return array_div;
+    }
+    else if (element.type == "button") {
+        let button = $(`<button class="entity_button" type="button"></button>`);
+        if (element.name) {
+            button.text(element.name);
+        }
+        return button;
+    }
 }
 
 
@@ -674,16 +742,14 @@ async function create_entity_viewer(x, y, width, height, file)
 
     let entity_viewer = create_window(x, y, width, height);
     entity_viewer.window_type = "entity viewer";
+    let viewport = $(`<div class="entity_viewport"></div>`);
+    entity_viewer.append(viewport);
 
-    let reply = await send_request({type: "get schema", id: file.id});
-    let EntityType = await get_schema(reply.id);
+    let EntityType = await get_schema(file.id);
     let entity = new EntityType(file.id);
-
-    let elements = entity.layout.map(e => create_layout_element(e));
-
-    entity_viewer.append($(`
-        <div class="entity_viewport">${elements.join("")}</div>
-    `));
+    for (let element of entity.layout) {
+        viewport.append(await create_layout_element(entity_viewer, entity, element));
+    }
 
     return entity_viewer;
 }
@@ -789,25 +855,14 @@ function create_file_window(x, y, width, height, pwd_id)
             upload_file_dialog(file_window);
         },
         'Create Entity': async function () {
-            let [name, schema_id] = await create_entity_dialog();
-            if (!name || !schema_id) {
+            let [name, schema] = await create_entity_dialog();
+            if (!name || !schema) {
                 console.log("Canceled create entity.");
                 return;
             }
-            let reply = await send_request({
-                type: "create entity",
-                id: file_window.pwd_id,
-                name: name,
-                schema: schema_id
-            });
-            if (reply.type == "error") {
-                return;
-            }
-            let entity_id = reply.id;
-            let EntityType = await get_schema(schema_id);
-            let entity = new EntityType(entity_id);
-            let attrs = Object.keys(entity.attributes).map(k => [k, entity.attributes[k]]);
-            send_object({type: "init attrs", entity: entity_id, attrs: attrs});
+
+            await spawn_entity(name, file_window.pwd_id, schema);
+
             local_object({type: "files updated"});
         }
     };
@@ -823,18 +878,56 @@ function create_file_window(x, y, width, height, pwd_id)
     return file_window;
 }
 
+
+async function spawn_entity(name, parent_id, schema) {
+    console.log(`Creating ${name}, child of ${parent_id} with schema ${schema}`);
+    // Create base entity
+    let reply = await send_request({
+        type: "create entity",
+        id: parent_id,
+        name: name,
+        schema: schema
+    });
+    // Verify return
+    if (reply.type == "error") {
+        return;
+    }
+    // Get entity
+    let entity_id = reply.id;
+    let EntityType = await get_schema(entity_id);
+    let entity = new EntityType(entity_id);
+    // Initialize entity attributes
+    let attrs = Object.keys(entity.attributes).map(k => [k, entity.attributes[k]]);
+    send_object({type: "init attrs", entity: entity_id, attrs: attrs});
+    // Recursively spawn any entity attributes
+    for (let attr of attrs) {
+        if (typeof(attr[1]) == "object")
+        {
+            let [attr_type, attr_schema] = attr[1];
+            spawn_entity("", entity_id, attr_schema)
+        }
+    }
+}
+
+
 var g_schemas = {};
-async function get_schema(schema_id) {
-    if (schema_id in g_schemas) {
-        var module = g_schemas[schema_id];
+async function get_schema(item) {
+    if (item in g_schemas) {
+        var module = g_schemas[item];
     }
     else {
-        let reply = await send_request({type: "get uuid", id: schema_id});
-        var module = await import(`/content/${reply.uuid}`);
-        g_schemas[schema_id] = module;
+        if (typeof item == "number") {
+            var schema_reply = await send_request({type: "get schema", "entity id": item});
+        }
+        else {
+            var schema_reply = await send_request({type: "get schema", "schema name": item});
+        }
+        var module = await import(`/content/${schema_reply.uuid}`);
+        g_schemas[item] = module;
     }
     return module.default;
 }
+
 
 var g_view_creators = {
     "img": create_image_viewer,

@@ -13,9 +13,9 @@ export class Entity {
     }
 
     /* For use in abstract methods */
-    get_attrs(attrs, callback) {
+    get_attrs(options) {
         let attributes = [];
-        for (let name of attrs) {
+        for (let name of options) {
             // Name, Type
             attributes.push([name, this.attributes[name]]);
         }

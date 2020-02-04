@@ -200,6 +200,10 @@ async def _ (account, message, websocket):
         return {"type": "error", "reason": "init attrs missing parameters"}
 
     for attr_name, attr_type in attrs:
+        if type(attr_type) is list:
+            attr_type, attr_schema = attr_type
+        else:
+            attr_schema = None
         attr_array = attr_type & ATTR_ARRAY != 0
         attr_type &= ATTR_TYPE
         if attr_type not in attr_type_map:
@@ -353,17 +357,26 @@ async def _ (account, message, websocket):
 @register_handler("create entity")
 async def _ (account, message, websocket):
     parent_id = message.get("id", None)
-    schema_id = message.get("schema", None)
+    schema = message.get("schema", None)
     entity_name = message.get("name", None)
-    if parent_id is None or schema_id is None or entity_name is None:
+    if parent_id is None or schema is None or entity_name is None:
         return {"type": "error", "reason": "create entity missing parameters"}
 
-    schema = single_query(
-        "SELECT file_id FROM files WHERE file_id=%s AND file_type=%s",
-        (schema_id, "entity schema")
-    )
-    if not schema:
-        return {"type": "error", "reason": "invalid schema id"}
+    if isinstance(schema, int):
+        schema_id = single_query(
+            "SELECT file_id FROM files WHERE file_id=%s AND file_type=%s",
+            (schema, "entity schema")
+        )
+    elif isinstance(schema, str):
+        schema_id = single_query(
+            "SELECT file_id FROM files WHERE file_name=%s AND file_type=%s",
+            (schema, "entity schema")
+        )
+    else:
+        return {"type": "error", "reason": "invalid schema type"}
+
+    if not schema_id:
+        return {"type": "error", "reason": "invalid schema value"}
 
     file_id = execute_and_return("""
         INSERT INTO files (file_name, file_type, owner_id, parent_id)
@@ -377,7 +390,6 @@ async def _ (account, message, websocket):
     """, (file_id, schema_id))
 
     return {"type": "new entity", "id": file_id}
-
 
 
 @register_handler("move file")
@@ -478,11 +490,34 @@ async def _ (account, message, websocket):
 
 @register_handler("get schema")
 async def _ (account, message, websocket):
-    entity_id = message.get("id", None)
-    if entity_id is None:
-        return {"type": "error", "reason": "missing entity id"}
-    schema_id = single_query("SELECT schema_id FROM entities WHERE entity_id=%s", (entity_id,))
-    return {"type": "schema", "id": schema_id}
+    entity_id = message.get("entity id", None)
+    schema_id = message.get("schema id", None)
+    schema_name = message.get("schema name", None)
+
+    if entity_id is not None:
+        schema_id, schema_uuid = single_query(
+            """
+            SELECT file_id, file_uuid
+            FROM entities JOIN files
+            ON schema_id=file_id
+            WHERE entity_id=%s
+            """,
+            (entity_id,)
+        )
+    elif schema_id is not None:
+        schema_id, schema_uuid = single_query(
+            "SELECT file_id, file_uuid FROM files WHERE file_id=%s",
+            (schema_id,)
+        )
+    elif schema_name is not None:
+        schema_id, schema_uuid = single_query(
+            "SELECT file_id, file_uuid FROM files WHERE file_name=%s",
+            (schema_name,)
+        )
+    else:
+        return {"type": "error", "reason": "missing parameters"}
+
+    return {"type": "schema", "id": schema_id, "uuid": schema_uuid}
 
 
 @register_handler("get uuid")

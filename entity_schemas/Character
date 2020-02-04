@@ -19,10 +19,10 @@ Character.prototype.attributes = {
     "melee bonus": Entity.ATTR_NUMBER,
     "name": Entity.ATTR_STRING,
     "pronoun": Entity.ATTR_STRING,
-    "equipped ranged": Entity.ATTR_ENTITY,
-    "equipped melee": Entity.ATTR_ENTITY,
-    "weapons": Entity.ATTR_ENTITY|Entity.ATTR_ARRAY,
-    "equipment": Entity.ATTR_ENTITY|Entity.ATTR_ARRAY
+    "equipped ranged": [Entity.ATTR_ENTITY, "Weapon"],
+    "equipped melee": [Entity.ATTR_ENTITY, "Weapon"],
+    "weapons": [Entity.ATTR_ENTITY|Entity.ATTR_ARRAY, "Weapon"],
+    "equipment": [Entity.ATTR_ENTITY|Entity.ATTR_ARRAY, "Equipment"]
 };
 
 Character.prototype.layout = [
