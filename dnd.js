@@ -901,15 +901,31 @@ function create_text_viewer(x, y, width, height, file)
     if (!height) height = 400;
     let text_window = create_window(x, y, width, height);
     text_window.window_type = "text viewer";
+    text_window.file = file;
     text_window.options[file.name] = {
         'Download': async function () {
             save_file_uuid(file.name + ".txt", file.uuid);
         }
     };
 
-    text_window.append($(`<div class="text_viewport">
-        <pre class="opened_text no_drag" contenteditable="true"></pre>
-    </div>`));
+    let save_button = $(`
+        <button type="button">
+            <img height=24px width=24px src="/res/dnd/icons/save.svg"/>
+        </button>
+    `);
+    save_button.on("click", function () {
+        send_object({
+            type: "update file",
+            id: file.id,
+            content: text_window.find("pre").text()
+        });
+    });
+    text_window.append(save_button);
+    text_window.append($(`
+        <div class="text_viewport">
+            <pre class="opened_text no_drag" contenteditable="true"></pre>
+        </div>
+    `));
     $.get(
         `/content/${file.uuid}`,
         {},
@@ -955,10 +971,6 @@ function create_file_window(x, y, width, height, pwd_id)
     file_window.window_type = "file";
     file_window.pwd_id = pwd_id;
 
-    register_message("files updated", function () {
-        load_file_listing(file_window);
-    });
-
     file_window.options['Files'] = {
         'Add Folder': async function () {
             let name = await query_dialog("Add Folder", "Name:");
@@ -987,8 +999,6 @@ function create_file_window(x, y, width, height, pwd_id)
             }
 
             await spawn_entity(name, file_window.pwd_id, schema);
-
-            local_object({type: "files updated"});
         }
     };
 
@@ -1363,6 +1373,32 @@ $("document").ready(function () {
 
     register_message("directory listing", () => {});
     register_message("no reply", () => {});
+
+    register_message("update file", async function (message) {
+        let file_id = message["file id"];
+        for (let open_window of g_open_windows) {
+            if (open_window.window_type == "file") {
+                if (open_window.pwd_id != file_id) {
+                    return;
+                }
+                load_file_listing(open_window);
+            }
+            else if (open_window.window_type == "text viewer")
+            {
+                if (open_window.file.id != file_id) {
+                    return;
+                }
+                $.get(
+                    `/content/${open_window.file.uuid}`,
+                    {},
+                    (data) => {
+                        open_window.find("pre").text(data);
+                    },
+                    "text"
+                );
+            }
+        }
+    });
 
     load_layout();
 });

@@ -189,7 +189,7 @@ async def file_upload_callback(account, message, websocket):
         VALUES (%s, %s, %s, %s, %s)
     """, (file_name, file_type, account.user_id, directory_id, file_uuid))
 
-    return {"type": "files updated"}
+    await broadcast({"type": "update file", "file id": directory_id, "user id": account.user_id})
 
 
 @register_handler("init attrs")
@@ -353,7 +353,7 @@ async def _ (account, message, websocket):
         VALUES (%s, %s, %s, %s, %s)
     """, (file_name, file_type, account.user_id, parent_id, file_uuid))
 
-    return {"type": "files updated"}
+    await broadcast({"type": "update file", "file id": parent_id, "user id": account.user_id})
 
 
 @register_handler("create entity")
@@ -404,8 +404,12 @@ async def _ (account, message, websocket):
     if file_id == destination:
         return {"type": "error", "reason": "a file cannot be its own parent"}
 
+    parent_id = single_query("SELECT parent_id FROM files WHERE file_id=%s", (file_id,))
+
     execute("UPDATE files SET parent_id=%s WHERE file_id=%s", (destination, file_id))
-    return {"type": "files updated"}
+
+    await broadcast({"type": "update file", "file id": parent_id, "user id": account.user_id})
+    await broadcast({"type": "update file", "file id": destination, "user id": account.user_id})
 
 
 @register_handler("download file")
@@ -569,6 +573,23 @@ async def _ (account, message, websocket):
     }
 
 
+@register_handler("update file")
+async def _ (account, message, websocket):
+    file_id = message.get("id", None)
+    file_content = message.get("content", None)
+    if file_id is None or file_content is None:
+        return {"type": "error", "reason": "missing parameters"}
+
+    file_uuid = single_query("SELECT file_uuid FROM files WHERE file_id=%s", (file_id,))
+    if not file_uuid:
+        return {"type": "error", "reason": "file not backed by uuid"}
+
+    with open(upload_root / file_uuid, "w") as fp:
+        fp.write(file_content)
+
+    await broadcast({"type": "update file", "file id": file_id, "user id": account.user_id})
+
+
 @register_handler("swap messages")
 async def _ (account, message, websocket):
     ids = message.get("ids", None)
@@ -581,14 +602,14 @@ async def _ (account, message, websocket):
             sender_id, permission_id, category, display_name,
             content, sent_time
         FROM messages WHERE message_id=%s
-    """, (first_id,));
+    """, (first_id,))
 
     second_message = single_query("""
         SELECT
             sender_id, permission_id, category, display_name,
             content, sent_time
         FROM messages WHERE message_id=%s
-    """, (second_id,));
+    """, (second_id,))
 
     execute("""
         UPDATE messages SET
@@ -604,7 +625,7 @@ async def _ (account, message, websocket):
         WHERE message_id=%s
     """, first_message + (second_id,))
 
-    await broadcast({"type": "swap messages", "ids": ids});
+    await broadcast({"type": "swap messages", "ids": ids})
 
 
 @register_handler("update username")
@@ -632,10 +653,13 @@ async def _ (account, message, websocket):
     if file_id is None:
         return {"type": "error", "reason": "delete file missing file id"}
 
-    file_uuid, file_type = single_query("SELECT file_uuid, file_type FROM files WHERE file_id=%s", (file_id,))
+    parent_id, file_uuid, file_type = single_query(
+        "SELECT parent_id, file_uuid, file_type FROM files WHERE file_id=%s",
+        (file_id,)
+    )
     delete_file(file_uuid, file_id, file_type)
 
-    return {"type": "files updated"}
+    await broadcast({"type": "update file", "file id": parent_id, "user id": account.user_id})
 
 
 def delete_file(file_uuid, file_id, file_type):
@@ -677,7 +701,7 @@ async def _ (account, message, websocket):
         VALUES (%s, %s, %s, %s)
     """, (directory_name, "directory", account.user_id, directory_id))
 
-    return {"type": "files updated"}
+    await broadcast({"type": "update file", "file id": directory_id, "user id": account.user_id})
 
 
 @register_handler("rename file")
@@ -693,7 +717,9 @@ async def _ (account, message, websocket):
         UPDATE files SET file_name=%s WHERE file_id=%s
     """, (file_name, file_id))
 
-    return {"type": "files updated"}
+    parent_id = single_query("SELECT parent_id FROM files WHERE file_id=%s", (file_id,))
+
+    await broadcast({"type": "update file", "file id": parent_id, "user id": account.user_id})
 
 
 @register_handler("chat message")
