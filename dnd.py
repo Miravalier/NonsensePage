@@ -17,12 +17,18 @@ from google.auth.transport import requests
 from functools import lru_cache
 
 # Constants
+PERMISSION_DENIED = {"type": "error", "reason": "permission denied"}
+INVALID_PARAMETERS = {"type": "error", "reason": "invalid parameters"}
 ATTR_NUMBER =  0b000
 ATTR_STRING =  0b001
 ATTR_ENTITY =  0b010
 ATTR_UNUSED =  0b011
 ATTR_TYPE   =  0b011
 ATTR_ARRAY  =  0b100
+DENIED = 0
+READ = 1
+WRITE = 2
+ADMIN = 3
 
 attr_type_map = {
     ATTR_NUMBER: "numeric_attrs",
@@ -126,14 +132,6 @@ async def broadcast(msg, group=connected_sockets):
             group.discard(websocket)
 
 
-async def debug_error(msg):
-    await broadcast({"type": "error", "reason": msg})
-
-
-async def debug_log(msg):
-    await broadcast({"type": "debug", "reason": msg})
-
-
 def register_handler(message_type):
     def sub_register_handler(func):
         request_handlers[message_type] = func
@@ -147,7 +145,7 @@ def register_binary_handler(message_type, callback):
             # Make sure the message has a request id
             request_id = message.get("request id", None)
             if request_id is None:
-                return {"type": "error", "reason": "missing request id"}
+                return INVALID_PARAMETERS
 
             # Call the wrapped function
             reply = await func(account, message, websocket)
@@ -178,6 +176,9 @@ async def file_upload_callback(account, message, websocket):
     file_type = sniff(file_part["chunks"][0])
     directory_id = file_part["directory id"]
 
+    if account.permission(directory_id) < WRITE:
+        return PERMISSION_DENIED
+
     file_uuid = str(uuid.uuid4()) + file_extensions[file_type]
 
     with open(upload_root / file_uuid, "wb") as fp:
@@ -197,7 +198,10 @@ async def _ (account, message, websocket):
     entity_id = message.get("entity", None)
     attrs = message.get("attrs", None)
     if entity_id is None or attrs is None:
-        return {"type": "error", "reason": "init attrs missing parameters"}
+        return INVALID_PARAMETERS
+
+    if account.permission(entity_id) < WRITE:
+        return PERMISSION_DENIED
 
     for attr_name, attr_type in attrs:
         if isinstance(attr_type, list):
@@ -218,7 +222,10 @@ async def _ (account, message, websocket):
     entity_id = message.get("entity", None)
     attrs = message.get("attrs", None)
     if entity_id is None or attrs is None:
-        return {"type": "error", "reason": "get attrs missing parameters"}
+        return INVALID_PARAMETERS
+
+    if account.permission(entity_id) < READ:
+        return PERMISSION_DENIED
 
     results = {}
 
@@ -246,7 +253,10 @@ async def _ (account, message, websocket):
     entity_id = message.get("entity", None)
     attrs = message.get("attrs", None)
     if entity_id is None or attrs is None:
-        return {"type": "error", "reason": "set attrs missing parameters"}
+        return INVALID_PARAMETERS
+
+    if account.permission(entity_id) < WRITE:
+        return PERMISSION_DENIED
 
     for attr_name, attr_type, attr_value in attrs:
         if isinstance(attr_type, list):
@@ -274,7 +284,7 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     file_id = message.get("id", None)
     if file_id is None:
-        return {"type": "error", "reason": "activate file missing file id"}
+        return INVALID_PARAMETERS
     execute("UPDATE files SET active=TRUE WHERE file_id=%s", (file_id,))
 
 
@@ -282,7 +292,7 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     file_id = message.get("id", None)
     if file_id is None:
-        return {"type": "error", "reason": "deactivate file missing file id"}
+        return INVALID_PARAMETERS
     execute("UPDATE files SET active=FALSE WHERE file_id=%s", (file_id,))
 
 
@@ -339,7 +349,10 @@ async def _ (account, message, websocket):
     file_type = message.get("filetype", None)
     file_name = message.get("name", None)
     if parent_id is None or file_type is None or file_name is None:
-        return {"type": "error", "reason": "create file missing parameters"}
+        return INVALID_PARAMETERS
+
+    if account.permission(parent_id) < WRITE:
+        return PERMISSION_DENIED
 
     if file_type in file_templates:
         file_uuid = str(uuid.uuid4()) + file_extensions[file_type]
@@ -362,7 +375,10 @@ async def _ (account, message, websocket):
     schema = message.get("schema", None)
     entity_name = message.get("name", None)
     if parent_id is None or schema is None or entity_name is None:
-        return {"type": "error", "reason": "create entity missing parameters"}
+        return INVALID_PARAMETERS
+
+    if account.permission(parent_id) < WRITE:
+        return PERMISSION_DENIED
 
     if isinstance(schema, int):
         schema_id = single_query(
@@ -399,10 +415,13 @@ async def _ (account, message, websocket):
     file_id = message.get("id", None)
     destination = message.get("destination", None)
     if file_id is None or destination is None:
-        return {"type": "error", "reason": "move file missing id"}
+        return INVALID_PARAMETERS
 
     if file_id == destination:
         return {"type": "error", "reason": "a file cannot be its own parent"}
+
+    if account.permission(file_id) < WRITE or account.permission(destination) < WRITE:
+        return PERMISSION_DENIED
 
     parent_id = single_query("SELECT parent_id FROM files WHERE file_id=%s", (file_id,))
 
@@ -417,7 +436,10 @@ async def _ (account, message, websocket):
     file_id = message.get("id", None)
     request_id = message.get("request id", None)
     if file_id is None or request_id is None:
-        return {"type": "error", "reason": "download request missing id"}
+        return INVALID_PARAMETERS
+
+    if account.permission(file_id) < READ:
+        return PERMISSION_DENIED
 
     try:
         file_type, file_uuid = single_query("SELECT file_type, file_uuid FROM files WHERE file_id=%s", (file_id,))
@@ -435,16 +457,18 @@ async def _ (account, message, websocket):
 @register_binary_handler("upload file", file_upload_callback)
 async def _ (account, message, websocket):
     file_name = message.get("name", None)
-    if file_name is None:
-        return {"type": "error", "reason": "missing file name"}
     directory_id = message.get("id", None)
-    if directory_id is None:
-        return {"type": "error", "reason": "missing directory id"}
     chunk_count = message.get("chunk count", None)
-    if chunk_count is None:
-        return {"type": "error", "reason": "missing chunk count"}
+
+    if file_name is None or directory_id is None or type(chunk_count) is not int:
+        return INVALID_PARAMETERS
+
+    if account.permission(directory_id) < WRITE:
+        return PERMISSION_DENIED
+
     if chunk_count > 160:
         return {"type": "error", "reason": "file too large"}
+
     request_id = message["request id"]
 
     blob = {
@@ -465,11 +489,10 @@ async def _ (account, message, websocket):
 @register_handler("binary")
 async def _ (account, message, websocket):
     request_id = message.get("request id", None)
-    if request_id is None:
-        return {"type": "error", "reason": "missing request id"}
     chunk_data = message.get("data", None)
-    if chunk_data is None:
-        return {"type": "error", "reason": "missing chunk data"}
+
+    if request_id is None or chunk_data is None:
+        return INVALID_PARAMETERS
 
     if request_id in pending_blobs:
         blob = pending_blobs[request_id]
@@ -500,6 +523,9 @@ async def _ (account, message, websocket):
     schema_id = message.get("schema id", None)
     schema_name = message.get("schema name", None)
 
+    if account.permission(entity_id) < READ:
+        return PERMISSION_DENIED
+
     if entity_id is not None:
         try:
             schema_id, schema_uuid = single_query(
@@ -524,7 +550,7 @@ async def _ (account, message, websocket):
             (schema_name,)
         )
     else:
-        return {"type": "error", "reason": "missing parameters"}
+        return INVALID_PARAMETERS
 
     return {"type": "schema", "id": schema_id, "uuid": schema_uuid}
 
@@ -533,7 +559,10 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     file_id = message.get("id", None)
     if file_id is None or type(file_id) is not int:
-        return {"type": "error", "reason": "missing file id"}
+        return INVALID_PARAMETERS
+
+    if account.permission(file_id) < READ:
+        return PERMISSION_DENIED
 
     return {
         "type": "file uuid",
@@ -546,7 +575,10 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     file_id = message.get("id", None)
     if file_id is None:
-        return {"type": "error", "reason": "missing file id"}
+        return INVALID_PARAMETERS
+
+    if account.permission(file_id) < READ:
+        return PERMISSION_DENIED
 
     return {
         "type": "file parent",
@@ -559,7 +591,10 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     directory_id = message.get("id", None)
     if directory_id is None:
-        return {"type": "error", "reason": "missing directory id"}
+        return INVALID_PARAMETERS
+
+    if account.permission(directory_id) < READ:
+        return PERMISSION_DENIED
 
     return {
         "type": "directory listing",
@@ -578,7 +613,10 @@ async def _ (account, message, websocket):
     file_id = message.get("id", None)
     file_content = message.get("content", None)
     if file_id is None or file_content is None:
-        return {"type": "error", "reason": "missing parameters"}
+        return INVALID_PARAMETERS
+
+    if account.permission(file_id) < WRITE:
+        return PERMISSION_DENIED
 
     file_uuid = single_query("SELECT file_uuid FROM files WHERE file_id=%s", (file_id,))
     if not file_uuid:
@@ -594,7 +632,8 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     ids = message.get("ids", None)
     if not isinstance(ids, list) or len(ids) != 2:
-        return {"type": "error", "reason": "invalid id parameter"}
+        return INVALID_PARAMETERS
+
     first_id, second_id = ids
 
     first_message = single_query("""
@@ -632,7 +671,7 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     new_name = message.get("name", None)
     if new_name is None:
-        return {"type": "error", "reason": "missing updated username"}
+        return INVALID_PARAMETERS
     account.user_name = new_name
     execute("UPDATE users SET user_name=%s WHERE user_id=%s", (new_name, account.user_id))
     get_user_name.cache_clear()
@@ -643,7 +682,7 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     user_id = message.get("id", None)
     if user_id is None:
-        return {"type": "error", "reason": "username query missing user id"}
+        return INVALID_PARAMETERS
     return {"type": "username update", "id": user_id, "name": get_user_name(user_id)}
 
 
@@ -651,7 +690,10 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     file_id = message.get("id", None)
     if file_id is None:
-        return {"type": "error", "reason": "delete file missing file id"}
+        return INVALID_PARAMETERS
+
+    if account.permission(file_id) < WRITE:
+        return PERMISSION_DENIED
 
     parent_id, file_uuid, file_type = single_query(
         "SELECT parent_id, file_uuid, file_type FROM files WHERE file_id=%s",
@@ -691,10 +733,8 @@ def delete_file(file_uuid, file_id, file_type):
 async def _ (account, message, websocket):
     directory_name = message.get("name", None)
     directory_id = message.get("id", None)
-    if directory_name is None:
-        return {"type": "error", "reason": "add subfolder missing name"}
-    if directory_id is None:
-        return {"type": "error", "reason": "add subfolder missing parent id"}
+    if directory_name is None or directory_id is None:
+        return INVALID_PARAMETERS
 
     execute("""
         INSERT INTO files (file_name, file_type, owner_id, parent_id)
@@ -708,10 +748,8 @@ async def _ (account, message, websocket):
 async def _ (account, message, websocket):
     file_name = message.get("name", None)
     file_id = message.get("id", None)
-    if file_name is None:
-        return {"type": "error", "reason": "rename file missing name"}
-    if file_id is None:
-        return {"type": "error", "reason": "rename file missing file id"}
+    if file_name is None or file_id is None:
+        return INVALID_PARAMETERS
 
     execute("""
         UPDATE files SET file_name=%s WHERE file_id=%s
@@ -744,6 +782,8 @@ async def _ (account, message, websocket):
 
 @register_handler("clear history")
 async def _ (account, message, websocket):
+    if not account.admin:
+        return PERMISSION_DENIED
     execute("DELETE FROM messages")
     await broadcast({"type": "clear history"})
 
@@ -820,7 +860,7 @@ async def main_handler(websocket, path):
                         account.user_name = idinfo['email']
                         execute("UPDATE users SET user_name=%s WHERE user_id=%s", (idinfo['email'], account.user_id))
                         await websocket.send(json.dumps({"type": "prompt username"}))
-                    reply = {"type": "auth success"}
+                    reply = {"type": "auth success", "id": account.user_id}
                     connected_sockets.add(websocket)
                 except ValueError as e:
                     reply = {"type": "auth failure", "reason": "invalid auth token, " + str(e)}
@@ -853,6 +893,10 @@ class Account:
         self.google_id = google_id
         self.user_id = user_id
         self.user_name = user_name
+        self.admin = True
+
+    def permission(self, file_id):
+        return ADMIN
 
 
 @lru_cache(maxsize=64)
