@@ -56,7 +56,7 @@ Character.prototype.layout = [
     },
     {
         type: "section",
-        title: "Equipment"
+        title: "Equipment",
         children: [
             {type: "entity array attribute", key: "equipment", schema: "Equipment"}
         ]
