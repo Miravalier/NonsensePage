@@ -574,6 +574,36 @@ async def _ (account, message, websocket):
     ids = message.get("ids", None)
     if not isinstance(ids, list) or len(ids) != 2:
         return {"type": "error", "reason": "invalid id parameter"}
+    first_id, second_id = ids
+
+    first_message = single_query("""
+        SELECT
+            sender_id, permission_id, category, display_name,
+            content, sent_time
+        FROM messages WHERE message_id=%s
+    """, (first_id,));
+
+    second_message = single_query("""
+        SELECT
+            sender_id, permission_id, category, display_name,
+            content, sent_time
+        FROM messages WHERE message_id=%s
+    """, (second_id,));
+
+    execute("""
+        UPDATE messages SET
+            sender_id=%s, permission_id=%s, category=%s,
+            display_name=%s, content=%s, sent_time=%s
+        WHERE message_id=%s
+    """, second_message + (first_id,))
+
+    execute("""
+        UPDATE messages SET
+            sender_id=%s, permission_id=%s, category=%s,
+            display_name=%s, content=%s, sent_time=%s
+        WHERE message_id=%s
+    """, first_message + (second_id,))
+
     await broadcast({"type": "swap messages", "ids": ids});
 
 

@@ -574,6 +574,8 @@ function create_message(message_display, id, category, timestamp, source, conten
                 send_object({type: "swap messages", ids: [message.message_id, message.next.message_id]});
             }
         }});
+        e.preventDefault();
+        e.stopPropagation();
     });
 
     return message;
@@ -588,10 +590,6 @@ function swap_messages(a, b) {
     let b_p = b.find("p");
 
     var temp = a_h5.text();
-    a_h5.text(b_h5.text());
-    b_h5.text(temp);
-
-    temp = a_h5.text();
     a_h5.text(b_h5.text());
     b_h5.text(temp);
 
