@@ -193,17 +193,41 @@ async def file_upload_callback(account, message, websocket):
     await broadcast({"type": "update file", "file id": directory_id, "user id": account.user_id})
 
 
-@register_handler("init attrs")
+@register_handler("init attr")
 async def _ (account, message, websocket):
     entity_id = message.get("entity", None)
-    attrs = message.get("attrs", None)
-    if entity_id is None or attrs is None:
+    attr = message.get("attrs", None)
+    if entity_id is None or type(attr) != list or len(attr) != 2:
         return INVALID_PARAMETERS
 
     if account.permission(entity_id) < WRITE:
         return PERMISSION_DENIED
 
-    for attr_name, attr_type in attrs:
+    attr_name, attr_type = attr
+    if isinstance(attr_type, list):
+        attr_type, _ = attr_type
+    attr_array = attr_type & ATTR_ARRAY != 0
+    attr_type &= ATTR_TYPE
+    if attr_type not in attr_type_map:
+        return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
+    if not attr_array:
+        execute("""
+            INSERT INTO {} (attr_name, attr_value, entity_id)
+            VALUES (%s, %s, %s)
+        """.format(attr_type_map[attr_type]), (attr_name, attr_defaults[attr_type], entity_id))
+
+
+@register_handler("init attrs")
+async def _ (account, message, websocket):
+    entity_id = message.get("entity", None)
+    attrs = message.get("attrs", None)
+    if entity_id is None or type(attrs) is not dict:
+        return INVALID_PARAMETERS
+
+    if account.permission(entity_id) < WRITE:
+        return PERMISSION_DENIED
+
+    for attr_name, attr_type in attrs.items():
         if isinstance(attr_type, list):
             attr_type, _ = attr_type
         attr_array = attr_type & ATTR_ARRAY != 0
@@ -215,6 +239,36 @@ async def _ (account, message, websocket):
                 INSERT INTO {} (attr_name, attr_value, entity_id)
                 VALUES (%s, %s, %s)
             """.format(attr_type_map[attr_type]), (attr_name, attr_defaults[attr_type], entity_id))
+
+
+@register_handler("get attr")
+async def _ (account, message, websocket):
+    entity_id = message.get("entity", None)
+    attr = message.get("attr", None)
+    if entity_id is None or type(attr) is not list or len(attr) != 2:
+        return INVALID_PARAMETERS
+
+    if account.permission(entity_id) < READ:
+        return PERMISSION_DENIED
+
+    attr_name, attr_type = attr
+
+    if isinstance(attr_type, list):
+        attr_type, _ = attr_type
+    attr_array = attr_type & ATTR_ARRAY != 0
+    attr_type &= ATTR_TYPE
+    if attr_type not in attr_type_map:
+        return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
+    if attr_array:
+        result = [v[0] if v is not None else None for v in query("""
+            SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
+        """.format(attr_type_map[attr_type]), (attr_name, entity_id))]
+    else:
+        result = single_query("""
+            SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
+        """.format(attr_type_map[attr_type]), (attr_name, entity_id))
+
+    return {"type": "attr", "result": result}
 
 
 @register_handler("get attrs")
@@ -246,6 +300,39 @@ async def _ (account, message, websocket):
             """.format(attr_type_map[attr_type]), (attr_name, entity_id))
 
     return {"type": "attrs", "results": results}
+
+
+@register_handler("set attr")
+async def _ (account, message, websocket):
+    entity_id = message.get("entity", None)
+    attr = message.get("attr", None)
+    if entity_id is None or type(attr) is not list or len(attr) != 3:
+        return INVALID_PARAMETERS
+
+    if account.permission(entity_id) < WRITE:
+        return PERMISSION_DENIED
+
+    attr_name, attr_type, attr_value = attr
+
+    if isinstance(attr_type, list):
+        attr_type, _ = attr_type
+    attr_array = attr_type & ATTR_ARRAY != 0
+    attr_type &= ATTR_TYPE
+    if attr_type not in attr_type_map:
+        return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
+    if attr_array:
+        execute("""
+            DELETE FROM {} WHERE attr_name=%s AND entity_id=%s
+        """.format(attr_type_map[attr_type]), (attr_name, entity_id))
+        for sub_value in attr_value:
+            execute("""
+                INSERT INTO {} (attr_name, attr_value, entity_id)
+                VALUES (%s, %s, %s)
+            """.format(attr_type_map[attr_type]), (attr_name, attr_value, entity_id))
+    else:
+        execute("""
+            UPDATE {} SET attr_value=%s WHERE attr_name=%s AND entity_id=%s
+        """.format(attr_type_map[attr_type]), (attr_value, attr_name, entity_id))
 
 
 @register_handler("set attrs")
@@ -285,6 +372,8 @@ async def _ (account, message, websocket):
     file_id = message.get("id", None)
     if file_id is None:
         return INVALID_PARAMETERS
+    if not account.admin:
+        return PERMISSION_DENIED
     execute("UPDATE files SET active=TRUE WHERE file_id=%s", (file_id,))
 
 
@@ -293,6 +382,8 @@ async def _ (account, message, websocket):
     file_id = message.get("id", None)
     if file_id is None:
         return INVALID_PARAMETERS
+    if not account.admin:
+        return PERMISSION_DENIED
     execute("UPDATE files SET active=FALSE WHERE file_id=%s", (file_id,))
 
 
@@ -361,12 +452,14 @@ async def _ (account, message, websocket):
     else:
         file_uuid = None
 
-    execute("""
+    file_id = execute_and_return("""
         INSERT INTO files (file_name, file_type, owner_id, parent_id, file_uuid)
         VALUES (%s, %s, %s, %s, %s)
-    """, (file_name, file_type, account.user_id, parent_id, file_uuid))
+        RETURNING file_id
+    """, (file_name, file_type, account.user_id, parent_id, file_uuid))[0]
 
     await broadcast({"type": "update file", "file id": parent_id, "user id": account.user_id})
+    return {"type": "new file", "id": file_id}
 
 
 @register_handler("create entity")

@@ -13,16 +13,46 @@ export class Entity {
     }
 
     /* For use in abstract methods */
-    get_attrs(options) {
+    async get_attr(name) {
+        let reply = await send_request({
+            type: "get attr",
+            entity: this.entity_id,
+            attr: [name, this.attributes[name]]
+        });
+        if (reply.type == "error") {
+            console.error(reply.reason);
+            return null;
+        }
+        else {
+            return reply.result
+        }
+    }
+
+    async get_attrs(options) {
         let attributes = [];
         for (let name of options) {
             // Name, Type
             attributes.push([name, this.attributes[name]]);
         }
-        return send_request({
+        let reply = await send_request({
             type: "get attrs",
             entity: this.entity_id,
             attrs: attributes
+        });
+        if (reply.type == "error") {
+            console.error(reply.reason);
+            return null;
+        }
+        else {
+            return reply.results
+        }
+    }
+
+    set_attr(name, value) {
+        send_object({
+            type: "set attr",
+            entity: this.entity_id,
+            attr: [name, this.attributes[name], value]
         });
     }
 

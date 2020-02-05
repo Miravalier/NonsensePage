@@ -762,6 +762,7 @@ function create_button_window(x, y, width, height, buttons)
     return button_window;
 }
 
+// LAYOUT ELEMENTS
 
 g_layout_elements["row section"] = async function (viewer, entity, element) {
     let section = $(`<div class="row_section"></div>`);
@@ -808,45 +809,56 @@ g_layout_elements["column"] = async function (viewer, entity, element) {
 };
 
 g_layout_elements["boolean attribute"] = async function (viewer, entity, element) {
+    let value = await entity.get_attr(element.key);
     let attribute = $(`<div class="attribute no_drag"></div>`);
     if (element.name) {
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
-    attribute.append($(`<input class="boolean" type="checkbox" value="1"></input>`));
+    if (value) {
+        attribute.append($(`<input class="boolean" type="checkbox" value="1" checked></input>`));
+    }
+    else {
+        attribute.append($(`<input class="boolean" type="checkbox" value="1"></input>`));
+    }
     return attribute;
 };
 
 g_layout_elements["text attribute"] = async function (viewer, entity, element) {
+    let value = await entity.get_attr(element.key);
     let attribute = $(`<div class="attribute no_drag"></div>`);
     if (element.name) {
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
-    attribute.append($(`<input class="text" type="text"></input>`));
+    attribute.append($(`<input class="text" type="text" value="${value}"></input>`));
     return attribute;
 };
 
 g_layout_elements["formula attribute"] = async function (viewer, entity, element) {
+    let value = await entity.get_attr(element.key);
     let attribute = $(`<div class="attribute no_drag"></div>`);
     if (element.name) {
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
-    attribute.append($(`<input class="formula" type="text"></input>`));
+    attribute.append($(`<input class="formula" type="text" value="${value}"></input>`));
     return attribute;
 };
 
 g_layout_elements["number attribute"] = async function (viewer, entity, element) {
+    let value = await entity.get_attr(element.key);
     let attribute = $(`<div class="attribute no_drag"></div>`);
     if (element.name) {
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
-    attribute.append($(`<input class="numeric" type="number"></input>`));
+    attribute.append($(`<input class="numeric" type="number" value="${value}"></input>`));
     return attribute;
 };
 
 g_layout_elements["entity attribute"] = async function (viewer, entity, element) {
     // Generate sub entity
-    let attr_reply = await entity.get_attrs([element.key]);
-    let sub_entity_id = attr_reply.results[element.key];
+    let sub_entity_id = await entity.get_attr(element.key);
+    if (!sub_entity_id) {
+        return;
+    }
     console.log(`Entity Attribute key '${element.key}' sub_entity_id is '${sub_entity_id}'`);
     let SubEntityType = await get_schema(sub_entity_id);
     let sub_entity = new SubEntityType(sub_entity_id);
@@ -861,8 +873,10 @@ g_layout_elements["entity attribute"] = async function (viewer, entity, element)
 g_layout_elements["entity array attribute"] = async function (viewer, entity, element) {
     let array_div = $(`<div class="viewer_array"></div>`);
     // Generate sub entity
-    let attr_reply = await entity.get_attrs([element.key]);
-    let sub_entity_ids = attr_reply.results[element.key];
+    let sub_entity_ids = await entity.get_attr(element.key);
+    if (!sub_entity_ids) {
+        return;
+    }
     for (let sub_entity_id of sub_entity_ids) {
         let div = $(`<div class="subentity no_drag"></div>`);
         let SubEntityType = await get_schema(sub_entity_id);
@@ -1061,6 +1075,7 @@ async function spawn_entity(name, parent_id, schema) {
     });
     // Verify return
     if (reply.type == "error") {
+        console.error(reply.reason);
         return;
     }
     // Get entity
@@ -1068,8 +1083,7 @@ async function spawn_entity(name, parent_id, schema) {
     let EntityType = await get_schema(entity_id);
     let entity = new EntityType(entity_id);
     // Initialize entity attributes
-    let attrs = Object.keys(entity.attributes).map(k => [k, entity.attributes[k]]);
-    send_object({type: "init attrs", entity: entity_id, attrs: attrs});
+    send_object({type: "init attrs", entity: entity_id, attrs: entity.attributes});
     // Recursively spawn any non-array entity attributes
     for (let attr of attrs) {
         let [name, type] = attr;
@@ -1084,10 +1098,7 @@ async function spawn_entity(name, parent_id, schema) {
         {
             // Update parent with id of sub entity attribute
             let sub_entity_id = await spawn_entity(name, entity_id, attr_schema);
-            let update = {};
-            update[attr[0]] = sub_entity_id;
-            console.log(update)
-            entity.set_attrs(update);
+            entity.set_attr(attr[0], sub_entity_id);
         }
     }
 
