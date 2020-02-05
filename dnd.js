@@ -5,9 +5,8 @@ import * as utils from "./utils.js?ver=util-0";
 var g_open_windows = new Set();
 var g_focus = true;
 var g_notification_sent = false;
+var g_layout_elements = {};
 var g_commands = {
-    '': [
-    ],
     '/clear': [
         [],
         function (args) {
@@ -764,122 +763,136 @@ function create_button_window(x, y, width, height, buttons)
 }
 
 
-async function create_layout_element(viewer, entity, element) {
-    if (element.type == "row section") {
-        let section = $(`<div class="row_section"></div>`);
-        if (element.title) {
-            section.append($(`<h3 class="section_title">${element.title}</h3>`));
-        }
-        for (let subelement of element.children) {
-            section.append(await create_layout_element(viewer, entity, subelement));
-        }
-        return section;
+g_layout_elements["row section"] = async function (viewer, entity, element) {
+    let section = $(`<div class="row_section"></div>`);
+    if (element.title) {
+        section.append($(`<h3 class="section_title">${element.title}</h3>`));
     }
-    else if (element.type == "column section") {
-        let section = $(`<div class="column_section"></div>`);
-        if (element.title) {
-            section.append($(`<h3 class="section_title">${element.title}</h3>`));
-        }
-        for (let subelement of element.children) {
-            section.append(await create_layout_element(viewer, entity, subelement));
-        }
-        return section;
+    for (let subelement of element.children) {
+        section.append(await create_layout_element(viewer, entity, subelement));
     }
-    else if (element.type == "row") {
-        let section = $(`<div class="row"></div>`);
-        if (element.title) {
-            section.append($(`<h3 class="section_title">${element.title}</h3>`));
-        }
-        for (let subelement of element.children) {
-            section.append(await create_layout_element(viewer, entity, subelement));
-        }
-        return section;
+    return section;
+};
+
+g_layout_elements["column section"] = async function (viewer, entity, element) {
+    let section = $(`<div class="column_section"></div>`);
+    if (element.title) {
+        section.append($(`<h3 class="section_title">${element.title}</h3>`));
     }
-    else if (element.type == "column") {
-        let section = $(`<div class="column"></div>`);
-        if (element.title) {
-            section.append($(`<h3 class="section_title">${element.title}</h3>`));
-        }
-        for (let subelement of element.children) {
-            section.append(await create_layout_element(viewer, entity, subelement));
-        }
-        return section;
+    for (let subelement of element.children) {
+        section.append(await create_layout_element(viewer, entity, subelement));
     }
-    else if (element.type == "boolean attribute") {
-        let attribute = $(`<div class="attribute no_drag"></div>`);
-        if (element.name) {
-            attribute.append($(`<h4 class="label">${element.name}</h4>`));
-        }
-        attribute.append($(`<input class="boolean" type="checkbox" value="1"></input>`));
-        return attribute;
+    return section;
+};
+
+g_layout_elements["row"] = async function (viewer, entity, element) {
+    let section = $(`<div class="row"></div>`);
+    if (element.title) {
+        section.append($(`<h3 class="section_title">${element.title}</h3>`));
     }
-    else if (element.type == "text attribute") {
-        let attribute = $(`<div class="attribute no_drag"></div>`);
-        if (element.name) {
-            attribute.append($(`<h4 class="label">${element.name}</h4>`));
-        }
-        attribute.append($(`<input class="text" type="text"></input>`));
-        return attribute;
+    for (let subelement of element.children) {
+        section.append(await create_layout_element(viewer, entity, subelement));
     }
-    else if (element.type == "formula attribute") {
-        let attribute = $(`<div class="attribute no_drag"></div>`);
-        if (element.name) {
-            attribute.append($(`<h4 class="label">${element.name}</h4>`));
-        }
-        attribute.append($(`<input class="formula" type="text"></input>`));
-        return attribute;
+    return section;
+};
+
+g_layout_elements["column"] = async function (viewer, entity, element) {
+    let section = $(`<div class="column"></div>`);
+    if (element.title) {
+        section.append($(`<h3 class="section_title">${element.title}</h3>`));
     }
-    else if (element.type == "number attribute") {
-        let attribute = $(`<div class="attribute no_drag"></div>`);
-        if (element.name) {
-            attribute.append($(`<h4 class="label">${element.name}</h4>`));
-        }
-        attribute.append($(`<input class="numeric" type="number"></input>`));
-        return attribute;
+    for (let subelement of element.children) {
+        section.append(await create_layout_element(viewer, entity, subelement));
     }
-    else if (element.type == "entity attribute") {
-        // Generate sub entity
-        let attr_reply = await entity.get_attrs([element.key]);
-        let sub_entity_id = attr_reply.results[element.key];
-        console.log(`Entity Attribute key '${element.key}' sub_entity_id is '${sub_entity_id}'`);
+    return section;
+};
+
+g_layout_elements["boolean attribute"] = async function (viewer, entity, element) {
+    let attribute = $(`<div class="attribute no_drag"></div>`);
+    if (element.name) {
+        attribute.append($(`<h4 class="label">${element.name}</h4>`));
+    }
+    attribute.append($(`<input class="boolean" type="checkbox" value="1"></input>`));
+    return attribute;
+};
+
+g_layout_elements["text attribute"] = async function (viewer, entity, element) {
+    let attribute = $(`<div class="attribute no_drag"></div>`);
+    if (element.name) {
+        attribute.append($(`<h4 class="label">${element.name}</h4>`));
+    }
+    attribute.append($(`<input class="text" type="text"></input>`));
+    return attribute;
+};
+
+g_layout_elements["formula attribute"] = async function (viewer, entity, element) {
+    let attribute = $(`<div class="attribute no_drag"></div>`);
+    if (element.name) {
+        attribute.append($(`<h4 class="label">${element.name}</h4>`));
+    }
+    attribute.append($(`<input class="formula" type="text"></input>`));
+    return attribute;
+};
+
+g_layout_elements["number attribute"] = async function (viewer, entity, element) {
+    let attribute = $(`<div class="attribute no_drag"></div>`);
+    if (element.name) {
+        attribute.append($(`<h4 class="label">${element.name}</h4>`));
+    }
+    attribute.append($(`<input class="numeric" type="number"></input>`));
+    return attribute;
+};
+
+g_layout_elements["entity attribute"] = async function (viewer, entity, element) {
+    // Generate sub entity
+    let attr_reply = await entity.get_attrs([element.key]);
+    let sub_entity_id = attr_reply.results[element.key];
+    console.log(`Entity Attribute key '${element.key}' sub_entity_id is '${sub_entity_id}'`);
+    let SubEntityType = await get_schema(sub_entity_id);
+    let sub_entity = new SubEntityType(sub_entity_id);
+    // Nest sub entity layout
+    let div = $(`<div class="subentity no_drag"></div>`);
+    for (let subelement of sub_entity.layout) {
+        div.append(await create_layout_element(viewer, entity, subelement));
+    }
+    return div;
+};
+
+g_layout_elements["entity array attribute"] = async function (viewer, entity, element) {
+    let array_div = $(`<div class="viewer_array"></div>`);
+    // Generate sub entity
+    let attr_reply = await entity.get_attrs([element.key]);
+    let sub_entity_ids = attr_reply.results[element.key];
+    for (let sub_entity_id of sub_entity_ids) {
+        let div = $(`<div class="subentity no_drag"></div>`);
         let SubEntityType = await get_schema(sub_entity_id);
         let sub_entity = new SubEntityType(sub_entity_id);
         // Nest sub entity layout
-        let div = $(`<div class="subentity no_drag"></div>`);
         for (let subelement of sub_entity.layout) {
             div.append(await create_layout_element(viewer, entity, subelement));
         }
-        return div;
+        array_div.append(div);
     }
-    else if (element.type == "entity array attribute") {
-        let array_div = $(`<div class="viewer_array"></div>`);
-        // Generate sub entity
-        let attr_reply = await entity.get_attrs([element.key]);
-        let sub_entity_ids = attr_reply.results[element.key];
-        for (let sub_entity_id of sub_entity_ids) {
-            let div = $(`<div class="subentity no_drag"></div>`);
-            let SubEntityType = await get_schema(sub_entity_id);
-            let sub_entity = new SubEntityType(sub_entity_id);
-            // Nest sub entity layout
-            for (let subelement of sub_entity.layout) {
-                div.append(await create_layout_element(viewer, entity, subelement));
-            }
-            array_div.append(div);
-        }
-        return array_div;
+    return array_div;
+};
+
+g_layout_elements["button"] = async function (viewer, entity, element) {
+    let button = $(`<button class="viewer_button no_drag" type="button"></button>`);
+    if (element.name) {
+        button.text(element.name);
     }
-    else if (element.type == "button") {
-        let button = $(`<button class="viewer_button no_drag" type="button"></button>`);
-        if (element.name) {
-            button.text(element.name);
-        }
-        return button;
+    return button;
+};
+
+async function create_layout_element(viewer, entity, element) {
+    let element_creator = g_layout_elements[element.type];
+    if (element_creator) {
+        return await element_creator(viewer, entity, element);
     }
     else {
         console.error(`Unrecognized viewer element type: '${element.type}'`);
     }
 }
-
 
 async function create_entity_viewer(x, y, width, height, file)
 {
