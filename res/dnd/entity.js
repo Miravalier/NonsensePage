@@ -14,6 +14,9 @@ export class Entity {
 
     /* For use in abstract methods */
     async get_attr(name) {
+        if (!(name in this.attributes)) {
+            throw new Error("Nonexistent attribute: " + name);
+        }
         let reply = await send_request({
             type: "get attr",
             entity: this.entity_id,
@@ -31,6 +34,9 @@ export class Entity {
     async get_attrs(options) {
         let attributes = [];
         for (let name of options) {
+            if (!(name in this.attributes)) {
+                throw new Error("Nonexistent attribute: " + name);
+            }
             // Name, Type
             attributes.push([name, this.attributes[name]]);
         }

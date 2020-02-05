@@ -15,6 +15,7 @@ from contextlib import contextmanager
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from functools import lru_cache
+from decimal import Decimal
 
 # Constants
 PERMISSION_DENIED = {"type": "error", "reason": "permission denied"}
@@ -267,6 +268,8 @@ async def _ (account, message, websocket):
         result = single_query("""
             SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
         """.format(attr_type_map[attr_type]), (attr_name, entity_id))
+    if isinstance(result, Decimal):
+        result = float(result)
 
     return {"type": "attr", "result": result}
 
@@ -291,13 +294,21 @@ async def _ (account, message, websocket):
         if attr_type not in attr_type_map:
             return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
         if attr_array:
-            results[attr_name] = [v[0] if v is not None else None for v in query("""
-                SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
-            """.format(attr_type_map[attr_type]), (attr_name, entity_id))]
+            if attr_type == ATTR_NUMBER:
+                result = [float(v[0]) if v is not None else None for v in query("""
+                    SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
+                """.format(attr_type_map[attr_type]), (attr_name, entity_id))]
+            else:
+                result = [v[0] if v is not None else None for v in query("""
+                    SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
+                """.format(attr_type_map[attr_type]), (attr_name, entity_id))]
         else:
-            results[attr_name] = single_query("""
+            result = single_query("""
                 SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
             """.format(attr_type_map[attr_type]), (attr_name, entity_id))
+            if isinstance(result, Decimal):
+                result = float(result)
+        results[attr_name] = result
 
     return {"type": "attrs", "results": results}
 

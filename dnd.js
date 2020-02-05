@@ -1,5 +1,5 @@
-import * as Entity from "./entity.js?ver=ent-1";
-import * as utils from "./utils.js?ver=util-1";
+import * as Entity from "./entity.js?ver=ent-2";
+import * as utils from "./utils.js?ver=util-2";
 
 // Mutable Globals
 var g_open_windows = new Set();
@@ -862,10 +862,11 @@ g_layout_elements["entity attribute"] = async function (viewer, entity, element)
     console.log(`Entity Attribute key '${element.key}' sub_entity_id is '${sub_entity_id}'`);
     let SubEntityType = await get_schema(sub_entity_id);
     let sub_entity = new SubEntityType(sub_entity_id);
+    sub_entity.parent = entity;
     // Nest sub entity layout
     let div = $(`<div class="subentity no_drag"></div>`);
     for (let subelement of sub_entity.layout) {
-        div.append(await create_layout_element(viewer, entity, subelement));
+        div.append(await create_layout_element(viewer, sub_entity, subelement));
     }
     return div;
 };
@@ -881,9 +882,10 @@ g_layout_elements["entity array attribute"] = async function (viewer, entity, el
         let div = $(`<div class="subentity no_drag"></div>`);
         let SubEntityType = await get_schema(sub_entity_id);
         let sub_entity = new SubEntityType(sub_entity_id);
+        sub_entity.parent = entity;
         // Nest sub entity layout
         for (let subelement of sub_entity.layout) {
-            div.append(await create_layout_element(viewer, entity, subelement));
+            div.append(await create_layout_element(viewer, sub_entity, subelement));
         }
         array_div.append(div);
     }
@@ -1101,7 +1103,7 @@ async function spawn_entity(name, parent_id, schema) {
             if (!sub_entity_id) {
                 return;
             }
-            entity.set_attr(attr[0], sub_entity_id);
+            entity.set_attr(attr, sub_entity_id);
         }
     }
 
