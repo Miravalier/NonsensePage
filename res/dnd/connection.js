@@ -2,6 +2,7 @@
  * INTERNALS *
  *************/
 
+var g_admin = false;
 var g_id = null;
 var g_auth2 = null;
 var g_connection = null;
@@ -76,6 +77,7 @@ function message_sorter(message) {
     }
     else if (message.type == "auth success") {
         g_id = message.id;
+        g_admin = message.admin;
         g_connection_delay = 500;
         console.log("[!] Authentication accepted");
         g_connection_activated = true;

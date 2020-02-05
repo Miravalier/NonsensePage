@@ -634,6 +634,9 @@ async def _ (account, message, websocket):
     if not isinstance(ids, list) or len(ids) != 2:
         return INVALID_PARAMETERS
 
+    if not account.admin:
+        return PERMISSION_DENIED
+
     first_id, second_id = ids
 
     first_message = single_query("""
@@ -776,7 +779,7 @@ async def _ (account, message, websocket):
 
     await broadcast({
         "type": "chat message", "category": category, "display name": display_name,
-        "id": result, "text": text, "timestamp": sent_time.utctimetuple()
+        "id": result, "text": text, "timestamp": sent_time.utctimetuple(), "sender": account.user_id
     })
 
 
@@ -860,7 +863,7 @@ async def main_handler(websocket, path):
                         account.user_name = idinfo['email']
                         execute("UPDATE users SET user_name=%s WHERE user_id=%s", (idinfo['email'], account.user_id))
                         await websocket.send(json.dumps({"type": "prompt username"}))
-                    reply = {"type": "auth success", "id": account.user_id}
+                    reply = {"type": "auth success", "id": account.user_id, "admin": account.admin}
                     connected_sockets.add(websocket)
                 except ValueError as e:
                     reply = {"type": "auth failure", "reason": "invalid auth token, " + str(e)}
@@ -889,11 +892,11 @@ async def main_handler(websocket, path):
 
 
 class Account:
-    def __init__(self, google_id, user_id, user_name):
+    def __init__(self, google_id, user_id, user_name, admin):
         self.google_id = google_id
         self.user_id = user_id
         self.user_name = user_name
-        self.admin = True
+        self.admin = admin
 
     def permission(self, file_id):
         return ADMIN
@@ -901,10 +904,10 @@ class Account:
 
 @lru_cache(maxsize=64)
 def get_account(google_id):
-    result = single_query("SELECT user_id, user_name FROM users WHERE google_id=%s", (google_id,))
+    result = single_query("SELECT user_id, user_name, admin FROM users WHERE google_id=%s", (google_id,))
     if result:
-        user_id, user_name = result
-        return Account(google_id, user_id, user_name)
+        user_id, user_name, admin = result
+        return Account(google_id, user_id, user_name, admin)
     else:
         execute("INSERT INTO users (google_id) VALUES (%s)", (google_id,))
         return get_account(google_id)

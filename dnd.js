@@ -526,7 +526,7 @@ function create_window(x, y, width, height)
     return window_element;
 }
 
-function create_message(message_display, id, category, timestamp, source, content)
+function create_message(message_display, sender, id, category, timestamp, source, content)
 {
     if (timestamp) {
         var message = $(`
@@ -545,7 +545,7 @@ function create_message(message_display, id, category, timestamp, source, conten
 
     message_display.append(message);
     message_display.scrollTop(message_display.prop('scrollHeight'));
-    if (category == "received") {
+    if (message.id != -1) {
         message.previous = message_display.tail_message;
         message.next = null;
         message_display.tail_message = message;
@@ -555,9 +555,23 @@ function create_message(message_display, id, category, timestamp, source, conten
         }
     }
 
-    message.message_id = id;
-    message.on("contextmenu", function (e) {
-        create_context_menu(e.clientX, e.clientY, {"Message": {
+    let options = {};
+
+    if (g_id == sender) {
+        options["Message"] = {
+            "Delete": function () {
+                return;
+            },
+            "Edit": function () {
+                return;
+            }
+        };
+    }
+    else if (g_admin) {
+        options["Message"] = {
+            "Delete": function () {
+                return;
+            },
             "Edit": function () {
                 return;
             },
@@ -573,7 +587,12 @@ function create_message(message_display, id, category, timestamp, source, conten
                 }
                 send_object({type: "swap messages", ids: [message.message_id, message.next.message_id]});
             }
-        }});
+        };
+    }
+
+    message.message_id = id;
+    message.on("contextmenu", function (e) {
+        create_context_menu(e.clientX, e.clientY, options);
         e.preventDefault();
         e.stopPropagation();
     });
@@ -689,23 +708,27 @@ function create_chat_window(x, y, width, height)
     });
 
     register_message("chat message", function (message) {
-        if (message.id != -1 && message.id in message_display.messages) {
-            // Discard messages we've already received unless
-            // their id is -1 (internal)
-            return;
-        }
         if (!message.historical) {
             notify(`${message['display name']}: ${message.text}`);
         }
 
         if (message.category == "Error") {
-            var element = create_message(message_display, message.id, "error", message.timestamp, "Error", message.text);
+            var element = create_message(
+                message_display, message.sender, -1,
+                "error", message.timestamp, "Error", message.text
+            );
         }
         else if (message.category == "System") {
-            var element = create_message(message_display, message.id, "system", message.timestamp, "System", message.text);
+            var element = create_message(
+                message_display, message.sender, -1,
+                "system", message.timestamp, "System", message.text
+            );
         }
         else {
-            var element = create_message(message_display, message.id, "received", message.timestamp, message["display name"], message.text);
+            var element = create_message(
+                message_display, message.sender, message.id,
+                "received", message.timestamp, message["display name"], message.text
+            );
         }
         message_display.messages[message.id] = element;
     });
