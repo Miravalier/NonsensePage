@@ -1,5 +1,5 @@
-import * as Entity from "./entity.js?ver=ent-0";
-import * as utils from "./utils.js?ver=util-0";
+import * as Entity from "./entity.js?ver=ent-1";
+import * as utils from "./utils.js?ver=util-1";
 
 // Mutable Globals
 var g_open_windows = new Set();
