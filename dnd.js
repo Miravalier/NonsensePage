@@ -1085,8 +1085,8 @@ async function spawn_entity(name, parent_id, schema) {
     // Initialize entity attributes
     send_object({type: "init attrs", entity: entity_id, attrs: entity.attributes});
     // Recursively spawn any non-array entity attributes
-    for (let attr of attrs) {
-        let [name, type] = attr;
+    for (let attr of Object.keys(entity.attributes)) {
+        let type = entity.attributes[attr];
         if (typeof(type) != "number") {
             var [attr_type, attr_schema] = type;
         }
@@ -1097,7 +1097,10 @@ async function spawn_entity(name, parent_id, schema) {
         if (((attr_type & Entity.ATTR_ARRAY) == 0) && attr_schema)
         {
             // Update parent with id of sub entity attribute
-            let sub_entity_id = await spawn_entity(name, entity_id, attr_schema);
+            let sub_entity_id = await spawn_entity(attr, entity_id, attr_schema);
+            if (!sub_entity_id) {
+                return;
+            }
             entity.set_attr(attr[0], sub_entity_id);
         }
     }
