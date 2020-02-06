@@ -24,7 +24,7 @@ var g_commands = {
 };
 
 // Constant Globals
-const g_history_limit = 100;
+const g_history_limit = 512;
 
 const g_notification_options = {
     badge: "/res/dnd/dnd.ico"
@@ -750,7 +750,7 @@ function create_chat_window(x, y, width, height)
         message_display.messages[message.id] = element;
     });
 
-    send_object({"type": "request history", "limit": g_history_limit});
+    send_object({"type": "request history"});
 
     return chat_window;
 }
