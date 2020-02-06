@@ -2,11 +2,11 @@ function count_parens(formula) {
     let open = 0;
     let close = 0;
 
-    let open_match = formula.match(/(/g);
+    let open_match = formula.match(/\(/g);
     if (open_match) {
         open = open_match.length;
     }
-    let close_match = formula.match(/)/g);
+    let close_match = formula.match(/\)/g);
     if (close_match) {
         close = close_match.length;
     }
