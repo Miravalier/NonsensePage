@@ -1105,7 +1105,6 @@ function create_file_window(x, y, width, height, pwd_id)
 
 
 async function spawn_entity(name, parent_id, schema) {
-    console.log(`Creating ${name}, child of ${parent_id} with schema ${schema}`);
     // Create base entity
     let reply = await send_request({
         type: "create entity",
