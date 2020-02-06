@@ -1463,6 +1463,7 @@ $("document").ready(function () {
 
     register_message("directory listing", () => {});
     register_message("no reply", () => {});
+    register_message("success", () => {});
 
     register_message("update file", async function (message) {
         let file_id = message["file id"];
