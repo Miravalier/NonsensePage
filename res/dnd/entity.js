@@ -14,7 +14,7 @@ export class Entity {
 
     /* For use in abstract methods */
     async get_attr(name) {
-        if (this.entity_id not in g_cache) {
+        if (!(this.entity_id in g_cache)) {
             g_cache[this.entity_id] = {};
         }
 
@@ -25,6 +25,7 @@ export class Entity {
         if (!(name in this.attributes)) {
             throw new Error("Nonexistent attribute: " + name);
         }
+        console.log("[!] Cache Miss");
         let reply = await send_request({
             type: "get attr",
             entity: this.entity_id,
@@ -41,7 +42,7 @@ export class Entity {
     }
 
     set_attr(name, value) {
-        if (this.entity_id not in g_cache) {
+        if (!(this.entity_id in g_cache)) {
             g_cache[this.entity_id] = {};
         }
         send_object({
@@ -53,7 +54,7 @@ export class Entity {
     }
 
     set_attrs(options) {
-        if (this.entity_id not in g_cache) {
+        if (!(this.entity_id in g_cache)) {
             g_cache[this.entity_id] = {};
         }
         let attributes = [];

@@ -1,5 +1,5 @@
 //ENTITY-SCHEMA
-import * as Entity from "/res/dnd/entity.js?ver=ent-3";
+import * as Entity from "/res/dnd/entity.js?ver=ent-4";
 
 export default class Character extends Entity.Entity {
     /* Method Overrides */

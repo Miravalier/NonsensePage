@@ -1,4 +1,4 @@
-import * as Entity from "./entity.js?ver=ent-3";
+import * as Entity from "./entity.js?ver=ent-4";
 import * as Utils from "./utils.js?ver=util-2";
 import * as Dice from "./dice.js?ver=dice-8";
 
