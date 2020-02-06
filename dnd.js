@@ -24,6 +24,8 @@ var g_commands = {
 };
 
 // Constant Globals
+const g_history_limit = 100;
+
 const g_notification_options = {
     badge: "/res/dnd/dnd.ico"
 };
@@ -527,6 +529,14 @@ function create_window(x, y, width, height)
 
 function create_message(message_display, sender, id, category, timestamp, source, content)
 {
+    if (message_display.message_count >= g_history_limit) {
+        let removed_message = message_display.head_message;
+        message_display.head_message = removed_message.next;
+        message_display.head_message.previous = null;
+        removed_message.remove();
+        message_display.message_count--;
+    }
+
     if (timestamp) {
         var message = $(`
             <div class="any_message ${category}_message">
@@ -545,6 +555,9 @@ function create_message(message_display, sender, id, category, timestamp, source
     message_display.append(message);
     message_display.scrollTop(message_display.prop('scrollHeight'));
     if (message.id != -1) {
+        if (message_display.head_message == null) {
+            message_display.head_message = message;
+        }
         message.previous = message_display.tail_message;
         message.next = null;
         message_display.tail_message = message;
@@ -634,6 +647,7 @@ function create_chat_window(x, y, width, height)
 
     let message_display = $('<div class="message_display no_drag"></div>')
     message_display.tail_message = null;
+    message_display.head_message = null;
     chat_window.append(message_display);
     chat_window.message_display = message_display
 
@@ -703,6 +717,7 @@ function create_chat_window(x, y, width, height)
     register_message("clear history", function (message) {
         message_display.messages = {};
         message_display.tail_message = null;
+        message_display.head_message = null;
         message_display.html("");
     });
 
@@ -728,11 +743,12 @@ function create_chat_window(x, y, width, height)
                 message_display, message.sender, message.id,
                 "received", message.timestamp, message["display name"], message.text
             );
+            message_display.message_count++;
         }
         message_display.messages[message.id] = element;
     });
 
-    send_object({"type": "request history"});
+    send_object({"type": "request history", "limit": g_history_limit});
 
     return chat_window;
 }
