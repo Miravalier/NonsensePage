@@ -850,10 +850,16 @@ g_layout_elements["boolean attribute"] = async function (viewer, entity, element
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
     if (value) {
-        attribute.append($(`<input class="boolean" type="checkbox" value="1" checked></input>`));
+        attribute.append($(`
+            <input data-key="${entity.entity_id}-${element.key}"
+            class="boolean" type="checkbox" value="1" checked />
+        `));
     }
     else {
-        attribute.append($(`<input class="boolean" type="checkbox" value="1"></input>`));
+        attribute.append($(`
+            <input data-key="${entity.entity_id}-${element.key}"
+            class="boolean" type="checkbox" value="1" />
+        `));
     }
     let input = attribute.find("input");
     input.on("input", function () {
@@ -868,7 +874,7 @@ g_layout_elements["text attribute"] = async function (viewer, entity, element) {
     if (element.name) {
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
-    attribute.append($(`<input class="text" type="text" value="${value}"></input>`));
+    attribute.append($(`<input data-key="${entity.entity_id}-${element.key}" class="text" type="text" value="${value}"></input>`));
     let input = attribute.find("input");
     input.on("input", function () {
         entity.set_attr(element.key, input.val());
@@ -882,7 +888,7 @@ g_layout_elements["formula attribute"] = async function (viewer, entity, element
     if (element.name) {
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
-    attribute.append($(`<input class="formula" type="text" value="${value}"></input>`));
+    attribute.append($(`<input data-key="${entity.entity_id}-${element.key}" class="formula" type="text" value="${value}"></input>`));
     let input = attribute.find("input");
     input.on("input", function () {
         entity.set_attr(element.key, input.val());
@@ -896,7 +902,7 @@ g_layout_elements["number attribute"] = async function (viewer, entity, element)
     if (element.name) {
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
-    attribute.append($(`<input class="numeric" type="number" value="${value}"></input>`));
+    attribute.append($(`<input data-key="${entity.entity_id}-${element.key}" class="numeric" type="number" value="${value}"></input>`));
     let input = attribute.find("input");
     input.on("input", function () {
         entity.set_attr(element.key, parseInt(input.val()));
@@ -974,6 +980,7 @@ async function create_entity_viewer(x, y, width, height, file)
 
     let entity_viewer = create_window(x, y, width, height);
     entity_viewer.window_type = "entity viewer";
+    entity_viewer.entity_id = file.id;
     let viewport = $(`<div class="entity_viewport"></div>`);
     entity_viewer.append(viewport);
 
@@ -1482,9 +1489,19 @@ $("document").ready(function () {
     register_message("success", ignore);
 
     register_message("attr change", async function (message) {
+        // If this message came from someone else, clear the cache
+        // and fetch the update
         if (message.origin != g_id && message.entity in g_cache) {
             delete g_cache[message.entity][message.attr];
+
+            let EntityType = await get_schema(message.entity);
+            let entity = new EntityType(message.entity);
+
+            entity.get_attr(message.attr).then(value => {
+                tabletop.find(`input[data-key='${message.entity}-${message.attr}']`).val(value);
+            });
         }
+
     });
 
     register_message("update file", async function (message) {
@@ -1493,14 +1510,14 @@ $("document").ready(function () {
             if (open_window.window_type == "file")
             {
                 if (open_window.pwd_id != file_id) {
-                    return;
+                    continue;
                 }
                 load_file_listing(open_window);
             }
             else if (open_window.window_type == "text viewer")
             {
                 if (open_window.file.id != file_id) {
-                    return;
+                    continue;
                 }
                 $.get(
                     `/content/${open_window.file.uuid}`,
