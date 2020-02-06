@@ -646,10 +646,11 @@ function create_chat_window(x, y, width, height)
     chat_window.append(drag_handle);
 
     let message_display = $('<div class="message_display no_drag"></div>')
+    message_display.message_count = 0;
     message_display.tail_message = null;
     message_display.head_message = null;
     chat_window.append(message_display);
-    chat_window.message_display = message_display
+    chat_window.message_display = message_display;
 
     let text_input = document.createElement("input");
     chat_window.text_input = text_input;
@@ -715,6 +716,7 @@ function create_chat_window(x, y, width, height)
     });
 
     register_message("clear history", function (message) {
+        message_display.message_count = 0;
         message_display.messages = {};
         message_display.tail_message = null;
         message_display.head_message = null;
