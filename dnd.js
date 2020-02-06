@@ -1,5 +1,6 @@
 import * as Entity from "./entity.js?ver=ent-2";
-import * as utils from "./utils.js?ver=util-2";
+import * as Utils from "./utils.js?ver=util-2";
+import * as Dice from "./dice.js?ver=dice-1";
 
 // Mutable Globals
 var g_open_windows = new Set();
@@ -7,6 +8,15 @@ var g_focus = true;
 var g_notification_sent = false;
 var g_layout_elements = {};
 var g_commands = {
+    '/roll': [
+        [["formula", s => s]],
+        function (args) {
+            send_object({
+                type: "chat message",
+                text: Dice.roll(args[1]).toString()
+            });
+        }
+    ]
     '/clear': [
         [],
         function (args) {
@@ -55,7 +65,7 @@ function window_autocomplete(window_element)
     }
     let string = window_element.text_input.value.trim();
 
-    let args = utils.string_to_args(string);
+    let args = Utils.string_to_args(string);
     let cmd = args[0];
     let options = Object.keys(g_commands).filter(o=>o.startsWith(cmd));
     if (options.length == 1) {
@@ -108,7 +118,7 @@ function window_execute_command(window_element)
     else if (message[0] == '/')
     {
         try {
-            let args = utils.string_to_args(message);
+            let args = Utils.string_to_args(message);
 
             let command = args[0];
             if (!(command in g_commands)) {
@@ -540,7 +550,7 @@ function create_message(message_display, sender, id, category, timestamp, source
     if (timestamp) {
         var message = $(`
             <div class="any_message ${category}_message">
-                <h5>${utils.strftime(timestamp)}</h5><h4>${source}:</h4><p>${content}</p>
+                <h5>${Utils.strftime(timestamp)}</h5><h4>${source}:</h4><p>${content}</p>
             </div>
         `);
     }
@@ -700,7 +710,7 @@ function create_chat_window(x, y, width, height)
             return;
         }
         if (message.timestamp) {
-            let timestamp = utils.strftime(message.timestamp);
+            let timestamp = Utils.strftime(message.timestamp);
             a.find("h5").text(timestamp);
         }
         a.find("h4").text(message.source);
