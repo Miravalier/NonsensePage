@@ -1,5 +1,5 @@
 //ENTITY-SCHEMA
-import * as Entity from "/res/dnd/entity.js?ver=0.1";
+import * as Entity from "/res/dnd/entity.js?ver=0.2";
 
 export default class Weapon extends Entity.Entity {
     /* Method Overrides */
@@ -14,7 +14,7 @@ export default class Weapon extends Entity.Entity {
 Weapon.prototype.attributes = {
     "ranged": Entity.ATTR_NUMBER,
     "name": Entity.ATTR_STRING,
-    "damage": Entity.ATTR_NUMBER,
+    "damage": Entity.ATTR_STRING,
     "accuracy": Entity.ATTR_NUMBER,
     "heat": Entity.ATTR_NUMBER,
     "piercing": Entity.ATTR_NUMBER,
