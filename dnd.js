@@ -838,6 +838,10 @@ g_layout_elements["boolean attribute"] = async function (viewer, entity, element
     else {
         attribute.append($(`<input class="boolean" type="checkbox" value="1"></input>`));
     }
+    let input = attribute.find("input");
+    input.on("input", function () {
+        entity.set_attr(element.key, input.val());
+    });
     return attribute;
 };
 
@@ -848,6 +852,10 @@ g_layout_elements["text attribute"] = async function (viewer, entity, element) {
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
     attribute.append($(`<input class="text" type="text" value="${value}"></input>`));
+    let input = attribute.find("input");
+    input.on("input", function () {
+        entity.set_attr(element.key, input.val());
+    });
     return attribute;
 };
 
@@ -858,6 +866,10 @@ g_layout_elements["formula attribute"] = async function (viewer, entity, element
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
     attribute.append($(`<input class="formula" type="text" value="${value}"></input>`));
+    let input = attribute.find("input");
+    input.on("input", function () {
+        entity.set_attr(element.key, input.val());
+    });
     return attribute;
 };
 
@@ -868,6 +880,10 @@ g_layout_elements["number attribute"] = async function (viewer, entity, element)
         attribute.append($(`<h4 class="label">${element.name}</h4>`));
     }
     attribute.append($(`<input class="numeric" type="number" value="${value}"></input>`));
+    let input = attribute.find("input");
+    input.on("input", function () {
+        entity.set_attr(element.key, parseInt(input.val()));
+    });
     return attribute;
 };
 
@@ -877,7 +893,6 @@ g_layout_elements["entity attribute"] = async function (viewer, entity, element)
     if (!sub_entity_id) {
         return;
     }
-    console.log(`Entity Attribute key '${element.key}' sub_entity_id is '${sub_entity_id}'`);
     let SubEntityType = await get_schema(sub_entity_id);
     let sub_entity = new SubEntityType(sub_entity_id);
     sub_entity.parent = entity;
@@ -914,6 +929,11 @@ g_layout_elements["button"] = async function (viewer, entity, element) {
     let button = $(`<button class="viewer_button no_drag" type="button"></button>`);
     if (element.name) {
         button.text(element.name);
+    }
+    if (element.effect) {
+        button.on("click", (e) => {
+            element.effect.call(entity, e);
+        });
     }
     return button;
 };
