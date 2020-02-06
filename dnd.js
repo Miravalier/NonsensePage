@@ -16,7 +16,7 @@ var g_commands = {
                 text: Dice.roll(args[1]).toString()
             });
         }
-    ]
+    ],
     '/clear': [
         [],
         function (args) {
