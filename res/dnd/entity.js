@@ -14,6 +14,14 @@ export class Entity {
 
     /* For use in abstract methods */
     async get_attr(name) {
+        if (this.entity_id not in g_cache) {
+            g_cache[this.entity_id] = {};
+        }
+
+        if (name in g_cache[this.entity_id]) {
+            return g_cache[this.entity_id][name];
+        }
+
         if (!(name in this.attributes)) {
             throw new Error("Nonexistent attribute: " + name);
         }
@@ -27,46 +35,32 @@ export class Entity {
             return null;
         }
         else {
+            g_cache[this.entity_id][name] = reply.result;
             return reply.result
         }
     }
 
-    async get_attrs(options) {
-        let attributes = [];
-        for (let name of options) {
-            if (!(name in this.attributes)) {
-                throw new Error("Nonexistent attribute: " + name);
-            }
-            // Name, Type
-            attributes.push([name, this.attributes[name]]);
-        }
-        let reply = await send_request({
-            type: "get attrs",
-            entity: this.entity_id,
-            attrs: attributes
-        });
-        if (reply.type == "error") {
-            console.error(reply.reason);
-            return null;
-        }
-        else {
-            return reply.results
-        }
-    }
-
     set_attr(name, value) {
+        if (this.entity_id not in g_cache) {
+            g_cache[this.entity_id] = {};
+        }
         send_object({
             type: "set attr",
             entity: this.entity_id,
             attr: [name, this.attributes[name], value]
         });
+        g_cache[this.entity_id][name] = value;
     }
 
     set_attrs(options) {
+        if (this.entity_id not in g_cache) {
+            g_cache[this.entity_id] = {};
+        }
         let attributes = [];
         for (let name of Object.keys(options)) {
             // Name, Type, Value
             attributes.push([name, this.attributes[name], options[name]]);
+            g_cache[this.entity_id][name] = options[name];
         }
         send_object({
             type: "set attrs",

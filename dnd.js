@@ -1,4 +1,4 @@
-import * as Entity from "./entity.js?ver=ent-2";
+import * as Entity from "./entity.js?ver=ent-3";
 import * as Utils from "./utils.js?ver=util-2";
 import * as Dice from "./dice.js?ver=dice-8";
 
@@ -45,6 +45,8 @@ const g_window_type_map = {
     "file": create_file_window,
     "chat": create_chat_window
 };
+
+const ignore = (() => {});
 
 function param_usage(params, start_index)
 {
@@ -121,8 +123,13 @@ function window_execute_command(window_element)
             let args = Utils.string_to_args(message);
 
             let command = args[0];
+            let options = Object.keys(g_commands).filter(o=>o.startsWith(command));
+            if (options.length == 1) {
+                command = options[0];
+            }
+
             if (!(command in g_commands)) {
-                throw new TypeError(`'${command}' is not a real command.`);
+                throw new TypeError(`'${command}' is not a command.`);
             }
 
             let [params, callback] = g_commands[command];
@@ -1470,14 +1477,21 @@ $("document").ready(function () {
         send_object({type: "update username", name: username});
     });
 
-    register_message("directory listing", () => {});
-    register_message("no reply", () => {});
-    register_message("success", () => {});
+    register_message("directory listing", ignore);
+    register_message("no reply", ignore);
+    register_message("success", ignore);
+
+    register_message("attr change", async function (message) {
+        if (message.origin != g_id && message.entity in g_cache) {
+            delete g_cache[message.entity][message.attr];
+        }
+    });
 
     register_message("update file", async function (message) {
         let file_id = message["file id"];
         for (let open_window of g_open_windows) {
-            if (open_window.window_type == "file") {
+            if (open_window.window_type == "file")
+            {
                 if (open_window.pwd_id != file_id) {
                     return;
                 }

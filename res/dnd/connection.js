@@ -2,6 +2,7 @@
  * INTERNALS *
  *************/
 
+var g_cache = {};
 var g_admin = false;
 var g_id = null;
 var g_auth2 = null;

@@ -1,5 +1,5 @@
 //ENTITY-SCHEMA
-import * as Entity from "/res/dnd/entity.js?ver=0.2";
+import * as Entity from "/res/dnd/entity.js?ver=ent-3";
 
 export default class Equipment extends Entity.Entity {
     /* Method Overrides */

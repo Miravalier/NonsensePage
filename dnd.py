@@ -18,6 +18,7 @@ from functools import lru_cache
 from decimal import Decimal
 
 # Constants
+SUCCESS = {"type": "success"}
 PERMISSION_DENIED = {"type": "error", "reason": "permission denied"}
 INVALID_PARAMETERS = {"type": "error", "reason": "invalid parameters"}
 ATTR_NUMBER =  0b000
@@ -274,45 +275,6 @@ async def _ (account, message, websocket):
     return {"type": "attr", "result": result}
 
 
-@register_handler("get attrs")
-async def _ (account, message, websocket):
-    entity_id = message.get("entity", None)
-    attrs = message.get("attrs", None)
-    if entity_id is None or attrs is None:
-        return INVALID_PARAMETERS
-
-    if account.permission(entity_id) < READ:
-        return PERMISSION_DENIED
-
-    results = {}
-
-    for attr_name, attr_type in attrs:
-        if isinstance(attr_type, list):
-            attr_type, _ = attr_type
-        attr_array = attr_type & ATTR_ARRAY != 0
-        attr_type &= ATTR_TYPE
-        if attr_type not in attr_type_map:
-            return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
-        if attr_array:
-            if attr_type == ATTR_NUMBER:
-                result = [float(v[0]) if v is not None else None for v in query("""
-                    SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
-                """.format(attr_type_map[attr_type]), (attr_name, entity_id))]
-            else:
-                result = [v[0] if v is not None else None for v in query("""
-                    SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
-                """.format(attr_type_map[attr_type]), (attr_name, entity_id))]
-        else:
-            result = single_query("""
-                SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
-            """.format(attr_type_map[attr_type]), (attr_name, entity_id))
-            if isinstance(result, Decimal):
-                result = float(result)
-        results[attr_name] = result
-
-    return {"type": "attrs", "results": results}
-
-
 @register_handler("set attr")
 async def _ (account, message, websocket):
     entity_id = message.get("entity", None)
@@ -347,7 +309,8 @@ async def _ (account, message, websocket):
                 UPDATE {} SET attr_value=%s WHERE attr_name=%s AND entity_id=%s
             """.format(attr_type_map[attr_type]), (attr_value, attr_name, entity_id))
 
-        return {"type": "success"}
+        await broadcast({"type": "attr change", "origin": account.user_id, "entity": entity_id, "attr": attr_name})
+        return SUCCESS
     except:
         return {"type": "error", "reason": "invalid attribute value"}
 
@@ -383,7 +346,8 @@ async def _ (account, message, websocket):
                 execute("""
                     UPDATE {} SET attr_value=%s WHERE attr_name=%s AND entity_id=%s
                 """.format(attr_type_map[attr_type]), (attr_value, attr_name, entity_id))
-        return {"type": "success"}
+            await broadcast({"type": "attr change", "origin": account.user_id, "entity": entity_id, "attr": attr_name})
+        return SUCCESS
     except:
         return {"type": "error", "reason": "invalid attribute value"}
 
@@ -520,6 +484,8 @@ async def _ (account, message, websocket):
         INSERT INTO entities (entity_id, schema_id)
         VALUES (%s, %s)
     """, (file_id, schema_id))
+
+    await broadcast({"type": "update file", "file id": parent_id, "user id": account.user_id})
 
     return {"type": "new entity", "id": file_id}
 
