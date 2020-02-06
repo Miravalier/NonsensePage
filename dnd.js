@@ -1,6 +1,6 @@
 import * as Entity from "./entity.js?ver=ent-2";
 import * as Utils from "./utils.js?ver=util-2";
-import * as Dice from "./dice.js?ver=dice-1";
+import * as Dice from "./dice.js?ver=dice-8";
 
 // Mutable Globals
 var g_open_windows = new Set();
