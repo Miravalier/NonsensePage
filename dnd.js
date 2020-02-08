@@ -11,9 +11,13 @@ var g_commands = {
     '/roll': [
         [["formula", s => s]],
         function (args) {
+            let pcg = new Dice.PCG(BigInt(
+                Math.floor(Math.random() * 4294967295)
+            ));
+            console.log("State: "+ pcg.state);
             send_object({
                 type: "chat message",
-                text: Dice.roll(args[1]).toString()
+                text: Dice.roll(args[1], pcg).toString()
             });
         }
     ],

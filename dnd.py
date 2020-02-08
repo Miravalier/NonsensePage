@@ -1,20 +1,22 @@
 #!/usr/bin/env python3.7
 import asyncio
 import datetime
+import secrets
 import ssl
 import websockets
 import json
-import html
 import psycopg2 as psql
 import uuid
 import sys
 import os
 import textwrap
+import re
+import hashlib
 from pathlib import Path
 from contextlib import contextmanager
 from google.oauth2 import id_token
 from google.auth.transport import requests
-from functools import lru_cache
+from functools import lru_cache, partial
 from decimal import Decimal
 
 # Constants
@@ -55,6 +57,7 @@ with open("/etc/oauth/oauth.json") as fp:
 connected_sockets = set()
 request_handlers = {}
 pending_blobs = {}
+roll_id = 0
 
 
 def main():
@@ -134,6 +137,62 @@ async def broadcast(msg, group=connected_sockets):
             group.discard(websocket)
 
 
+##########
+# Random #
+##########
+
+MULTIPLIER = 6364136223846793005
+INCREMENT  = 1442695040888963407
+MASK32 = 2**32 - 1
+MASK64 = 2**64 - 1
+
+
+def rotr32(x, r):
+	return (x >> r | x << (-r & 31)) & MASK32
+
+
+class PCG:
+    def __init__(self, seed=None):
+        if seed is not None:
+            self.state = (seed + INCREMENT) & MASK64
+            self.next()
+
+    # Returns [0, 2**32)
+    def next(self):
+        value = self.state
+        count = value >> 59
+
+        self.state = (value * MULTIPLIER + INCREMENT) & MASK64
+        value ^= value >> 18
+        return rotr32((value >> 27) & MASK32, count)
+
+    # Returns [min, max]
+    def between(self, min, max):
+        return self.below(max+1-min) + min
+
+    # Returns [0, limit)
+    def below(self, limit):
+        reroll_threshold = MASK32 - MASK32 % limit
+
+        value = self.next()
+        while value >= reroll_threshold:
+            value = self.next()
+
+        return value % limit
+
+    def child(self):
+        return PCG((self.next() << 32) | self.next())
+
+    def clone(self):
+        pcg = PCG()
+        pcg.state = self.state
+        return pcg
+
+
+############
+# Handlers #
+############
+
 def register_handler(message_type):
     def sub_register_handler(func):
         request_handlers[message_type] = func
@@ -193,6 +252,79 @@ async def file_upload_callback(account, message, websocket):
     """, (file_name, file_type, account.user_id, directory_id, file_uuid))
 
     await broadcast({"type": "update file", "file id": directory_id, "user id": account.user_id})
+
+
+def resolve_dice(generator, match):
+    rolls = match.group(1)
+    if rolls is None:
+        rolls = 1
+    else:
+        rolls = int(rolls)
+    sides = int(match.group(2))
+    result = 0
+    while rolls:
+        result += generator.below(sides) + 1
+        rolls -= 1
+    return str(result)
+
+
+def resolve_parens(generator, match):
+    return str(resolve_formula(match.group(1), generator))
+
+
+paren_group_regex = re.compile(r"\(([^()]*)\)")
+dice_regex = re.compile(r"([0-9]*)d([0-9]+)")
+formula_characters = set("0123456789+-*%^&|/")
+def resolve_formula(formula, generator):
+    # Make sure the parentheses are matched
+    open_parens = formula.count('(')
+    close_parens = formula.count(')')
+    if open_parens != close_parens:
+        raise ValueError("mismatched parentheses")
+
+    # Resolve all parentheses
+    while open_parens:
+        formula = paren_group_regex.sub(partial(resolve_parens, generator), formula)
+        open_parens = formula.count('(')
+
+    # Resolve all dice
+    formula = dice_regex.sub(partial(resolve_dice, generator), formula)
+
+    # Validate formula before eval
+    if any(c not in formula_characters for c in formula):
+        raise ValueError("invalid formula")
+
+    return eval(formula)
+
+
+@register_handler("get seed")
+async def _ (account, message, websocket):
+    formula_hash = message.get("formula hash", None)
+    roll_id = message.get("id", None)
+
+    if formula_hash is None or roll_id is None:
+        return INVALID_PARAMETERS
+
+    seed = secrets.randbits(64)
+    seed_salt = secrets.token_bytes(8)
+
+    hasher = hashlib.sha256()
+    hasher.update(seed_salt)
+    hasher.update(seed.to_bytes(8, 'big'))
+    seed_hash = hasher.hexdigest()
+
+    await broadcast({
+        "type": "roll",
+        "id": roll_id,
+        "formula hash": formula_hash,
+        "seed hash": seed_hash
+    })
+
+    return {
+        "type": "seed",
+        "salt": seed_salt,
+        "seed": seed
+    }
 
 
 @register_handler("init attr")
