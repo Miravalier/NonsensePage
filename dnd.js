@@ -1,8 +1,9 @@
 import * as Entity from "./entity.js?ver=ent-4";
-import * as Utils from "./utils.js?ver=util-2";
+import * as Utils from "./utils.js?ver=util-5";
 import * as Dice from "./dice.js?ver=dice-8";
 
 // Mutable Globals
+var g_rolls = {};
 var g_open_windows = new Set();
 var g_focus = true;
 var g_notification_sent = false;
@@ -11,10 +12,7 @@ var g_commands = {
     '/roll': [
         [["formula", s => s]],
         function (args) {
-            send_object({
-                type: "chat message",
-                text: "<Roll>"
-            });
+            send_chat_message(`[[${args[1]}]]`);
         }
     ],
     '/clear': [
@@ -154,11 +152,57 @@ function window_execute_command(window_element)
     }
     else
     {
-        send_object({type: "chat message", text: message});
+        send_chat_message(message);
     }
 
     window_element.text_input.value = "";
     window_element.suggestion.placeholder = "";
+}
+
+
+function generate_token()
+{
+    let array = new Uint8Array(16);
+    window.crypto.getRandomValues(array);
+    return array;
+}
+
+
+async function resolve_rolls(content)
+{
+    let regex = /\{\{([^{}:]+):([^{}:]+):([^{}:]+):([^{}:]+)\}\}/g;
+    return content.replace(regex, () => `<span class="valid roll">5</span>`);
+}
+
+
+async function send_chat_message(content)
+{
+    let regex = /\[\[([^\[\]]*)\]\]/g;
+    let replacements = [];
+    for (let match of content.matchAll(regex))
+    {
+        // Generate the formula salt and hash
+        let formula_salt = generate_token();
+        let formula = match[1];
+        let encoded = new TextEncoder("utf-8").encode(formula);
+        let hash_input = new Uint8Array(formula_salt.byteLength + encoded.byteLength);
+        hash_input.set(new Uint8Array(formula_salt), 0);
+        hash_input.set(new Uint8Array(encoded), formula_salt.byteLength);
+        let formula_hash = await crypto.subtle.digest('sha-256', hash_input);
+        formula_salt = Utils.bytes_to_hex(formula_salt);
+        // Get the seed from the server
+        let reply = await send_request({
+            type: "get seed",
+            formula: Utils.bytes_to_hex(formula_hash)
+        });
+        let seed = BigInt(reply.seed);
+        let roll_id = reply.roll_id;
+        // Replace the [[]] block in the content
+        replacements.push(`{{${roll_id}:${seed}:${formula_salt}:${formula}}}`);
+    }
+    let i = 0;
+    content = content.replace(regex, () => replacements[i++]);
+    send_object({type: "chat message", text: content});
 }
 
 
@@ -748,27 +792,34 @@ function create_chat_window(x, y, width, height)
         message_display.html("");
     });
 
-    chat_window.register("chat message", function (message) {
+    chat_window.register("chat message", async function (message) {
         if (!message.historical) {
-            notify(`${message['display name']}: ${message.text}`);
+            notify(`Message from ${message['display name']}`);
         }
 
         if (message.category == "Error") {
             var element = create_message(
                 message_display, message.sender, -1,
-                "error", message.timestamp, "Error", message.text
+                "error", message.timestamp, "Error",
+                await resolve_rolls(message.text)
             );
         }
         else if (message.category == "System") {
             var element = create_message(
                 message_display, message.sender, -1,
-                "system", message.timestamp, "System", message.text
+                "system", message.timestamp, "System",
+                await resolve_rolls(message.text)
             );
         }
         else {
             var element = create_message(
-                message_display, message.sender, message.id,
-                "received", message.timestamp, message["display name"], message.text
+                message_display,
+                message.sender,
+                message.id,
+                "received",
+                message.timestamp,
+                message["display name"],
+                await resolve_rolls(message.text)
             );
             message_display.message_count++;
         }
@@ -1542,6 +1593,14 @@ $("document").ready(function () {
             });
         }
 
+    });
+
+    register_message("roll", function (message) {
+        let roll_id = message["roll id"];
+        if (roll_id in g_rolls) {
+            return;
+        }
+        g_rolls[roll_id] = message;
     });
 
     load_layout();

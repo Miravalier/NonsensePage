@@ -1,3 +1,24 @@
+// Convert a hex string to a byte array
+export function hex_to_bytes(hex) {
+    let i = 0;
+    let bytes = new Uint8Array(hex.length / 2);
+    for (let j = 0; j < hex.length; j += 2) {
+        bytes[i++] = parseInt(hex.substr(j, 2), 16);
+    }
+    return bytes;
+}
+
+// Convert a byte array to a hex string
+export function bytes_to_hex(bytes) {
+    bytes = new Uint8Array(bytes);
+    let results = [];
+    for (let i=0; i < bytes.byteLength; i++)
+    {
+        results.push(bytes[i].toString(16));
+    }
+    return results.join("");
+}
+
 export function strftime(ts) {
     let stamp_time = new Date(ts[0], ts[1]-1, ts[2], ts[3], ts[4], ts[5]);
     let current_time = new Date();

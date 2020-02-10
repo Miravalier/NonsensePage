@@ -299,31 +299,29 @@ def resolve_formula(formula, generator):
 
 @register_handler("get seed")
 async def _ (account, message, websocket):
-    formula_hash = message.get("formula hash", None)
-    roll_id = message.get("id", None)
+    formula_hash = message.get("formula", None)
 
-    if formula_hash is None or roll_id is None:
+    if formula_hash is None:
         return INVALID_PARAMETERS
 
-    seed = secrets.randbits(64)
-    seed_salt = secrets.token_bytes(8)
+    roll_id = secrets.randbelow(MASK32)
+    seed = secrets.randbelow(MASK64)
 
     hasher = hashlib.sha256()
-    hasher.update(seed_salt)
     hasher.update(seed.to_bytes(8, 'big'))
     seed_hash = hasher.hexdigest()
 
     await broadcast({
         "type": "roll",
-        "id": roll_id,
-        "formula hash": formula_hash,
-        "seed hash": seed_hash
+        "roll id": roll_id,
+        "formula": formula_hash,
+        "seed": seed_hash
     })
 
     return {
         "type": "seed",
-        "salt": seed_salt,
-        "seed": seed
+        "roll id": roll_id,
+        "seed": str(seed)
     }
 
 

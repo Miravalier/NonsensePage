@@ -18,6 +18,21 @@ html, body {
     overflow: hidden;
 }
 
+span.roll {
+    border-radius: 2px;
+    padding: 0px 2px;
+    font-weight: bold;
+    border: 1px solid;
+}
+
+span.invalid {
+    background: #eecccc;
+}
+
+span.valid {
+    background: #cceecc;
+}
+
 .drag_handle {
     width: 100%;
     height: 16px;
