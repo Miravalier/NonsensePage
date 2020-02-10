@@ -11,13 +11,9 @@ var g_commands = {
     '/roll': [
         [["formula", s => s]],
         function (args) {
-            let pcg = new Dice.PCG(BigInt(
-                Math.floor(Math.random() * 4294967295)
-            ));
-            console.log("State: "+ pcg.state);
             send_object({
                 type: "chat message",
-                text: Dice.roll(args[1], pcg).toString()
+                text: "<Roll>"
             });
         }
     ],
@@ -545,6 +541,14 @@ function create_window(x, y, width, height)
         e.preventDefault();
         e.stopPropagation();
     });
+
+    window_element.register = function(type, callback) {
+        register_message(type, callback);
+        window_element.remove_handlers.push(() => {
+            deregister_message(type, callback);
+        });
+    };
+
     return window_element;
 }
 
@@ -715,7 +719,7 @@ function create_chat_window(x, y, width, height)
 
     message_display.messages = {};
 
-    register_message("message edit", function (message) {
+    chat_window.register("message edit", function (message) {
         let a = message_display.messages[message.id];
         if (!a) {
             return;
@@ -728,7 +732,7 @@ function create_chat_window(x, y, width, height)
         a.find("p").text(message.content);
     });
 
-    register_message("swap messages", function (message) {
+    chat_window.register("swap messages", function (message) {
         let a = message_display.messages[message.ids[0]];
         let b = message_display.messages[message.ids[1]];
         if (a && b) {
@@ -736,7 +740,7 @@ function create_chat_window(x, y, width, height)
         }
     });
 
-    register_message("clear history", function (message) {
+    chat_window.register("clear history", function (message) {
         message_display.message_count = 0;
         message_display.messages = {};
         message_display.tail_message = null;
@@ -744,7 +748,7 @@ function create_chat_window(x, y, width, height)
         message_display.html("");
     });
 
-    register_message("chat message", function (message) {
+    chat_window.register("chat message", function (message) {
         if (!message.historical) {
             notify(`${message['display name']}: ${message.text}`);
         }
@@ -920,9 +924,10 @@ g_layout_elements["entity attribute"] = async function (viewer, entity, element)
     if (!sub_entity_id) {
         return;
     }
-    let SubEntityType = await get_schema(sub_entity_id);
-    let sub_entity = new SubEntityType(sub_entity_id);
+
+    let sub_entity = await get_entity(sub_entity_id);
     sub_entity.parent = entity;
+
     // Nest sub entity layout
     let div = $(`<div class="subentity no_drag"></div>`);
     for (let subelement of sub_entity.layout) {
@@ -940,8 +945,7 @@ g_layout_elements["entity array attribute"] = async function (viewer, entity, el
     }
     for (let sub_entity_id of sub_entity_ids) {
         let div = $(`<div class="subentity no_drag"></div>`);
-        let SubEntityType = await get_schema(sub_entity_id);
-        let sub_entity = new SubEntityType(sub_entity_id);
+        let sub_entity = await get_entity(sub_entity_id);
         sub_entity.parent = entity;
         // Nest sub entity layout
         for (let subelement of sub_entity.layout) {
@@ -988,8 +992,8 @@ async function create_entity_viewer(x, y, width, height, file)
     let viewport = $(`<div class="entity_viewport"></div>`);
     entity_viewer.append(viewport);
 
-    let EntityType = await get_schema(file.id);
-    let entity = new EntityType(file.id);
+    let entity = await get_entity(file.id);
+
     for (let element of entity.layout) {
         viewport.append(await create_layout_element(entity_viewer, entity, element));
     }
@@ -1052,6 +1056,21 @@ function create_text_viewer(x, y, width, height, file)
         },
         "text"
     );
+
+    text_window.register("update file", function (message) {
+        let file_id = message["file id"];
+        if (open_window.file.id != file_id) {
+            return;
+        }
+        $.get(
+            `/content/${open_window.file.uuid}`,
+            {},
+            (data) => {
+                open_window.find("pre").text(data);
+            },
+            "text"
+        );
+    });
 
     return text_window;
 }
@@ -1128,6 +1147,14 @@ function create_file_window(x, y, width, height, pwd_id)
 
     load_file_listing(file_window);
 
+    file_window.register("update file", function (message) {
+        let file_id = message["file id"];
+        if (file_window.pwd_id != file_id) {
+            return;
+        }
+        load_file_listing(file_window);
+    });
+
     return file_window;
 }
 
@@ -1147,8 +1174,8 @@ async function spawn_entity(name, parent_id, schema) {
     }
     // Get entity
     let entity_id = reply.id;
-    let EntityType = await get_schema(entity_id);
-    let entity = new EntityType(entity_id);
+    let entity = await get_entity(entity_id);
+
     // Initialize entity attributes
     send_object({type: "init attrs", entity: entity_id, attrs: entity.attributes});
     // Recursively spawn any non-array entity attributes
@@ -1176,20 +1203,30 @@ async function spawn_entity(name, parent_id, schema) {
 }
 
 
+var g_entities = {};
+async function get_entity(entity_id) {
+    if (entity_id in g_entities) {
+        return g_entities[entity_id];
+    }
+
+    var schema_reply = await send_request({type: "get schema", "entity id": entity_id});
+
+    let EntityType = await get_schema(schema_reply.uuid);
+    let entity = new EntityType(entity_id);
+
+    g_entities[entity_id] = entity;
+    return entity;
+}
+
+
 var g_schemas = {};
-async function get_schema(item) {
-    if (item in g_schemas) {
-        var module = g_schemas[item];
+async function get_schema(uuid) {
+    if (uuid in g_schemas) {
+        var module = g_schemas[uuid];
     }
     else {
-        if (typeof(item) == "number") {
-            var schema_reply = await send_request({type: "get schema", "entity id": item});
-        }
-        else {
-            var schema_reply = await send_request({type: "get schema", "schema name": item});
-        }
-        var module = await import(`/content/${schema_reply.uuid}`);
-        g_schemas[item] = module;
+        var module = await import(`/content/${uuid}`);
+        g_schemas[uuid] = module;
     }
     return module.default;
 }
@@ -1498,41 +1535,13 @@ $("document").ready(function () {
         if (message.origin != g_id && message.entity in g_cache) {
             delete g_cache[message.entity][message.attr];
 
-            let EntityType = await get_schema(message.entity);
-            let entity = new EntityType(message.entity);
+            let entity = await get_entity(message.entity);
 
             entity.get_attr(message.attr).then(value => {
                 tabletop.find(`input[data-key='${message.entity}-${message.attr}']`).val(value);
             });
         }
 
-    });
-
-    register_message("update file", async function (message) {
-        let file_id = message["file id"];
-        for (let open_window of g_open_windows) {
-            if (open_window.window_type == "file")
-            {
-                if (open_window.pwd_id != file_id) {
-                    continue;
-                }
-                load_file_listing(open_window);
-            }
-            else if (open_window.window_type == "text viewer")
-            {
-                if (open_window.file.id != file_id) {
-                    continue;
-                }
-                $.get(
-                    `/content/${open_window.file.uuid}`,
-                    {},
-                    (data) => {
-                        open_window.find("pre").text(data);
-                    },
-                    "text"
-                );
-            }
-        }
     });
 
     load_layout();
