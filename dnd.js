@@ -38,10 +38,21 @@ const g_notification_options = {
     badge: "/res/dnd/dnd.ico"
 };
 
+const g_view_creators = {
+    "img": create_image_viewer,
+    "txt": create_text_viewer,
+    "entity schema": create_entity_schema_viewer,
+    "entity": create_entity_viewer
+};
+
 const g_window_type_map = {
     "button": create_button_window,
     "file": create_file_window,
-    "chat": create_chat_window
+    "chat": create_chat_window,
+    "image viewer": create_image_viewer,
+    "text viewer": create_text_viewer,
+    "entity schema viewer": create_entity_schema_viewer,
+    "entity viewer": create_entity_viewer
 };
 
 const ignore = (() => {});
@@ -170,14 +181,40 @@ function generate_token()
 
 async function resolve_rolls(content)
 {
-    let regex = /\{\{([^{}:]+):([^{}:]+):([^{}:]+):([^{}:]+)\}\}/g;
-    return content.replace(regex, () => `<span class="valid roll">5</span>`);
+    const regex = /\{\{([^{}:]+):([^{}:]+):([^{}:]+):([^{}:]+)\}\}/g;
+    let replacements = [];
+    for (let match of content.matchAll(regex))
+    {
+        let roll_id = match[1];
+        let seed = BigInt(match[2]);
+        let formula_salt = match[3];
+        let formula = match[4];
+
+        let validity = "invalid";
+        if (roll_id in g_rolls)
+        {
+            let formula_hash =  g_rolls[roll_id]['formula'];
+            let seed_hash = g_rolls[roll_id]['seed'];
+            validity = "valid";
+        }
+
+        let generator = new Dice.PCG(seed);
+        let result = Dice.roll(formula, generator);
+        replacements.push(`
+            <span class="${validity} roll">
+                ${result}
+                <span class="formula_tooltip">(${formula})</span>
+            </span>
+        `);
+    }
+    let i = 0;
+    return content.replace(regex, () => replacements[i++]);
 }
 
 
 async function send_chat_message(content)
 {
-    let regex = /\[\[([^\[\]]*)\]\]/g;
+    const regex = /\[\[([^\[\]]*)\]\]/g;
     let replacements = [];
     for (let match of content.matchAll(regex))
     {
@@ -196,12 +233,13 @@ async function send_chat_message(content)
             formula: Utils.bytes_to_hex(formula_hash)
         });
         let seed = BigInt(reply.seed);
-        let roll_id = reply.roll_id;
+        let roll_id = reply['roll id'];
         // Replace the [[]] block in the content
         replacements.push(`{{${roll_id}:${seed}:${formula_salt}:${formula}}}`);
     }
     let i = 0;
     content = content.replace(regex, () => replacements[i++]);
+    console.log("Replacements: " + replacements);
     send_object({type: "chat message", text: content});
 }
 
@@ -1038,6 +1076,7 @@ async function create_entity_viewer(x, y, width, height, file)
     if (!height) height = 400;
 
     let entity_viewer = create_window(x, y, width, height);
+    entity_viewer.file = file;
     entity_viewer.window_type = "entity viewer";
     entity_viewer.entity_id = file.id;
     let viewport = $(`<div class="entity_viewport"></div>`);
@@ -1056,6 +1095,7 @@ async function create_entity_viewer(x, y, width, height, file)
 function create_entity_schema_viewer(x, y, width, height, file)
 {
     let text_window = create_text_viewer(x, y, width, height, file);
+    text_window.window_type = "entity schema viewer";
     text_window.options[file.name] = {
         'Download': async function () {
             save_file_uuid(file.name + ".js", file.uuid);
@@ -1133,6 +1173,7 @@ function create_image_viewer(x, y, width, height, file)
     if (!width) width = 400;
     if (!height) height = 400;
     let image_window = create_window(x, y, width, height);
+    image_window.file = file;
     image_window.window_type = "image viewer";
     image_window.options[file.name] = {
         'Download': async function () {
@@ -1283,12 +1324,6 @@ async function get_schema(uuid) {
 }
 
 
-var g_view_creators = {
-    "img": create_image_viewer,
-    "txt": create_text_viewer,
-    "entity schema": create_entity_schema_viewer,
-    "entity": create_entity_viewer
-};
 async function load_file_listing(file_window) {
     file_window.viewport.empty();
     let reply = await send_request({type: "ls", id: file_window.pwd_id});
@@ -1450,10 +1485,10 @@ function save_layout() {
             s_data.push(open_window.pwd_id);
         }
         else if (open_window.window_type == "chat") {
-            s_data.push('');
+            s_data.push(null);
         }
         else {
-            return;
+            s_data.push(open_window.file);
         }
         saved_windows.push(s_data);
     }
@@ -1600,6 +1635,7 @@ $("document").ready(function () {
         if (roll_id in g_rolls) {
             return;
         }
+        message['timestamp'] = new Date();
         g_rolls[roll_id] = message;
     });
 

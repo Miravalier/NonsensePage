@@ -373,6 +373,44 @@ async def _ (account, message, websocket):
             """.format(attr_type_map[attr_type]), (attr_name, attr_defaults[attr_type], entity_id))
 
 
+attribute_cache = {}
+
+
+def get_attr(entity_id, attr_type, attr_name):
+    if (entity_id, attr_name) in attribute_cache:
+        return attribute_cache[entity_id, attr_name]
+
+    result = single_query("""
+        SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
+    """.format(attr_type_map[attr_type]), (attr_name, entity_id))
+    if isinstance(result, Decimal):
+        result = float(result)
+    attribute_cache[entity_id, attr_name] = result
+
+    return result
+
+
+def get_attr_array(entity_id, attr_type, attr_name):
+    if (entity_id, attr_name) in attribute_cache:
+        return attribute_cache[entity_id, attr_name]
+
+    query_text = (
+        """SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s""".format(
+            attr_type_map[attr_type]
+        )
+    )
+    results = []
+    for result in query(query_text, (attr_name, entity_id)):
+        if result is not None:
+            result = result[0]
+        if isinstance(result, Decimal):
+            result = float(result)
+        results.append(result)
+
+    attribute_cache[entity_id, attr_name] = results
+    return results
+
+
 @register_handler("get attr")
 async def _ (account, message, websocket):
     entity_id = message.get("entity", None)
@@ -392,15 +430,9 @@ async def _ (account, message, websocket):
     if attr_type not in attr_type_map:
         return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
     if attr_array:
-        result = [v[0] if v is not None else None for v in query("""
-            SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
-        """.format(attr_type_map[attr_type]), (attr_name, entity_id))]
+        result = get_attr_array(entity_id, attr_type, attr_name)
     else:
-        result = single_query("""
-            SELECT attr_value FROM {} WHERE attr_name=%s AND entity_id=%s
-        """.format(attr_type_map[attr_type]), (attr_name, entity_id))
-    if isinstance(result, Decimal):
-        result = float(result)
+        result = get_attr(entity_id, attr_type, attr_name)
 
     return {"type": "attr", "result": result}
 
@@ -433,50 +465,15 @@ async def _ (account, message, websocket):
                 execute("""
                     INSERT INTO {} (attr_name, attr_value, entity_id)
                     VALUES (%s, %s, %s)
-                """.format(attr_type_map[attr_type]), (attr_name, attr_value, entity_id))
+                """.format(attr_type_map[attr_type]), (attr_name, sub_value, entity_id))
         else:
             execute("""
                 UPDATE {} SET attr_value=%s WHERE attr_name=%s AND entity_id=%s
             """.format(attr_type_map[attr_type]), (attr_value, attr_name, entity_id))
 
+        attribute_cache[entity_id, attr_name] = attr_value
+
         await broadcast({"type": "attr change", "origin": account.user_id, "entity": entity_id, "attr": attr_name})
-        return SUCCESS
-    except:
-        return {"type": "error", "reason": "invalid attribute value"}
-
-
-@register_handler("set attrs")
-async def _ (account, message, websocket):
-    entity_id = message.get("entity", None)
-    attrs = message.get("attrs", None)
-    if entity_id is None or attrs is None:
-        return INVALID_PARAMETERS
-
-    if account.permission(entity_id) < WRITE:
-        return PERMISSION_DENIED
-
-    try:
-        for attr_name, attr_type, attr_value in attrs:
-            if isinstance(attr_type, list):
-                attr_type, _ = attr_type
-            attr_array = attr_type & ATTR_ARRAY != 0
-            attr_type &= ATTR_TYPE
-            if attr_type not in attr_type_map:
-                return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
-            if attr_array:
-                execute("""
-                    DELETE FROM {} WHERE attr_name=%s AND entity_id=%s
-                """.format(attr_type_map[attr_type]), (attr_name, entity_id))
-                for sub_value in attr_value:
-                    execute("""
-                        INSERT INTO {} (attr_name, attr_value, entity_id)
-                        VALUES (%s, %s, %s)
-                    """.format(attr_type_map[attr_type]), (attr_name, attr_value, entity_id))
-            else:
-                execute("""
-                    UPDATE {} SET attr_value=%s WHERE attr_name=%s AND entity_id=%s
-                """.format(attr_type_map[attr_type]), (attr_value, attr_name, entity_id))
-            await broadcast({"type": "attr change", "origin": account.user_id, "entity": entity_id, "attr": attr_name})
         return SUCCESS
     except:
         return {"type": "error", "reason": "invalid attribute value"}

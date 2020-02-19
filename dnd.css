@@ -33,6 +33,16 @@ span.valid {
     background: #cceecc;
 }
 
+.roll:hover .formula_tooltip {
+    display: inline;
+}
+
+.formula_tooltip {
+    display: none;
+    font-style: italic;
+    font-weight: normal;
+}
+
 .drag_handle {
     width: 100%;
     height: 16px;

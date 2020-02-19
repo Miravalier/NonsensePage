@@ -53,23 +53,6 @@ export class Entity {
         g_cache[this.entity_id][name] = value;
     }
 
-    set_attrs(options) {
-        if (!(this.entity_id in g_cache)) {
-            g_cache[this.entity_id] = {};
-        }
-        let attributes = [];
-        for (let name of Object.keys(options)) {
-            // Name, Type, Value
-            attributes.push([name, this.attributes[name], options[name]]);
-            g_cache[this.entity_id][name] = options[name];
-        }
-        send_object({
-            type: "set attrs",
-            entity: this.entity_id,
-            attrs: attributes
-        });
-    }
-
     /* Abstract methods */
     init()                  {}
     on_viewer_open()        {}
