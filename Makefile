@@ -9,7 +9,7 @@ DIRECTORIES += $(shell find resources -type d)
 DIRECTORIES += $(shell find modules -type d)
 RESOURCES += $(shell find resources -type f)
 RESOURCES += $(shell find modules -type f)
-RESOURCES += dnd.html dnd.js dnd.css
+RESOURCES += dnd.html dnd.js dnd.css login.html login.css
 
 # Generated Rules
 ${WEB_ROOT}/%: %

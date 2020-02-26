@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Nonsense Page Login</title>
+        <link rel="icon" href="/resources/dnd.ico" type="image/x-icon"/>
+        <link rel="stylesheet" type="text/css" href="/login.css">
+        <meta name="google-signin-client_id" content="667044129288-1labkcbi5eokimdprnu2n77u4332cvmu.apps.googleusercontent.com">
+        <script>
+
+        function onSignOut() {
+            var auth2 = gapi.auth2.getAuthInstance();
+            auth2.signOut().then(function () {
+                location.reload();
+            });
+        }
+
+        function onSignIn(googleUser) {
+            console.log("Authenticated with google.");
+
+            /* Already Logged In Page */
+            var login_container = document.getElementById("login_container");
+            login_container.innerHTML = `
+                <a class="login_element" href="/">DnD</a>
+                <button class="login_element" onclick="onSignOut();">Sign Out</button>
+            `;
+        }
+
+        </script>
+    </head>
+
+    <body>
+        <script src="https://apis.google.com/js/platform.js" async defer></script>
+        <div id="login_container">
+            <div class="g-signin2" data-onsuccess="onSignIn" data-longtitle="true"></div>
+        </div>
+    </body>
+</html>

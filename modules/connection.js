@@ -17,7 +17,7 @@ var g_connection_delay = 500;
 function init() {
     gapi.load('auth2', function() {
         gapi.auth2.init({
-            client_id: "667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com"
+            client_id: "667044129288-1labkcbi5eokimdprnu2n77u4332cvmu.apps.googleusercontent.com"
         }).then(function (value) {
             g_auth2 = value;
             acquire_connection();
