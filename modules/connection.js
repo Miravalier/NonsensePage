@@ -149,7 +149,7 @@ function close_connection() {
 
 
 function acquire_connection() {
-    g_connection = new WebSocket("wss://miravalier.net:3030/");
+    g_connection = new WebSocket("wss://nonsense.page:3030/");
     g_connection.onopen = activate_connection;
     g_connection.onmessage = global_handler;
     g_connection.onerror = reacquire_connection;

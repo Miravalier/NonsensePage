@@ -66,7 +66,7 @@ class LRU(OrderedDict):
 
 
 # Configuration
-upload_root = Path("/var/www/miravalier/content/")
+upload_root = Path("/var/www/nonsense/content/")
 
 with open("/etc/auth/oauth.json") as fp:
     GOOGLE_OAUTH = json.load(fp)
@@ -83,8 +83,8 @@ def main():
     # Set up SSL context
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain(
-        "/etc/letsencrypt/live/miravalier.net/fullchain.pem",
-        keyfile="/etc/letsencrypt/live/miravalier.net/privkey.pem"
+        "/etc/letsencrypt/live/nonsense.page/fullchain.pem",
+        keyfile="/etc/letsencrypt/live/nonsense.page/privkey.pem"
     )
     # Host server
     asyncio.get_event_loop().run_until_complete(
