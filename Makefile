@@ -50,4 +50,4 @@ all: $(DIRECTORY_TARGETS) $(FILE_TARGETS)
 verbose: all
 verbose: VERBOSITY := -v
 
-.PHONY: all verbose directories
+.PHONY: all verbose
