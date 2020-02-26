@@ -337,18 +337,13 @@ div.viewer_array {
     color: grey;
 }
 
-.window_title {
-    /* font-family: 'Orbitron', sans-serif; */
-    /* font-family: 'El Messiri', sans-serif; */
-}
-
 /* Themes */
 
 div#watermark {
     position: fixed;
     width: 100%;
     height: 100%;
-    background: url('/res/dnd/ampersand.svg') center center no-repeat;
+    background: url('/resources/ampersand.svg') center center no-repeat;
     background-size: contain;
     pointer-events: none;
 }
@@ -375,13 +370,13 @@ div#background {
 
 
 #background.fantasy {
-    background-image: url('/res/dnd/fantasy.png');
+    background-image: url('/resources/fantasy.png');
 }
 
 #background.tech {
-    background-image: url('/res/dnd/tech.svg');
+    background-image: url('/resources/tech.svg');
 }
 
 #background.icy {
-    background-image: url('/res/dnd/icy.png');
+    background-image: url('/resources/icy.png');
 }

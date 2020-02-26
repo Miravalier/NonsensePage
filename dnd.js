@@ -1,6 +1,6 @@
-import * as Entity from "./entity.js?ver=ent-4";
-import * as Utils from "./utils.js?ver=util-5";
-import * as Dice from "./dice.js?ver=dice-8";
+import * as Entity from "/modules/entity.js?ver=$$VER$$";
+import * as Utils from "/modules/utils.js?ver=$$VER$$";
+import * as Dice from "/modules/dice.js?ver=$$VER$$";
 
 // Mutable Globals
 var g_rolls = {};
@@ -35,7 +35,7 @@ var g_commands = {
 const g_history_limit = 512;
 
 const g_notification_options = {
-    badge: "/res/dnd/dnd.ico"
+    badge: "/resources/dnd.ico"
 };
 
 const g_view_creators = {
@@ -884,7 +884,7 @@ function create_button_window(x, y, width, height, buttons)
     button_window.options['Button Tray'] = {
         'Add Button': (function () {
             button_display.append(
-                $(`<img class="window_button" src="/res/dnd/button.svg"></img>`)
+                $(`<img class="window_button" src="/resources/button.svg"></img>`)
             );
         })
     };
@@ -1123,7 +1123,7 @@ function create_text_viewer(x, y, width, height, file)
 
     let save_button = $(`
         <button type="button">
-            <img height=24px width=24px src="/res/dnd/icons/save.svg"/>
+            <img height=24px width=24px src="/resources/icons/save.svg"/>
         </button>
     `);
     save_button.on("click", function () {
@@ -1332,7 +1332,7 @@ async function load_file_listing(file_window) {
     {
         let button = $(`
             <div class="directory file_button no_drag">
-                <img width=24px height=24px src="/res/dnd/icons/back.svg"></img>
+                <img width=24px height=24px src="/resources/icons/back.svg"></img>
                 <p>Back</p>
             </div>
         `);
@@ -1359,7 +1359,7 @@ async function load_file_listing(file_window) {
         let [filename, fileid, filetype, fileuuid] = node;
         let button = $(`
             <div class="${filetype} file_button no_drag">
-                <img width=24px height=24px src="/res/dnd/icons/${filetype}.svg"></img>
+                <img width=24px height=24px src="/resources/icons/${filetype}.svg"></img>
                 <p>${filename}</p>
             </div>
         `);

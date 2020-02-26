@@ -14,6 +14,7 @@ import re
 import hashlib
 from pathlib import Path
 from contextlib import contextmanager
+from collections import OrderedDict
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from functools import lru_cache, partial
@@ -46,10 +47,28 @@ attr_defaults = {
     ATTR_ENTITY: 0
 }
 
+
+class LRU(OrderedDict):
+    def __init__(self, maxsize=128, *args, **kwds):
+        self.maxsize = maxsize
+        super().__init__(*args, **kwds)
+
+    def __getitem__(self, key):
+        value = super().__getitem__(key)
+        self.move_to_end(key)
+        return value
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        if len(self) > self.maxsize:
+            oldest = next(iter(self))
+            del self[oldest]
+
+
 # Configuration
 upload_root = Path("/var/www/miravalier/content/")
 
-with open("/etc/oauth/oauth.json") as fp:
+with open("/etc/auth/oauth.json") as fp:
     GOOGLE_OAUTH = json.load(fp)
     GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH['CLIENT_ID']
 
@@ -79,37 +98,47 @@ def main():
     asyncio.get_event_loop().run_forever()
 
 
+sql_connection = psql.connect("dbname=dnd")
+
+
 @contextmanager
-def cursor():
-    connection = psql.connect("dbname=dnd")
-    cur = connection.cursor()
+def write_cursor():
+    cur = sql_connection.cursor()
     try:
         yield cur
     finally:
         cur.close()
-        connection.commit()
-        connection.close()
+        sql_connection.commit()
+
+
+@contextmanager
+def read_cursor():
+    cur = sql_connection.cursor()
+    try:
+        yield cur
+    finally:
+        cur.close()
 
 
 def execute_and_return(*args, **kwargs):
-    with cursor() as cur:
+    with write_cursor() as cur:
         cur.execute(*args, **kwargs)
         return cur.fetchone()
 
 
 def execute(*args, **kwargs):
-    with cursor() as cur:
+    with write_cursor() as cur:
         cur.execute(*args, **kwargs)
 
 
 def query(*args, **kwargs):
-    with cursor() as cur:
+    with read_cursor() as cur:
         cur.execute(*args, **kwargs)
         return cur.fetchall()
 
 
 def single_query(*args, **kwargs):
-    with cursor() as cur:
+    with read_cursor() as cur:
         cur.execute(*args, **kwargs)
         result = cur.fetchone()
         if result and len(result) == 1:
@@ -373,7 +402,7 @@ async def _ (account, message, websocket):
             """.format(attr_type_map[attr_type]), (attr_name, attr_defaults[attr_type], entity_id))
 
 
-attribute_cache = {}
+attribute_cache = LRU(65536)
 
 
 def get_attr(entity_id, attr_type, attr_name):
@@ -409,6 +438,72 @@ def get_attr_array(entity_id, attr_type, attr_name):
 
     attribute_cache[entity_id, attr_name] = results
     return results
+
+
+@register_handler("add attr")
+async def _ (account, message, websocket):
+    entity_id = message.get("entity", None)
+    attr = message.get("attr", None)
+    if entity_id is None or type(attr) is not list or len(attr) != 2:
+        return INVALID_PARAMETERS
+
+    if account.permission(entity_id) < WRITE:
+        return PERMISSION_DENIED
+
+    attr_name, attr_type = attr
+
+    if isinstance(attr_type, list):
+        attr_type, _ = attr_type
+    attr_array = attr_type & ATTR_ARRAY != 0
+    attr_type &= ATTR_TYPE
+    if attr_type not in attr_type_map:
+        return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
+
+    if not attr_array:
+        return {"type": "error", "reason": "attr is not an array"}
+
+    try:
+        attribute_cache[entity_id, attr_name].append(attr_value)
+    except KeyError:
+        pass
+
+    execute("""
+        INSERT INTO {} (attr_name, attr_value, entity_id)
+        VALUES (%s, %s, %s)
+    """.format(attr_type_map[attr_type]), (attr_name, attr_value, entity_id))
+
+
+@register_handler("remove attr")
+async def _ (account, message, websocket):
+    entity_id = message.get("entity", None)
+    attr = message.get("attr", None)
+    if entity_id is None or type(attr) is not list or len(attr) != 2:
+        return INVALID_PARAMETERS
+
+    if account.permission(entity_id) < WRITE:
+        return PERMISSION_DENIED
+
+    attr_name, attr_type = attr
+
+    if isinstance(attr_type, list):
+        attr_type, _ = attr_type
+    attr_array = attr_type & ATTR_ARRAY != 0
+    attr_type &= ATTR_TYPE
+    if attr_type not in attr_type_map:
+        return {"type": "error", "reason": "unknown attr type '{}'".format(attr_type)}
+
+    if not attr_array:
+        return {"type": "error", "reason": "attr is not an array"}
+
+    try:
+        attribute_cache[entity_id, attr_name].remove(attr_value)
+    except (KeyError, ValueError):
+        pass
+
+    execute("""
+        DELETE FROM {}
+        WHERE attr_name=%s AND attr_value=%s AND entity_id=%s
+    """.format(attr_type_map[attr_type]), (attr_name, attr_value, entity_id))
 
 
 @register_handler("get attr")
