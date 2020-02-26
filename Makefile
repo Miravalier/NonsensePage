@@ -1,14 +1,15 @@
 .DEFAULT_GOAL = all
 
 # Variables
-DIRECTORIES := $(shell find resources -type d)
-DIRECTORIES += $(shell find modules -type d)
-RESOURCES := $(shell find resources -type f)
-RESOURCES += $(shell find modules -type f)
-RESOURCES += dnd.html dnd.js dnd.css
 WEB_ROOT := /var/www/nonsense
 WSS_ROOT := /var/wss
 SYSTEMD := /etc/systemd/system
+
+DIRECTORIES += $(shell find resources -type d)
+DIRECTORIES += $(shell find modules -type d)
+RESOURCES += $(shell find resources -type f)
+RESOURCES += $(shell find modules -type f)
+RESOURCES += dnd.html dnd.js dnd.css
 
 # Generated Rules
 ${WEB_ROOT}/%: %
@@ -17,16 +18,22 @@ ${WEB_ROOT}/%: %
 	sudo cp $<.conf $@
 	@rm $<.conf
 
-ALL_TARGETS += ${WSS_ROOT}/dnd.py ${SYSTEMD}/dnd.wss.service
+FILE_TARGETS += ${WSS_ROOT}/dnd.py ${SYSTEMD}/dnd.wss.service
 define resource_template =
  ${WEB_ROOT}/$(1): $(1)
- ALL_TARGETS += ${WEB_ROOT}/$(1)
+ FILE_TARGETS += ${WEB_ROOT}/$(1)
+endef
+
+define directory_template =
+ DIRECTORY_TARGETS += ${WEB_ROOT}/$(1)
+ ${WEB_ROOT}/$(1): $(1)
+	sudo mkdir -p ${WEB_ROOT}/content ${WEB_ROOT}/$(1)
+	@sudo touch ${WEB_ROOT}/$(1)
 endef
 
 $(foreach resource,$(RESOURCES),$(eval $(call resource_template,$(resource))))
 
-directories:
-	@sudo mkdir -p ${WEB_ROOT}/content $(addprefix ${WEB_ROOT}/,${DIRECTORIES})
+$(foreach directory,$(DIRECTORIES),$(eval $(call directory_template,$(directory))))
 
 # Constant Rules
 ${WSS_ROOT}/dnd.py: dnd.py ${SYSTEMD}/dnd.wss.service
@@ -38,7 +45,7 @@ ${SYSTEMD}/dnd.wss.service: dnd.wss.service
 	sudo systemctl daemon-reload
 
 # Conventional Targets
-all: directories $(ALL_TARGETS)
+all: $(DIRECTORY_TARGETS) $(FILE_TARGETS)
 
 verbose: all
 verbose: VERBOSITY := -v
