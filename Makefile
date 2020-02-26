@@ -13,10 +13,10 @@ RESOURCES += dnd.html dnd.js dnd.css login.html login.css
 
 # Generated Rules
 ${WEB_ROOT}/%: %
-	@cp $< $<.conf
-	@./configurer.py $<.conf $(VERBOSITY)
-	sudo cp $<.conf $@
-	@rm $<.conf
+	@echo "sudo cp $< $@"
+	@./configurer.py $< $(VERBOSITY) -o resource.configured
+	@sudo cp resource.configured $@
+	@rm resource.configured
 
 FILE_TARGETS += ${WSS_ROOT}/dnd.py ${SYSTEMD}/dnd.wss.service
 define resource_template =
