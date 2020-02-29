@@ -4,6 +4,9 @@ if [[ $EUID != 0 ]]; then
     exit 1
 fi
 
+if [[ -z $(grep dnd.local /etc/hosts) ]]; then
+    echo '127.0.0.1 dnd.local' >> /etc/hosts
+fi
 apt install -y gcc nginx make postgresql postgresql-server-dev-all
 
 python3.7 --version

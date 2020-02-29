@@ -118,6 +118,7 @@ function message_sorter(message) {
 function activate_connection() {
     g_connection.onopen = undefined;
 
+#ifdef BUILDTYPE_RELEASE
     console.log("[!] Loading google oauth2");
     var google_user = g_auth2.currentUser.get();
     var id_token = google_user.getAuthResponse().id_token;
@@ -128,6 +129,17 @@ function activate_connection() {
             auth_token: id_token
         })
     )
+#else
+    let id_token = Math.floor(Math.random()*4294967295);
+
+    g_connection.send(
+        JSON.stringify({
+            type: "auth",
+            id: id_token
+        })
+    )
+#endif
+
     console.log("[!] Auth request sent")
 }
 

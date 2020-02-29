@@ -63,7 +63,6 @@ keys: Makefile
 	mkdir -p keys
 	openssl req -x509 -newkey rsa:4096 -keyout keys/privkey.pem -out keys/fullchain.pem \
     -days 365 -nodes < local/parameters.txt
-	echo 127.0.0.1 dnd.local | sudo tee -a /etc/hosts
 	sudo ./configurer.py local/dnd.local $(VERBOSITY) -b $(BUILDTYPE) -s $(SOURCEDIR) \
 	-f $(FULLCHAIN) -k $(KEYFILE) -o /etc/nginx/sites-enabled/dnd.local
 	sudo service nginx restart

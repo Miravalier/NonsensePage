@@ -1,6 +1,9 @@
 # Overview
 The townhall project is a tabletop RPG web server, similar to Roll20, but designed to be more modular and API friendly.
 
+# Testing the public server
+Navigate to https://nonsense.page
+
 # Running the server locally
 
 ## Setup
@@ -8,6 +11,7 @@ The townhall project is a tabletop RPG web server, similar to Roll20, but design
  - Clone this repository on the VM
  - Run `sudo local/install.sh` (FROM THE SAME DIRECTORY AS THIS README)
  - Run `make local`
+ - Navigate to dnd.local in a browser and bypass the self signed certificate warning
 
 ## Notes
  - The dependency install script (local/install.sh) only needs to be run once. To effect changes to the running server after modifiying the code, you only need to run `make local`.
