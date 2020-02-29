@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>D&D</title>
+        <!-- JQUERY -->
+        <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"/>
+        <!-- Project -->
+        <script src="/modules/connection.js?ver=$$VER$$"></script>
+        <script type="module" src="dnd.js?ver=$$VER$$"></script>
+        <script type="module" src="/modules/entity.js?ver=$$VER$$"></script>
+        <link rel="stylesheet" type="text/css" href="dnd.css?ver=$$VER$$"/>
+        <link rel="shortcut icon" href="/resources/dnd.ico"/>
+#ifdef BUILDTYPE_RELEASE
+        <meta name="google-signin-client_id" content="667044129288-rqevl3vveam21qi315quafmr4nib2shn.apps.googleusercontent.com">
+#endif
+        <meta name="version" content="$$VER$$">
+    </head>
+    <body>
+        <div id="background" class="tech"></div>
+        <div id="watermark" class="tech"></div>
+        <div id="tabletop"></div>
+#ifdef BUILDTYPE_RELEASE
+        <script src="https://apis.google.com/js/platform.js?onload=init" async defer></script>
+#else
+        <script async defer>
+        console.log("<LOCAL BUILD>");
+        init();
+        </script>
+#endif
+    </body>
+</html>
