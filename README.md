@@ -2,11 +2,9 @@
 The townhall project is a tabletop RPG web server, similar to Roll20, but designed to be more modular and API friendly.
 
 # Testing the public server
-Navigate to https://nonsense.page
+https://nonsense.page
 
 # Running the server locally
-
-## Setup
  - Host an Ubuntu 18.04 (or equivalent) VM
  - Clone this repository on the VM
  - Run `sudo local/install.sh` (FROM THE SAME DIRECTORY AS THIS README)
