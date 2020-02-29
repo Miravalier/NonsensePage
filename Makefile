@@ -21,7 +21,7 @@ ${WEB_ROOT}/%: %
 		-f $(FULLCHAIN) -k $(KEYFILE) -o resource.configured; \
 		$(CPP) -P -undef -Wundef -std=c99 -nostdinc -Wtrigraphs \
 			-fdollars-in-identifiers -C -DBUILDTYPE_$(BUILDTYPE)\
-			resource.configured -o resource.configured.cpp 2>/dev/null; \
+			resource.configured -o resource.configured.cpp; \
 		sudo cp resource.configured.cpp $@; \
 		rm -f resource.configured resource.configured.cpp; \
 	else \
@@ -48,6 +48,7 @@ $(foreach directory,$(DIRECTORIES),$(eval $(call directory_template,$(directory)
 
 # Constant Rules
 ${WSS_ROOT}/dnd.py: dnd.py ${SYSTEMD}/dnd.wss.service
+	@sudo mkdir -p ${WSS_ROOT}
 	./configurer.py $< $(VERBOSITY) -b $(BUILDTYPE) -s $(SOURCEDIR) \
 	-f $(FULLCHAIN) -k $(KEYFILE) -o $<.configured
 	sudo cp $<.configured $@
@@ -59,13 +60,13 @@ ${SYSTEMD}/dnd.wss.service: dnd.wss.service
 	sudo systemctl daemon-reload
 
 keys: Makefile
-	sudo ./configurer.py local/dnd.local $(VERBOSITY) -b $(BUILDTYPE) -s $(SOURCEDIR) \
-	-f $(FULLCHAIN) -k $(KEYFILE) -o /etc/nginx/sites-enabled/dnd.local
-	sudo service nginx restart
 	mkdir -p keys
 	openssl req -x509 -newkey rsa:4096 -keyout keys/privkey.pem -out keys/fullchain.pem \
     -days 365 -nodes < local/parameters.txt
 	echo 127.0.0.1 dnd.local | sudo tee -a /etc/hosts
+	sudo ./configurer.py local/dnd.local $(VERBOSITY) -b $(BUILDTYPE) -s $(SOURCEDIR) \
+	-f $(FULLCHAIN) -k $(KEYFILE) -o /etc/nginx/sites-enabled/dnd.local
+	sudo service nginx restart
 
 # Conventional Targets
 all: $(DIRECTORY_TARGETS) $(FILE_TARGETS)
