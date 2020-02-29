@@ -239,7 +239,6 @@ async function send_chat_message(content)
     }
     let i = 0;
     content = content.replace(regex, () => replacements[i++]);
-    console.log("Replacements: " + replacements);
     send_object({type: "chat message", text: content});
 }
 

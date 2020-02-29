@@ -1,0 +1,33 @@
+server {
+    root /var/www/dnd;
+
+    index dnd.html;
+    server_name www.dnd.local dnd.local;
+
+    location / {
+        try_files $uri $uri/ $uri.html =404;
+    }
+
+    listen [::]:443 ssl;
+    listen 443 ssl;
+    ssl_certificate $$FULLCHAIN$$;
+    ssl_certificate_key $$KEYFILE$$;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+server {
+    if ($host = www.dnd.local) {
+        return 301 https://$host$request_uri;
+    }
+
+    if ($host = dnd.local) {
+        return 301 https://$host$request_uri;
+    }
+
+    server_name www.dnd.local dnd.local;
+
+    listen [::]:80;
+    listen 80;
+    return 404;
+}

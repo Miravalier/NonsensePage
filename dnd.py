@@ -15,12 +15,14 @@ import hashlib
 from pathlib import Path
 from contextlib import contextmanager
 from collections import OrderedDict
-from google.oauth2 import id_token
-from google.auth.transport import requests
 from functools import lru_cache, partial
 from decimal import Decimal
 
 # Constants
+VERSION = "$$VER$$"
+RELEASE_TYPE = "$$BUILD$$"
+FULLCHAIN = "$$FULLCHAIN$$"
+KEYFILE = "$$KEYFILE$$"
 SUCCESS = {"type": "success"}
 PERMISSION_DENIED = {"type": "error", "reason": "permission denied"}
 INVALID_PARAMETERS = {"type": "error", "reason": "invalid parameters"}
@@ -34,6 +36,13 @@ DENIED = 0
 READ = 1
 WRITE = 2
 ADMIN = 3
+
+if RELEASE_TYPE == "RELEASE":
+    from google.oauth2 import id_token
+    from google.auth.transport import requests
+    with open("/etc/auth/oauth.json") as fp:
+        GOOGLE_OAUTH = json.load(fp)
+        GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH['CLIENT_ID']
 
 attr_type_map = {
     ATTR_NUMBER: "numeric_attrs",
@@ -68,10 +77,6 @@ class LRU(OrderedDict):
 # Configuration
 upload_root = Path("/var/www/nonsense/content/")
 
-with open("/etc/auth/oauth.json") as fp:
-    GOOGLE_OAUTH = json.load(fp)
-    GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH['CLIENT_ID']
-
 # Mutable Globals
 connected_sockets = set()
 request_handlers = {}
@@ -83,8 +88,8 @@ def main():
     # Set up SSL context
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain(
-        "/etc/letsencrypt/live/nonsense.page/fullchain.pem",
-        keyfile="/etc/letsencrypt/live/nonsense.page/privkey.pem"
+        FULLCHAIN,
+        keyfile=KEYFILE
     )
     # Host server
     asyncio.get_event_loop().run_until_complete(
@@ -1147,7 +1152,20 @@ async def main_handler(websocket, path):
         reply = None
 
         # Process message
-        if msg_type == "auth":
+        if RELEASE_TYPE == "LOCAL" and msg_type == "auth":
+            simulated_id = msg.get("id", None)
+            if account:
+                reply = {"type": "error", "reason": "already authenticated"}
+            elif not simulated:
+                reply = {"type": "auth failure", "reason": "missing simulated id"}
+            else:
+                account = get_account(simulated_id)
+                if account.user_name is None:
+                    account.user_name = 'Unnamed Local User'
+                    await websocket.send(json.dumps({"type": "prompt username"}))
+                reply = {"type": "auth success", "id": account.user_id, "admin": account.admin}
+                connected_sockets.add(websocket)
+        elif msg_type == "auth":
             auth_token = msg.get("auth_token", None)
             if account:
                 reply = {"type": "error", "reason": "already authenticated"}

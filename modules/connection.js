@@ -15,6 +15,7 @@ var g_connection_delay = 500;
 
 
 function init() {
+#ifdef BUILDTYPE_RELEASE
     gapi.load('auth2', function() {
         gapi.auth2.init({
             client_id: "667044129288-1labkcbi5eokimdprnu2n77u4332cvmu.apps.googleusercontent.com"
@@ -23,6 +24,9 @@ function init() {
             acquire_connection();
         });
     });
+#else
+    acquire_connection();
+#endif
 }
 
 
@@ -149,7 +153,11 @@ function close_connection() {
 
 
 function acquire_connection() {
+#ifdef BUILDTYPE_RELEASE
     g_connection = new WebSocket("wss://nonsense.page:3030/");
+#else
+    g_connection = new WebSocket("wss://localhost:3030/");
+#endif
     g_connection.onopen = activate_connection;
     g_connection.onmessage = global_handler;
     g_connection.onerror = reacquire_connection;

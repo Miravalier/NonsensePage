@@ -1,9 +1,10 @@
-.DEFAULT_GOAL = all
+.DEFAULT_GOAL = unknown
 
 # Variables
 WEB_ROOT := /var/www/nonsense
 WSS_ROOT := /var/wss
 SYSTEMD := /etc/systemd/system
+CPP := /usr/bin/cpp
 
 DIRECTORIES += $(shell find resources -type d)
 DIRECTORIES += $(shell find modules -type d)
@@ -13,10 +14,19 @@ RESOURCES += dnd.html dnd.js dnd.css login.html login.css
 
 # Generated Rules
 ${WEB_ROOT}/%: %
-	@echo "sudo cp $< $@"
-	@./configurer.py $< $(VERBOSITY) -o resource.configured
-	@sudo cp resource.configured $@
-	@rm resource.configured
+	@if [ -n "$(findstring .js,$<)$(findstring .html,$<)" ]; then \
+		echo "Configuring $<"; \
+		./configurer.py $< $(VERBOSITY) -b $(BUILDTYPE) \
+		-f $(FULLCHAIN) -k $(KEYFILE) -o resource.configured; \
+		$(CPP) -P -undef -Wundef -std=c99 -nostdinc -Wtrigraphs \
+			-fdollars-in-identifiers -C -DBUILDTYPE_$(BUILDTYPE)\
+			resource.configured -o resource.configured.cpp 2>/dev/null; \
+		sudo cp resource.configured.cpp $@; \
+		rm -f resource.configured resource.configured.cpp; \
+	else \
+		sudo cp $< $@; \
+	fi
+	@echo "Installing $< to $@"
 
 FILE_TARGETS += ${WSS_ROOT}/dnd.py ${SYSTEMD}/dnd.wss.service
 define resource_template =
@@ -37,17 +47,38 @@ $(foreach directory,$(DIRECTORIES),$(eval $(call directory_template,$(directory)
 
 # Constant Rules
 ${WSS_ROOT}/dnd.py: dnd.py ${SYSTEMD}/dnd.wss.service
-	sudo cp $< $@
+	./configurer.py $< $(VERBOSITY) -b $(BUILDTYPE) \
+	-f $(FULLCHAIN) -k $(KEYFILE) -o $<.configured
+	sudo cp $<.configured $@
 	sudo service dnd.wss restart
+	@sudo rm -f $<.configured
 
 ${SYSTEMD}/dnd.wss.service: dnd.wss.service
 	sudo cp $< $@
 	sudo systemctl daemon-reload
 
+keys: Makefile
+	sudo ./configurer.py local/dnd.local $(VERBOSITY) -b $(BUILDTYPE) \
+	-f $(FULLCHAIN) -k $(KEYFILE) -o /etc/nginx/sites-enabled/dnd.local
+	mkdir -p keys
+
 # Conventional Targets
 all: $(DIRECTORY_TARGETS) $(FILE_TARGETS)
 
-verbose: all
-verbose: VERBOSITY := -v
+release: all
+release: BUILDTYPE := RELEASE
+release: FULLCHAIN := /etc/letsencrypt/live/nonsense.page/fullchain.pem
+release: KEYFILE := /etc/letsencrypt/live/nonsense.page/privkey.pem
 
-.PHONY: all verbose
+local: keys all
+local: BUILDTYPE := LOCAL
+local: FULLCHAIN := $(shell pwd)/keys/fullchain.pem
+local: KEYFILE := $(shell pwd)/keys/privkey.pem
+
+unknown:
+	@echo error: specify \'make release\' or \'make local\'
+
+verbose: local
+verbose: VERBOSITY += -v
+
+.PHONY: all verbose release local unknown
