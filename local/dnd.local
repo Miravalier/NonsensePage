@@ -1,5 +1,5 @@
 server {
-    root /var/www/dnd;
+    root /var/www/nonsense;
 
     index dnd.html;
     server_name www.dnd.local dnd.local;
@@ -12,8 +12,8 @@ server {
     listen 443 ssl;
     ssl_certificate $$FULLCHAIN$$;
     ssl_certificate_key $$KEYFILE$$;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    include $$SOURCE$$/local/options-ssl-nginx.conf;
+    ssl_dhparam $$SOURCE$$/local/ssl-dhparams.pem;
 }
 
 server {

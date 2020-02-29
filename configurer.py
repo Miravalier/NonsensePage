@@ -14,6 +14,7 @@ def main():
     parser.add_argument("-b", "--build", required=True)
     parser.add_argument("-f", "--fullchain", required=True)
     parser.add_argument("-k", "--keyfile", required=True)
+    parser.add_argument("-s", "--source", required=True)
 
     args = parser.parse_args()
     in_path = args.file
@@ -38,6 +39,8 @@ def main():
                         b"$$FULLCHAIN$$", args.fullchain.encode('ascii')
                     ).replace(
                         b"$$KEYFILE$$", args.keyfile.encode('ascii')
+                    ).replace(
+                        b"$$SOURCE$$", args.source.encode('ascii')
                     )
                 )
 
