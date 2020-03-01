@@ -168,7 +168,7 @@ function acquire_connection() {
 #ifdef BUILDTYPE_RELEASE
     g_connection = new WebSocket("wss://nonsense.page:3030/");
 #else
-    g_connection = new WebSocket("wss://localhost:3030/");
+    g_connection = new WebSocket("wss://dnd.local:3030/");
 #endif
     g_connection.onopen = activate_connection;
     g_connection.onmessage = global_handler;
