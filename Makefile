@@ -60,9 +60,25 @@ ${SYSTEMD}/dnd.wss.service: dnd.wss.service
 	sudo systemctl daemon-reload
 
 keys: Makefile
+	rm -rf keys
 	mkdir -p keys
+	mkdir -p keys/certs keys/crl keys/newcerts keys/private
+	chmod 700 keys/private
+	touch keys/index.txt
+	echo 1000 > keys/serial
+	# Make root key
+	openssl genrsa -out keys/private/ca.key.pem 4096
+	chmod 400 keys/private/ca.key.pem
+	# Make root cert
+	openssl req -config local/openssl.cnf \
+      -key keys/private/ca.key.pem \
+      -new -x509 -days 7300 -sha256 -extensions v3_ca \
+      -out keys/certs/ca.cert.pem < local/ca_parameters.txt
+	chmod 444 keys/certs/ca.cert.pem
+	# Old self signed cert
 	openssl req -x509 -newkey rsa:4096 -keyout keys/privkey.pem -out keys/fullchain.pem \
-    -days 365 -nodes < local/parameters.txt
+	-days 365 -nodes < local/cert_parameters.txt
+	# Return to working directory
 	sudo ./configurer.py local/dnd.local $(VERBOSITY) -b $(BUILDTYPE) -s $(SOURCEDIR) \
 	-f $(FULLCHAIN) -k $(KEYFILE) -o /etc/nginx/sites-enabled/dnd.local
 	sudo service nginx restart

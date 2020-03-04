@@ -1,7 +1,7 @@
 US
 Local
 .
-LocalCompany
+LocalDev
 .
 dnd.local
 .
