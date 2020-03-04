@@ -62,23 +62,27 @@ ${SYSTEMD}/dnd.wss.service: dnd.wss.service
 keys: Makefile
 	rm -rf keys
 	mkdir -p keys
-	mkdir -p keys/certs keys/crl keys/newcerts keys/private
-	chmod 700 keys/private
 	touch keys/index.txt
-	echo 1000 > keys/serial
 	# Make root key
-	openssl genrsa -out keys/private/ca.key.pem 4096
-	chmod 400 keys/private/ca.key.pem
+	openssl genrsa -out keys/ca.key.pem 4096
+	chmod 400 keys/ca.key.pem
 	# Make root cert
-	openssl req -config local/openssl.cnf \
-      -key keys/private/ca.key.pem \
+	openssl req -config local/ca.cnf \
+      -key keys/ca.key.pem \
       -new -x509 -days 7300 -sha256 -extensions v3_ca \
-      -out keys/certs/ca.cert.pem < local/ca_parameters.txt
-	chmod 444 keys/certs/ca.cert.pem
-	# Old self signed cert
-	openssl req -x509 -newkey rsa:4096 -keyout keys/privkey.pem -out keys/fullchain.pem \
-	-days 365 -nodes < local/cert_parameters.txt
-	# Return to working directory
+      -out keys/ca.cert.pem < local/ca.input
+	chmod 444 keys/ca.cert.pem
+	# Create dnd.local key
+	openssl genrsa -out keys/dnd.key.pem 2048
+	# Create dnd.local csr
+	openssl req -new -key keys/dnd.key.pem -out keys/dnd.csr.pem < local/dnd.input
+	# Create dnd.local cert
+	openssl x509 -req -in keys/dnd.csr.pem -CA keys/ca.cert.pem -CAkey keys/ca.key.pem \
+	-CAcreateserial -out keys/dnd.cert.pem -days 1825 -sha256 -extfile local/dnd.ext
+	# Prepare files for use
+	cp keys/dnd.cert.pem keys/fullchain.pem
+	cp keys/dnd.key.pem keys/privkey.pem
+	# Update nginx site
 	sudo ./configurer.py local/dnd.local $(VERBOSITY) -b $(BUILDTYPE) -s $(SOURCEDIR) \
 	-f $(FULLCHAIN) -k $(KEYFILE) -o /etc/nginx/sites-enabled/dnd.local
 	sudo service nginx restart
