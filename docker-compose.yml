@@ -1,0 +1,16 @@
+version: "3.5"
+
+networks:
+  townhall:
+    external: false
+
+services:
+    challenge:
+        build: server
+        container_name: townhall_server
+        networks:
+            - townhall
+        volumes:
+            - /var/townhall:/data
+        ports:
+            - "${HTTP_PORT}:80"
