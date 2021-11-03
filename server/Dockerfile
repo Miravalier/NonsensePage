@@ -1,6 +1,6 @@
 FROM python:3.9
 ENV PYTHONUNBUFFERED=1
-RUN pip install fastapi[all] uvicorn aiohttp lxml aiofiles
+RUN pip install fastapi[all] uvicorn aiohttp lxml aiofiles pydantic
 
 COPY . /app
 WORKDIR /app

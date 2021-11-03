@@ -4,10 +4,13 @@
   "description": "Open source Tabletop RPG client and self-hosted server.",
   "main": "client/main.js",
   "scripts": {
-    "start": "electron-forge start",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "package": "electron-forge package",
-    "make": "electron-forge make"
+    "build": "tsc",
+    "start": "npm run build && electron-forge start",
+    "package": "npm run build && electron-forge package",
+    "make": "npm run build && electron-forge make",
+    "make-darwin": "npm run build && electron-forge make --platform darwin",
+    "make-linux": "npm run build && electron-forge make --platform linux --targets deb,rpm",
+    "make-win32": "npm run build && electron-forge make --arch x64 --platform win32 -d"
   },
   "repository": {
     "type": "git",
@@ -28,11 +31,16 @@
     "electron": "^15.3.0"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.0"
+    "electron-squirrel-startup": "^1.0.0",
+    "typescript": "^4.4.4"
   },
   "config": {
     "forge": {
-      "packagerConfig": {},
+      "packagerConfig": {
+        "ignore": [
+          "server"
+        ]
+      },
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",

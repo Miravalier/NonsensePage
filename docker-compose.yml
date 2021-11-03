@@ -5,7 +5,7 @@ networks:
     external: false
 
 services:
-    challenge:
+    server:
         build: server
         container_name: townhall_server
         networks:

@@ -1,3 +1,6 @@
+renderer/*.js
+renderer/*.js.map
 node_modules/
 out/
 .env
+.vscode/
