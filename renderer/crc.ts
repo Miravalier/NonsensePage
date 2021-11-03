@@ -54,7 +54,7 @@ export class CRC32C {
     static update(crc: number, value: string): number {
         const data = encoder.encode(value);
         for (let i = 0; i < data.length; i++) {
-            crc = (crcTable[(crc ^ data[i]) & 0xFF] ^ (crc >> 8)) & 0xffffffff;
+            crc = ((crcTable[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8))) >>> 0;
         }
         return crc;
     }

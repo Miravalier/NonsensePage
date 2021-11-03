@@ -5,7 +5,7 @@ declare global {
     interface Window {
         VERSION: string;
         PcgRandom: any;
-        CRC: any;
+        CRC32C: any;
     }
 }
 window.PcgRandom = PcgRandom;
