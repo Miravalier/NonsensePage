@@ -1,44 +1,24 @@
 import secrets
-from typing import Union
-from fastapi import FastAPI, WebSocket
-from pydantic import BaseModel, ValidationError
+from typing import Dict, Optional
 
+from context import Context
+from db import DatabaseEntry, db
+from errors import ApiError
+from fastapi import FastAPI, HTTPException, WebSocket
+from models import ErrorReply, LoginRequest, RegisterRequest
+from password import check_password, hash_password
+from pydantic import ValidationError
+from state import connected_websockets, sessions
 from user import User
-from db import db
 
 
-sessions = {}
+def handle_request(context: Context, request: Dict):
+    if request["type"] == "register":
+        handle_register(context, RegisterRequest.parse_obj(request))
 
 
-class ErrorReply(BaseModel):
-    description: str
-
-
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-
-class AuthRequest(BaseModel):
-    token: str
-
-
-class Context:
-    def __init__(self, websocket: WebSocket):
-        self.websocket = websocket
-
-    async def send(self, data: Union[dict, BaseModel]):
-        if isinstance(data, BaseModel):
-            await self.websocket.send_json(data.dict())
-        else:
-            await self.websocket.send_json(data)
-
-    async def receive(self, model: BaseModel) -> BaseModel:
-        return model.parse_obj(await self.websocket.receive_json())
-
-    async def authenticate(self):
-        auth_request: AuthRequest = await self.receive(AuthRequest)
-        user = sessions.get(auth_request.token)
+def handle_register(context: Context, request: RegisterRequest):
+    hash_password(request.password)
 
 
 app = FastAPI()
@@ -51,11 +31,15 @@ async def index():
 
 @app.get("/login")
 async def login(request: LoginRequest):
-    request.username
-    request.password
+    user_entry: Optional[DatabaseEntry] = db["users"][request.username]
+    if user_entry is None:
+        raise HTTPException(401, "invalid username or password")
+    user = User.parse_obj(user_entry.data)
+    if not check_password(request.password, user.hashed_password):
+        raise HTTPException(401, "invalid username or password")
     token = secrets.token_hex(16)
     sessions[token] = user
-    return {"status": "success"}
+    return {"status": "success", "token": token}
 
 
 @app.websocket("/ws")
@@ -63,5 +47,11 @@ async def websocket_endpoint(websocket: WebSocket):
     context = Context(websocket)
     try:
         await context.authenticate()
-    except ValidationError as e:
+        connected_websockets.add(context)
+        while True:
+            request = await context.receive_json()
+            handle_request(context, request)
+    except (ValidationError, ApiError) as e:
         await context.send(ErrorReply(description=str(e)))
+    finally:
+        connected_websockets.discard(context)

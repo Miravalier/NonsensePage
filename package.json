@@ -1,22 +1,26 @@
 {
   "name": "townhall",
   "version": "1.0.0",
-  "description": "Open source Tabletop RPG client and self-hosted server.",
+  "description": "Open source Tabletop RPG client.",
   "main": "client/main.js",
   "scripts": {
     "build": "tsc",
     "start": "npm run build && electron-forge start",
     "package": "npm run build && electron-forge package",
+    "package-darwin": "npm run build && electron-forge package --platform darwin",
+    "package-linux": "npm run build && electron-forge package --platform linux",
+    "package-win32": "npm run build && electron-forge package --platform win32",
     "make": "npm run build && electron-forge make",
     "make-darwin": "npm run build && electron-forge make --platform darwin",
-    "make-linux": "npm run build && electron-forge make --platform linux --targets deb,rpm",
-    "make-win32": "npm run build && electron-forge make --arch x64 --platform win32 -d"
+    "make-linux": "npm run build && electron-forge make --platform linux",
+    "make-win32": "npm run build && electron-forge make --platform win32",
+    "publish": "npm run build && electron-forge publish"
   },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/Miravalier/townhall.git"
   },
-  "author": "Benjamin Miramontes",
+  "author": "Benjamin Miramontes Jr.",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/Miravalier/townhall/issues"
@@ -28,39 +32,72 @@
     "@electron-forge/maker-rpm": "^6.0.0-beta.61",
     "@electron-forge/maker-squirrel": "^6.0.0-beta.61",
     "@electron-forge/maker-zip": "^6.0.0-beta.61",
+    "@electron-forge/publisher-github": "^6.0.0-beta.61",
     "electron": "^15.3.0"
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
-    "typescript": "^4.4.4"
+    "typescript": "^4.4.4",
+    "update-electron-app": "^2.0.1"
   },
   "config": {
     "forge": {
       "packagerConfig": {
         "ignore": [
-          "server"
+          "server",
+          ".*\\.env",
+          "nginx\\.site",
+          "\\.vscode",
+          "docker-compose\\.yml",
+          "tsconfig\\.json",
+          "\\.gitignore",
+          "Makefile",
+          ".*\\.(pfx|crt|key)"
         ]
       },
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",
           "config": {
-            "name": "townhall"
+            "certificateFile": "./townhall.pfx"
           }
         },
         {
           "name": "@electron-forge/maker-zip",
           "platforms": [
-            "darwin"
+            "darwin",
+            "win32",
+            "linux"
           ]
         },
         {
           "name": "@electron-forge/maker-deb",
-          "config": {}
+          "config": {
+            "options": {
+              "maintainer": "Benjamin Miramontes Jr.",
+              "homepage": "https://github.com/Miravalier/townhall"
+            }
+          }
         },
         {
           "name": "@electron-forge/maker-rpm",
-          "config": {}
+          "config": {
+            "options": {
+              "maintainer": "Benjamin Miramontes Jr.",
+              "homepage": "https://github.com/Miravalier/townhall"
+            }
+          }
+        }
+      ],
+      "publishers": [
+        {
+          "name": "@electron-forge/publisher-github",
+          "config": {
+            "repository": {
+              "owner": "Miravalier",
+              "name": "townhall"
+            }
+          }
         }
       ]
     }

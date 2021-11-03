@@ -5,3 +5,6 @@ out/
 .env
 .vscode/
 __pycache__/
+*.pfx
+*.crt
+*.key

@@ -1,7 +1,7 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class User:
-    username: str
-    password_hash: bytes
+class User(BaseModel):
+    name: str
+    hashed_password: bytes
+    is_gm: bool = False

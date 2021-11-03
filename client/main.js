@@ -5,6 +5,10 @@ if (require('electron-squirrel-startup')) {
     app.quit();
 }
 
+if (process.platform === 'win32') {
+    require('update-electron-app')();
+}
+
 function createWindow() {
     const mainWindow = new BrowserWindow({
         webPreferences: {

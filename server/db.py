@@ -1,11 +1,23 @@
 from __future__ import annotations
-from pathlib import Path
-from typing import Union, Sequence, Dict
 
 import pickle
 import secrets
+from pathlib import Path
+from typing import Dict, Sequence, Tuple, Union
 
+from crc import crc32c
 from permissions import Permissions
+
+
+def process_update(data: Dict, update: Dict, crc: int = 0) -> Tuple[Dict, int]:
+    for key, value in update.items():
+        if isinstance(value, dict):
+            data[key], crc = process_update(data.get(key, {}), value, crc)
+        else:
+            data[key] = value
+            crc = crc32c(crc, key)
+            crc = crc32c(crc, str(value))
+    return data, crc
 
 
 class Database:
@@ -15,6 +27,9 @@ class Database:
         self.children: Dict[str, Union[Database, DatabaseEntry]] = {}
         self.tag = secrets.randbits(64)
         self.persisted = False
+
+    def __iter__(self):
+        return (child for child in self.children.values() if isinstance(child, DatabaseEntry))
 
     def save(self):
         if self.persisted:
@@ -79,12 +94,6 @@ class Database:
             node.children[endpoint] = result
         return result
 
-    def update(self, path: Union[str, Sequence[str]]):
-        entry = self.resolve_path(path, create=False)
-        if not isinstance(entry, DatabaseEntry):
-            raise KeyError(f"invalid update path '{path}'")
-        entry.update()
-
     def __getitem__(self, path: Union[str, Sequence[str]]) -> Union[Database, DatabaseEntry]:
         node = self.resolve_path(path, create=False)
         if isinstance(node, (Database, DatabaseEntry)):
@@ -94,20 +103,21 @@ class Database:
 
     def __setitem__(self, path: Union[str, Sequence[str]], value: Dict):
         entry: DatabaseEntry = self.resolve_path(path, create=True)
-        entry.data = value
-        entry.update()
+        entry.update(value)
 
 
 class DatabaseEntry:
     def __init__(self, parent: Database, tag: int = 0, data: Dict = None):
+        if data is None:
+            data = {}
         self.parent = parent
         self.tag = tag
         self.data = data
         self.persisted = False
         self.permissions = {"*": {"*": Permissions.NONE}}
 
-    def update(self):
-        self.tag = secrets.randbits(64)
+    def update(self, data: Dict):
+        self.data, self.tag = process_update(self.data, data, self.tag)
         self.persisted = False
         node: Union[Database, None] = self.parent
         while node is not None:
