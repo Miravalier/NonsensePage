@@ -2,7 +2,7 @@ from typing import Dict, Union
 
 from errors import AuthError
 from fastapi import WebSocket
-from models import AuthRequest
+from models import AuthRequest, User
 from pydantic import BaseModel
 from state import sessions
 
@@ -10,7 +10,7 @@ from state import sessions
 class Context:
     def __init__(self, websocket: WebSocket):
         self.websocket = websocket
-        self.user = None
+        self.user: User = None
 
     async def send(self, data: Union[dict, BaseModel]):
         if isinstance(data, BaseModel):

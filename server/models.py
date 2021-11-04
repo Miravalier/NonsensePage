@@ -17,3 +17,9 @@ class RegisterRequest(BaseModel):
 
 class AuthRequest(BaseModel):
     token: str
+
+
+class User(BaseModel):
+    name: str
+    hashed_password: bytes
+    is_gm: bool = False

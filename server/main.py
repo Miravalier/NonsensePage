@@ -1,24 +1,30 @@
 import secrets
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
+
+from pydantic import BaseModel
 
 from context import Context
 from db import DatabaseEntry, db
 from errors import ApiError
 from fastapi import FastAPI, HTTPException, WebSocket
-from models import ErrorReply, LoginRequest, RegisterRequest
+from models import ErrorReply, LoginRequest, RegisterRequest, User
 from password import check_password, hash_password
 from pydantic import ValidationError
 from state import connected_websockets, sessions
-from user import User
 
 
-def handle_request(context: Context, request: Dict):
+async def handle_request(context: Context, request: Dict) -> Union[BaseModel, Dict]:
     if request["type"] == "register":
-        handle_register(context, RegisterRequest.parse_obj(request))
+        await handle_register(context, RegisterRequest.parse_obj(request))
+    else:
+        await context.send
 
 
-def handle_register(context: Context, request: RegisterRequest):
-    hash_password(request.password)
+async def handle_register(context: Context, request: RegisterRequest) -> Union[BaseModel, Dict]:
+    # Validate permissions
+    if not context.user.is_gm:
+        return ErrorReply()
+    user = User(name=request.username, hashed_password=hash_password(request.password), is_gm=False)
 
 
 app = FastAPI()
@@ -49,8 +55,10 @@ async def websocket_endpoint(websocket: WebSocket):
         await context.authenticate()
         connected_websockets.add(context)
         while True:
-            request = await context.receive_json()
-            handle_request(context, request)
+            request = await context.receive()
+            response = handle_request(context, request)
+            if response:
+                await context.send(response)
     except (ValidationError, ApiError) as e:
         await context.send(ErrorReply(description=str(e)))
     finally:
