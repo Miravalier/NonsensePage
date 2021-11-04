@@ -1,16 +1,16 @@
 version: "3.5"
 
 networks:
-  townhall:
+  canonfire:
     external: false
 
 services:
     server:
         build: server
-        container_name: townhall_server
+        container_name: canonfire_server
         networks:
-            - townhall
+            - canonfire
         volumes:
-            - /var/townhall:/data
+            - /var/canonfire:/data
         ports:
             - "${HTTP_PORT}:80"

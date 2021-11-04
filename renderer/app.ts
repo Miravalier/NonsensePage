@@ -11,4 +11,4 @@ declare global {
 window.PcgRandom = PcgRandom;
 window.CRC32C = CRC32C;
 
-console.log(`Townhall version ${window.VERSION}`);
+console.log(`Canonfire version ${window.VERSION}`);

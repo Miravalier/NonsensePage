@@ -1,4 +1,4 @@
-DOMAIN = townhall.local
+DOMAIN = canonfire.local
 
 .PHONY: help nginx server client pfx
 
@@ -47,8 +47,8 @@ nginx:
 	sed -i "s/{DOMAIN}/$(DOMAIN)/" "$(SITE_AVAILABLE)"
 	ln -s "$(SITE_AVAILABLE)" "$(SITE_ENABLED)"
 	service nginx restart
-	@echo "Townhall reachable at http://$(DOMAIN)/"
+	@echo "canonfire reachable at http://$(DOMAIN)/"
 
 pfx:
-	openssl req -x509 -newkey rsa:4096 -keyout townhall.key -out townhall.crt -sha256 -days 3650 -nodes
-	openssl pkcs12 -export -in townhall.crt -inkey townhall.key -out townhall.pfx
+	openssl req -x509 -newkey rsa:4096 -keyout canonfire.key -out canonfire.crt -sha256 -days 3650 -nodes
+	openssl pkcs12 -export -in canonfire.crt -inkey canonfire.key -out canonfire.pfx
