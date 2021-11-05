@@ -4,7 +4,7 @@
   "description": "Open source Tabletop RPG client.",
   "main": "client/main.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && sass renderer",
     "start": "npm run build && electron-forge start",
     "package": "npm run build && electron-forge package",
     "package-darwin": "npm run build && electron-forge package --platform darwin",
@@ -40,9 +40,22 @@
     "typescript": "^4.4.4",
     "update-electron-app": "^2.0.1"
   },
+  "build": {
+    "appId": "dev.miramontes.canonfire",
+    "productName": "Canonfire",
+    "copyright": "Copyright © 2021 Benjamin Miramontes Jr.",
+    "mac": {
+      "icon": "./build/icon.icns",
+      "category": "public.app-category.games"
+    },
+    "win": {
+      "icon": "./build/icon.png"
+    }
+  },
   "config": {
     "forge": {
       "packagerConfig": {
+        "icon": "./build/icon.png",
         "ignore": [
           "server",
           ".*\\.env",
@@ -59,7 +72,10 @@
         {
           "name": "@electron-forge/maker-squirrel",
           "config": {
-            "certificateFile": "./canonfire.pfx"
+            "certificateFile": "./canonfire.pfx",
+            "iconUrl": "./build/icon.ico",
+            "setupExe": "CanonfireSetup.exe",
+            "setupIcon": "./build/icon.ico"
           }
         },
         {
@@ -75,7 +91,12 @@
           "config": {
             "options": {
               "maintainer": "Benjamin Miramontes Jr.",
-              "homepage": "https://github.com/Miravalier/canonfire"
+              "homepage": "https://github.com/Miravalier/canonfire",
+              "icon": "./build/icon.png",
+              "productName": "Canonfire",
+              "categories": [
+                "Game"
+              ]
             }
           }
         },
@@ -84,7 +105,13 @@
           "config": {
             "options": {
               "maintainer": "Benjamin Miramontes Jr.",
-              "homepage": "https://github.com/Miravalier/canonfire"
+              "homepage": "https://github.com/Miravalier/canonfire",
+              "icon": "./build/icon.png",
+              "license": "MIT",
+              "productName": "Canonfire",
+              "categories": [
+                "Game"
+              ]
             }
           }
         }

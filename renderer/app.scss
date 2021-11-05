@@ -1,0 +1,65 @@
+// Variables
+$font-primary: 'Raleway', sans-serif;
+$font-accent: 'Prompt', sans-serif;
+$font-color-primary: #f1f1f1;
+$font-color-accent: #bde1ff;
+$light-primary: #444444;
+$light-highlight: #5c5c5c;
+$light-accent: #407abd;
+$dark-primary: #222222;
+$dark-highlight: #333333;
+$dark-accent: #1f3c5e;
+
+// Mixins
+@mixin no-drag {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+}
+
+@mixin no-select {
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+}
+
+// Element Rules
+* {
+    @include no-drag;
+    padding: 0;
+    margin: 0;
+    font-family: $font-primary;
+    color: $font-color-primary;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+    background-color: $dark-primary;
+    overflow: hidden;
+}
+
+img {
+    @include no-select;
+}
+
+h1 {
+    font-family: $font-accent;
+}
+
+// Class Rules
+.logo {
+    height: 128px;
+    width: 128px;
+}
