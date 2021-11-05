@@ -29,7 +29,9 @@ $dark-accent: #1f3c5e;
 
 // Element Rules
 * {
+    cursor: url("cursors/standard-cursor.svg"), auto;
     @include no-drag;
+    @include no-select;
     padding: 0;
     margin: 0;
     font-family: $font-primary;
@@ -50,10 +52,6 @@ body {
     overflow: hidden;
 }
 
-img {
-    @include no-select;
-}
-
 h1 {
     font-family: $font-accent;
 }
@@ -62,4 +60,11 @@ h1 {
 .logo {
     height: 128px;
     width: 128px;
+}
+
+// Id Rules
+#desktop {
+    position: absolute;
+    height: 100%;
+    width: 100%;
 }
