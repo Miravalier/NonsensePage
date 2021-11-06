@@ -6,7 +6,7 @@ networks:
 
 services:
     server:
-        build: server
+        build: .
         container_name: canonfire_server
         networks:
             - canonfire

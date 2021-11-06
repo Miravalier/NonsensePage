@@ -27,7 +27,7 @@ async def handle_register(context: Context, request: RegisterRequest) -> Union[B
     user = User(name=request.username, hashed_password=hash_password(request.password), is_gm=False)
 
 
-app = FastAPI()
+app = FastAPI(root_path="/api")
 
 
 @app.get("/")

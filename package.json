@@ -2,19 +2,20 @@
   "name": "canonfire",
   "version": "1.0.0",
   "description": "Open source Tabletop RPG client.",
-  "main": "client/main.js",
+  "main": "electron/main.js",
   "scripts": {
-    "build": "tsc && sass renderer",
-    "start": "npm run build && electron-forge start",
-    "package": "npm run build && electron-forge package",
-    "package-darwin": "npm run build && electron-forge package --platform darwin",
-    "package-linux": "npm run build && electron-forge package --platform linux",
-    "package-win32": "npm run build && electron-forge package --platform win32",
-    "make": "npm run build && electron-forge make",
-    "make-darwin": "npm run build && electron-forge make --platform darwin",
-    "make-linux": "npm run build && electron-forge make --platform linux",
-    "make-win32": "npm run build && electron-forge make --platform win32",
-    "publish": "npm run build && electron-forge publish"
+    "build": "./build.sh && webpack && cp src/html/* dist/ && cp build/assets/images/Canonfire.webp dist/",
+    "host": "sudo rm -rf /var/www/canonfire && sudo cp -r dist /var/www/canonfire",
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "package-darwin": "electron-forge package --platform darwin",
+    "package-linux": "electron-forge package --platform linux",
+    "package-win32": "electron-forge package --platform win32",
+    "make": "electron-forge make",
+    "make-darwin": "electron-forge make --platform darwin",
+    "make-linux": "electron-forge make --platform linux",
+    "make-win32": "electron-forge make --platform win32",
+    "publish": "electron-forge publish"
   },
   "repository": {
     "type": "git",
@@ -36,14 +37,19 @@
     "@types/jquery": "^3.5.8",
     "@types/react": "^17.0.34",
     "@types/react-dom": "^17.0.11",
-    "electron": "^15.3.0"
+    "@types/react-resizable": "^1.7.4",
+    "css-loader": "^6.5.1",
+    "electron": "^15.3.0",
+    "style-loader": "^3.3.1",
+    "webpack": "^5.62.1",
+    "webpack-cli": "^4.9.1"
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
     "jquery": "^3.6.0",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
-    "typescript": "^4.4.4",
+    "react-resizable": "^3.0.4",
     "update-electron-app": "^2.0.1"
   },
   "build": {
@@ -51,17 +57,17 @@
     "productName": "Canonfire",
     "copyright": "Copyright © 2021 Benjamin Miramontes Jr.",
     "mac": {
-      "icon": "./build/icon.icns",
+      "icon": "./electron/icon.icns",
       "category": "public.app-category.games"
     },
     "win": {
-      "icon": "./build/icon.png"
+      "icon": "./electron/icon.png"
     }
   },
   "config": {
     "forge": {
       "packagerConfig": {
-        "icon": "./build/icon.png",
+        "icon": "./electron/icon.png",
         "ignore": [
           "server",
           ".*\\.env",
@@ -79,9 +85,9 @@
           "name": "@electron-forge/maker-squirrel",
           "config": {
             "certificateFile": "./canonfire.pfx",
-            "iconUrl": "./build/icon.ico",
+            "iconUrl": "./electron/icon.ico",
             "setupExe": "CanonfireSetup.exe",
-            "setupIcon": "./build/icon.ico"
+            "setupIcon": "./electron/icon.ico"
           }
         },
         {
@@ -98,7 +104,7 @@
             "options": {
               "maintainer": "Benjamin Miramontes Jr.",
               "homepage": "https://github.com/Miravalier/canonfire",
-              "icon": "./build/icon.png",
+              "icon": "./electron/icon.png",
               "productName": "Canonfire",
               "categories": [
                 "Game"
@@ -112,7 +118,7 @@
             "options": {
               "maintainer": "Benjamin Miramontes Jr.",
               "homepage": "https://github.com/Miravalier/canonfire",
-              "icon": "./build/icon.png",
+              "icon": "./electron/icon.png",
               "license": "MIT",
               "productName": "Canonfire",
               "categories": [

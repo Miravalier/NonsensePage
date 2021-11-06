@@ -1,8 +1,6 @@
-renderer/*.css
-renderer/*.css.map
-renderer/*.js
-renderer/*.js.map
 node_modules/
+build/
+dist/
 out/
 .env
 .vscode/

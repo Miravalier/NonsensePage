@@ -29,7 +29,7 @@ $dark-accent: #1f3c5e;
 
 // Element Rules
 * {
-    cursor: url("cursors/standard-cursor.svg"), auto;
+    cursor: url("../assets/cursors/standard-cursor.svg"), auto;
     @include no-drag;
     @include no-select;
     padding: 0;
@@ -63,8 +63,26 @@ h1 {
 }
 
 // Id Rules
-#desktop {
+#root, #desktop {
     position: absolute;
     height: 100%;
     width: 100%;
+}
+
+#context-menu {
+    position: absolute;
+    display: flex;
+    flex-flow: column nowrap;
+    height: fit-content;
+    width: fit-content;
+
+    .option {
+        padding: 4px;
+        background-color: $light-primary;
+        border-bottom: 2px solid $dark-highlight;
+    }
+
+    .option:hover {
+        background-color: $light-accent;
+    }
 }

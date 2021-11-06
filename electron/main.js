@@ -5,21 +5,19 @@ if (require('electron-squirrel-startup')) {
     app.quit();
 }
 
-if (process.platform === 'win32') {
-    require('update-electron-app')();
-}
-
-function createWindow() {
+function main() {
     const mainWindow = new BrowserWindow({
-        icon: path.join(__dirname, '../build/icon.png'),
-        width: 1200,
-        height: 800,
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js')
-        }
+        icon: path.join(__dirname, './icon.png')
     });
     mainWindow.setMenuBarVisibility(false);
-    mainWindow.loadFile('renderer/app.html');
+    if (app.isPackaged) {
+        mainWindow.loadURL('https://canonfire.miramontes.dev/');
+    }
+    else {
+        mainWindow.loadURL('http://canonfire.local/');
+        mainWindow.webContents.openDevTools();
+    }
+    mainWindow.maximize();
     return mainWindow;
 }
 
@@ -30,11 +28,11 @@ app.on('window-all-closed', () => {
 })
 
 app.whenReady().then(() => {
-    createWindow();
+    main();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
+            main();
         }
     })
 });

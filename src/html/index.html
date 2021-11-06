@@ -4,15 +4,11 @@
 <head>
   <!-- Meta -->
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-eval';">
   <title>Canonfire</title>
 
   <!-- jQuery -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-  <!-- React -->
-  <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+    integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,14 +16,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt&family=Raleway&display=swap" rel="stylesheet">
 
   <!-- Project Code -->
-  <script src="app.js" type="module"></script>
-  <link href="app.css" rel="stylesheet">
+  <script src="main.js" type="module"></script>
 </head>
 
 <body>
   <h1>Canonfire</h1>
   <img class="logo" src="Canonfire.webp">
-  <div id="desktop"></div>
+  <div id="root"></div>
 </body>
 
 </html>

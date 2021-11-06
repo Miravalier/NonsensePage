@@ -7,10 +7,10 @@ help:
 	@echo "  Display this message"
 	@echo
 	@echo "make server"
-	@echo "  Start the server (requires docker and docker-compose)"
+	@echo "  Start the server in DEBUG mode (requires docker and docker-compose)"
 	@echo
 	@echo "make client"
-	@echo "  Run the client in DEBUG mode"
+	@echo "  Run the client in DEBUG mode and connect locally."
 	@echo
 	@echo "sudo make nginx"
 	@echo "  Serve the application on the domain $(DOMAIN)"
@@ -23,6 +23,7 @@ server:
 			echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
 			exit 1; \
 		fi
+	npm run host
 	docker-compose down
 	docker-compose build
 	docker-compose up -d
