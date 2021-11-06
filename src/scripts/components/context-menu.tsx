@@ -42,6 +42,7 @@ export class ContextMenu extends React.Component<ContextMenuProps, ContextMenuSt
                     data-id={option.id}
                     key={option.id}
                     onClick={(ev) => {
+                        ev.preventDefault();
                         ev.stopPropagation();
                         this.resolve(option.id);
                     }}

@@ -13,7 +13,7 @@ help:
 	@echo "  Run the client in DEBUG mode and connect locally."
 	@echo
 	@echo "sudo make nginx"
-	@echo "  Serve the application on the domain $(DOMAIN)"
+	@echo "  Serve the application on the provided DOMAIN."
 	@echo
 	@echo "make pfx"
 	@echo "  Create a self-signed pfx file for windows"

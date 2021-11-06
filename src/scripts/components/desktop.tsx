@@ -27,16 +27,23 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
         return (
             <div
                 id="desktop"
-                onContextMenu={(ev) => this.newWindowMenu(ev)}
+                onContextMenu={(ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    this.newWindowMenu(ev);
+                }}
                 onClick={(ev) => {
+                    ev.preventDefault();
                     ev.stopPropagation();
                     this.closeContextMenu(ev);
                 }}
             >
-                <ContextMenu ref={this.contextMenuRef} />
+                <h1>Canonfire</h1>
+                <img className="logo" src="Canonfire.webp"></img>
                 <div className="windows">
                     {this.state.windows}
                 </div>
+                <ContextMenu ref={this.contextMenuRef} />
             </div>
         );
     }
@@ -59,8 +66,6 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
             display: null,
         };
         setStylePosition(style, ev);
-        const x = this;
-        console.log(x);
         return new Promise<string>(resolve => {
             this.contextMenuRef.current.setState({
                 style,
@@ -85,7 +90,6 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
         else if (id == "files") {
             windows.push(<FilesWindow key={randomID()} />);
         }
-        console.log(windows);
         this.setState({ windows });
     }
 }
