@@ -8,3 +8,4 @@ __pycache__/
 *.pfx
 *.crt
 *.key
+package-lock.json
