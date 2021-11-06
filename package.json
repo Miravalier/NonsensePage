@@ -69,15 +69,7 @@
       "packagerConfig": {
         "icon": "./electron/icon.png",
         "ignore": [
-          "server",
-          ".*\\.env",
-          "nginx\\.site",
-          "\\.vscode",
-          "docker-compose\\.yml",
-          "tsconfig\\.json",
-          "\\.gitignore",
-          "Makefile",
-          ".*\\.(pfx|crt|key)"
+          "^\/(?!(electron|node_modules|package\\.json))"
         ]
       },
       "makers": [
