@@ -3,12 +3,13 @@ import * as React from "react";
 export interface ContextMenuOption {
     id: string;
     title: string;
-    tooltip?: string;
+    shortcut?: string;
 }
 
 interface ContextMenuProps { }
 
 interface ContextMenuState {
+    title: string;
     style: React.CSSProperties;
     options: ContextMenuOption[];
     callback?: (value?: any | PromiseLike<any>) => void;
@@ -18,20 +19,16 @@ export class ContextMenu extends React.Component<ContextMenuProps, ContextMenuSt
     constructor(props: ContextMenuProps) {
         super(props);
         this.state = {
+            title: "Context Menu",
             style: { display: "none" },
             options: [],
         };
     }
 
     resolve(id: string): void {
-        const callback = this.state.callback;
-        this.setState({
-            callback: null,
-            style: {
-                display: "none",
-            },
-        });
-        callback(id);
+        if (this.state.callback) {
+            this.state.callback(id);
+        }
     }
 
     render() {
@@ -47,12 +44,14 @@ export class ContextMenu extends React.Component<ContextMenuProps, ContextMenuSt
                         this.resolve(option.id);
                     }}
                 >
-                    {option.title}
+                    <div>{option.title}</div>
+                    <div className="shortcut">{option.shortcut}</div>
                 </div>
             );
         }
         return (
             <div id="context-menu" style={this.state.style}>
+                <div className="title">{this.state.title}</div>
                 {options}
             </div>
         );

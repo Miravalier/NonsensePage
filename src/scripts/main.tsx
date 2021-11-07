@@ -21,6 +21,11 @@ $(() => {
         <Desktop />,
         document.getElementById('root')
     );
+    document.addEventListener('keydown', ev => {
+        if (window.desktop.contextResolve) {
+            window.desktop.contextResolve(ev.code);
+        }
+    });
 });
 
 

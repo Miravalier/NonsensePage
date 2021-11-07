@@ -14,6 +14,7 @@ interface DesktopState {
 
 export class Desktop extends React.Component<DesktopProps, DesktopState> {
     contextMenuRef: React.RefObject<ContextMenu>;
+    contextResolve: (value?: any | PromiseLike<any>) => void;
 
     constructor(props: DesktopProps) {
         super(props);
@@ -49,30 +50,51 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
     }
 
     closeContextMenu(ev: React.MouseEvent) {
-        const contextMenu = this.contextMenuRef.current;
-        if (contextMenu.state.callback) {
-            contextMenu.state.callback(null);
+        if (this.contextResolve) {
+            this.contextResolve(null);
         }
-        contextMenu.setState({
-            style: {
-                display: "none",
-            },
-            callback: null,
-        });
     }
 
-    async openContextMenu(ev: React.MouseEvent, options: ContextMenuOption[]): Promise<string> {
+    async openContextMenu(ev: React.MouseEvent, title: string, options: ContextMenuOption[]): Promise<string> {
+        const contextMenu = this.contextMenuRef.current;
         const style: React.CSSProperties = {
             display: null,
         };
         setStylePosition(style, ev);
-        return new Promise<string>(resolve => {
-            this.contextMenuRef.current.setState({
+        const id = await new Promise<string>(resolve => {
+            /* Prepare shortcut map for keypress interaction */
+            const shortcutMap = {};
+            for (let option of options) {
+                if (!option.shortcut) continue;
+                shortcutMap[option.shortcut] = option.id;
+            }
+            this.contextResolve = (keypress?: string) => {
+                if (!keypress) {
+                    resolve(null);
+                    return;
+                }
+                if (!keypress.startsWith("Key") &&
+                    !keypress.startsWith("Numpad") &&
+                    !keypress.startsWith("Digit")) {
+                    return;
+                }
+                const shortcut = keypress[keypress.length - 1];
+                resolve(shortcutMap[shortcut]);
+            }
+            /* Reveal context menu for mouse interaction */
+            contextMenu.setState({
+                title,
                 style,
                 options,
                 callback: resolve
             });
         });
+        contextMenu.setState({
+            style: { display: "none" },
+            callback: null,
+        });
+        this.contextResolve = null;
+        return id;
     }
 
     closeWindow(windowId: string) {
@@ -83,9 +105,9 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
 
     async newWindow(ev: React.MouseEvent) {
         // Figure out which window to create
-        const id = await this.openContextMenu(ev, [
-            { id: "chat", title: "New Chat Window" },
-            { id: "files", title: "New Files Window" },
+        const id = await this.openContextMenu(ev, "New Window", [
+            { id: "chat", title: "Chat", shortcut: "C" },
+            { id: "files", title: "Files", shortcut: "F" },
         ]);
         if (!id) return;
         // Create new window

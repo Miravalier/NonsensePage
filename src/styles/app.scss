@@ -2,6 +2,7 @@
 $font-primary: 'Raleway', sans-serif;
 $font-accent: 'Prompt', sans-serif;
 $font-color-primary: #f1f1f1;
+$font-color-shadow: #7c7c7c;
 $font-color-accent: #bde1ff;
 $light-primary: #444444;
 $light-highlight: #5c5c5c;
@@ -90,17 +91,36 @@ h1 {
     flex-flow: column nowrap;
     height: fit-content;
     width: fit-content;
+    min-width: 160px;
     z-index: 10;
     box-shadow: 0 0 12px #00000080;
+    background-color: $dark-highlight;
+    border-radius: 4px;
+    padding-bottom: 8px;
+
+    .title {
+        font-family: $font-accent;
+        padding: 0 4px;
+    }
 
     .option {
-        padding: 4px;
+        padding: 4px 12px;
         background-color: $light-primary;
-        border-bottom: 2px solid $dark-highlight;
+        display: flex;
+        flex-flow: row nowrap;
+        justify-content: space-between;
+
+        .shortcut {
+            color: $font-color-shadow;
+        }
     }
 
     .option:hover {
         background-color: $light-accent;
+
+        .shortcut {
+            color: $font-color-primary;
+        }
     }
 }
 
