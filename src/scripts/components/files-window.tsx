@@ -19,7 +19,7 @@ export class FilesWindow extends React.Component<FilesWindowProps, FilesWindowSt
 
     render() {
         return (
-            <ApplicationWindow className="files" title="Files Window" id={this.props.id}
+            <ApplicationWindow className="files" title="Files" id={this.props.id}
                 width={600} height={400} onClose={(windowId) => this.props.onClose(windowId)}
                 left={this.props.left} top={this.props.top}>
                 <div>

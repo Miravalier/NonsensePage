@@ -19,7 +19,7 @@ export class ChatWindow extends React.Component<ChatWindowProps, ChatWindowState
 
     render() {
         return (
-            <ApplicationWindow className="chat" title="Chat Window" id={this.props.id}
+            <ApplicationWindow className="chat" title="Chat" id={this.props.id}
                 width={400} height={600} onClose={(windowId) => this.props.onClose(windowId)}
                 left={this.props.left} top={this.props.top}>
                 <div>
