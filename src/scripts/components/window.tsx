@@ -4,6 +4,11 @@ import Draggable from "react-draggable";
 import { ResizableBox } from "react-resizable";
 import { getNextZIndex } from "../positioning";
 
+enum DisplayState {
+    Regular,
+    Expanded,
+    Minimized,
+}
 
 export interface WindowProps {
     id: string;
@@ -17,7 +22,7 @@ export interface WindowProps {
     popOut?: boolean;
 }
 export interface WindowState {
-    minimized: boolean;
+    display: DisplayState
     z: number;
 }
 
@@ -25,11 +30,28 @@ export interface WindowState {
 export class ApplicationWindow extends React.Component<WindowProps, WindowState> {
     constructor(props: WindowProps) {
         super(props);
-        this.state = { minimized: false, z: getNextZIndex() };
+        this.state = {
+            display: DisplayState.Regular,
+            z: getNextZIndex()
+        };
+    }
+
+    toggleExpand() {
+        if (this.state.display === DisplayState.Expanded) {
+            this.setState({ display: DisplayState.Regular });
+        }
+        else {
+            this.setState({ display: DisplayState.Expanded });
+        }
     }
 
     toggleMinimize() {
-        this.setState({ minimized: !this.state.minimized });
+        if (this.state.display === DisplayState.Minimized) {
+            this.setState({ display: DisplayState.Regular });
+        }
+        else {
+            this.setState({ display: DisplayState.Minimized });
+        }
     }
 
     popOut() {
@@ -46,15 +68,7 @@ export class ApplicationWindow extends React.Component<WindowProps, WindowState>
     }
 
     render() {
-        let viewport;
-        if (!this.state.minimized) {
-            viewport = (
-                <ResizableBox className="viewport"
-                    width={this.props.width} height={this.props.height}>
-                    {this.props.children}
-                </ResizableBox>
-            );
-        }
+        /* Handle pop out windows */
         if (this.props.popOut) {
             return (
                 <div className={`${this.props.className} window`}
@@ -65,31 +79,69 @@ export class ApplicationWindow extends React.Component<WindowProps, WindowState>
                 </div>
             );
         }
-        else {
+        /* Handle expanded windows */
+        if (this.state.display === DisplayState.Expanded) {
             return (
-                <Draggable handle=".title-bar" bounds="body" onMouseDown={() => {
-                    this.setState({ z: getNextZIndex() });
+                <div className={`${this.props.className} window`} style={{
+                    zIndex: this.state.z, width: "100%", height: "100%"
                 }}>
-                    <div className={`${this.props.className} window`} style={{
-                        left: this.props.left, top: this.props.top, zIndex: this.state.z
-                    }}>
-                        <div className="title-bar" onDoubleClick={() => this.toggleMinimize()}>
-                            <div className="title">{this.props.title}</div>
-                            <div className="pop-out button" onClick={() => this.popOut()}>
-                                <i className="fas fa-external-link-square"></i>
-                            </div>
-                            <div className="minimize button" onClick={() => this.toggleMinimize()}>
-                                <i className={`fas fa-window-${this.state.minimized ? "maximize" : "minimize"}`}></i>
-                            </div>
-                            <div className="close button" onClick={() => this.props.onClose(this.props.id)}>
-                                <i className="fas fa-window-close"></i>
-                            </div>
-
+                    <div className="title-bar" onDoubleClick={() => this.toggleMinimize()}>
+                        <div className="title">{this.props.title}</div>
+                        <div className="pop-out button" onClick={() => this.popOut()}>
+                            <i className="fas fa-external-link-square"></i>
                         </div>
-                        {viewport}
+                        <div className="minimize button" onClick={() => this.toggleMinimize()}>
+                            <i className="fas fa-window-minimize"></i>
+                        </div>
+                        <div className="compress button" onClick={() => this.toggleExpand()}>
+                            <i className="fas fa-compress-alt"></i>
+                        </div>
+                        <div className="close button" onClick={() => this.props.onClose(this.props.id)}>
+                            <i className="fas fa-window-close"></i>
+                        </div>
                     </div>
-                </Draggable>
+                    <div className="viewport">
+                        {this.props.children}
+                    </div>
+                </div>
             );
         }
+        /* Handle minimized windows */
+        let viewport;
+        if (this.state.display !== DisplayState.Minimized) {
+            viewport = (
+                <ResizableBox className="viewport"
+                    width={this.props.width} height={this.props.height}>
+                    {this.props.children}
+                </ResizableBox>
+            );
+        }
+        /* Handle regular windows */
+        return (
+            <Draggable handle=".title-bar" bounds="body" onMouseDown={() => {
+                this.setState({ z: getNextZIndex() });
+            }}>
+                <div className={`${this.props.className} window`} style={{
+                    left: this.props.left, top: this.props.top, zIndex: this.state.z
+                }}>
+                    <div className="title-bar" onDoubleClick={() => this.toggleMinimize()}>
+                        <div className="title">{this.props.title}</div>
+                        <div className="pop-out button" onClick={() => this.popOut()}>
+                            <i className="fas fa-external-link-square"></i>
+                        </div>
+                        <div className="minimize button" onClick={() => this.toggleMinimize()}>
+                            <i className={`fas fa-window-${this.state.display === DisplayState.Minimized ? "maximize" : "minimize"}`}></i>
+                        </div>
+                        <div className="expand button" onClick={() => this.toggleExpand()}>
+                            <i className="fas fa-expand-alt"></i>
+                        </div>
+                        <div className="close button" onClick={() => this.props.onClose(this.props.id)}>
+                            <i className="fas fa-window-close"></i>
+                        </div>
+                    </div>
+                    {viewport}
+                </div>
+            </Draggable >
+        );
     }
 }
