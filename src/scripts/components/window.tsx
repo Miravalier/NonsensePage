@@ -83,7 +83,7 @@ export class ApplicationWindow extends React.Component<WindowProps, WindowState>
         if (this.state.display === DisplayState.Expanded) {
             return (
                 <div className={`${this.props.className} window`} style={{
-                    zIndex: this.state.z, width: "100%", height: "100%"
+                    zIndex: 0, width: "100%", height: "100%"
                 }}>
                     <div className="title-bar" onDoubleClick={() => this.toggleMinimize()}>
                         <div className="title">{this.props.title}</div>

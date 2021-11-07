@@ -176,7 +176,7 @@ h1 {
         flex: 0;
         display: flex;
         background-color: $dark-highlight;
-        padding: 2px;
+        padding: 0 2px;
         flex-flow: row nowrap;
         align-items: center;
         justify-content: center;
@@ -184,7 +184,6 @@ h1 {
         .title {
             font-family: "Prompt", sans-serif;
             flex: 1;
-            margin: 2px;
         }
 
         .button {
