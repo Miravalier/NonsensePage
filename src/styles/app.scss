@@ -141,45 +141,45 @@ h1 {
     height: 100%;
     width: 100%;
     z-index: 0;
+}
 
-    .window {
-        position: absolute;
+.window {
+    position: absolute;
+    display: flex;
+    flex-flow: column nowrap;
+    background-color: $light-primary;
+    height: fit-content;
+    width: fit-content;
+    box-shadow: 0 0 12px #00000080;
+
+    .title-bar {
+        flex: 0;
+        display: flex;
+        background-color: $dark-highlight;
+        padding: 2px;
+        flex-flow: row nowrap;
+        align-items: center;
+        justify-content: center;
+
+        .title {
+            font-family: "Prompt", sans-serif;
+            flex: 1;
+            margin: 2px;
+        }
+
+        .button {
+            flex: 0;
+            margin: 2px;
+        }
+    }
+
+    .viewport {
+        padding: 2px;
+        overflow-x: hidden;
+        overflow-y: auto;
         display: flex;
         flex-flow: column nowrap;
-        background-color: $light-primary;
-        height: fit-content;
-        width: fit-content;
-        box-shadow: 0 0 12px #00000080;
-
-        .title-bar {
-            flex: 0;
-            display: flex;
-            background-color: $dark-highlight;
-            padding: 2px;
-            flex-flow: row nowrap;
-            align-items: center;
-            justify-content: center;
-
-            .title {
-                font-family: "Prompt", sans-serif;
-                flex: 1;
-                margin: 2px;
-            }
-
-            .button {
-                flex: 0;
-                margin: 2px;
-            }
-        }
-
-        .viewport {
-            padding: 2px;
-            overflow-x: hidden;
-            overflow-y: auto;
-            display: flex;
-            flex-flow: column nowrap;
-            align-items: center;
-            justify-content: flex-start;
-        }
+        align-items: center;
+        justify-content: flex-start;
     }
 }

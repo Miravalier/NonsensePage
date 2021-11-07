@@ -1,4 +1,4 @@
-import '../styles/app.css'
+import "../styles/app.css";
 
 import * as React from "react";
 import * as ReactDOM from "react-dom";
@@ -10,6 +10,7 @@ declare global {
 
     interface Window {
         desktop: Desktop;
+        popOutData: any;
     }
 }
 

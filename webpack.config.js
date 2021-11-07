@@ -2,9 +2,12 @@ const webpack = require('webpack');
 const path = require('path');
 
 module.exports = {
-    entry: './build/scripts/main.js',
+    entry: {
+        main: './build/scripts/main.js',
+        popOut: './build/scripts/popOut.js',
+    },
     output: {
-        filename: 'main.js',
+        filename: '[name].js',
         path: path.resolve(__dirname, 'dist'),
     },
     module: {
