@@ -9,7 +9,7 @@ import { randomID } from "../utilities";
 interface DesktopProps { }
 
 interface DesktopState {
-    windows: React.ReactElement[];
+    windows: Record<string, React.ReactElement>;
 }
 
 export class Desktop extends React.Component<DesktopProps, DesktopState> {
@@ -18,7 +18,7 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
     constructor(props: DesktopProps) {
         super(props);
         this.contextMenuRef = React.createRef();
-        this.state = { windows: [] };
+        this.state = { windows: {} };
 
         window.desktop = this;
     }
@@ -30,7 +30,7 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
                 onContextMenu={(ev) => {
                     ev.preventDefault();
                     ev.stopPropagation();
-                    this.newWindowMenu(ev);
+                    this.newWindow(ev);
                 }}
                 onClick={(ev) => {
                     ev.preventDefault();
@@ -40,8 +40,8 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
             >
                 <h1>Canonfire</h1>
                 <img className="logo" src="Canonfire.webp"></img>
-                <div className="windows">
-                    {this.state.windows}
+                <div id="windows">
+                    {Object.values(this.state.windows)}
                 </div>
                 <ContextMenu ref={this.contextMenuRef} />
             </div>
@@ -75,7 +75,13 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
         });
     }
 
-    async newWindowMenu(ev: React.MouseEvent) {
+    closeWindow(windowId: string) {
+        const windows = this.state.windows;
+        delete windows[windowId];
+        this.setState({ windows });
+    }
+
+    async newWindow(ev: React.MouseEvent) {
         // Figure out which window to create
         const id = await this.openContextMenu(ev, [
             { id: "chat", title: "New Chat Window" },
@@ -84,11 +90,16 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
         if (!id) return;
         // Create new window
         const windows = this.state.windows;
+        const windowId = randomID();
         if (id == "chat") {
-            windows.push(<ChatWindow key={randomID()} />);
+            windows[windowId] = <ChatWindow key={windowId} id={windowId}
+                onClose={(windowId) => this.closeWindow(windowId)}
+                left={ev.clientX} top={ev.clientY} />;
         }
         else if (id == "files") {
-            windows.push(<FilesWindow key={randomID()} />);
+            windows[windowId] = <FilesWindow key={windowId} id={windowId}
+                onClose={(windowId) => this.closeWindow(windowId)}
+                left={ev.clientX} top={ev.clientY} />;
         }
         this.setState({ windows });
     }

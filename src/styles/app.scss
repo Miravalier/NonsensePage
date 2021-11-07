@@ -6,9 +6,11 @@ $font-color-accent: #bde1ff;
 $light-primary: #444444;
 $light-highlight: #5c5c5c;
 $light-accent: #407abd;
+$light-accent-highlight: #4989d1;
 $dark-primary: #222222;
 $dark-highlight: #333333;
 $dark-accent: #1f3c5e;
+$dark-accent-highlight: #284d77;
 
 // Mixins
 @mixin no-drag {
@@ -27,9 +29,30 @@ $dark-accent: #1f3c5e;
     user-select: none;
 }
 
-// Element Rules
+@mixin cursor-standard {
+    cursor: url("../assets/cursors/standard.svg"), auto;
+}
+
+@mixin cursor-pointer {
+    cursor: url("../assets/cursors/pointer.svg") 7 0, pointer;
+}
+
+// Rules
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: $light-accent;
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: $light-accent-highlight;
+}
+
 * {
-    cursor: url("../assets/cursors/standard-cursor.svg"), auto;
+    @include cursor-standard;
     @include no-drag;
     @include no-select;
     padding: 0;
@@ -55,13 +78,6 @@ h1 {
     font-family: $font-accent;
 }
 
-// Class Rules
-.logo {
-    height: 128px;
-    width: 128px;
-}
-
-// Id Rules
 #root, #desktop {
     position: absolute;
     height: 100%;
@@ -74,6 +90,8 @@ h1 {
     flex-flow: column nowrap;
     height: fit-content;
     width: fit-content;
+    z-index: 10;
+    box-shadow: 0 0 12px #00000080;
 
     .option {
         padding: 4px;
@@ -83,5 +101,85 @@ h1 {
 
     .option:hover {
         background-color: $light-accent;
+    }
+}
+
+.logo {
+    height: 128px;
+    width: 128px;
+}
+
+.button {
+    @include cursor-pointer;
+    i {
+        pointer-events: none;
+        color: $light-accent;
+    }
+}
+
+.button:hover {
+    i {
+        color: $light-accent-highlight;
+    }
+}
+
+.react-resizable-handle {
+    position: absolute;
+}
+
+.react-resizable-handle-se {
+    height: 24px;
+    width: 24px;
+    bottom: 0;
+    right: 0;
+    background: url(../assets/images/Handle.png);
+    cursor: se-resize;
+}
+
+#windows {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    z-index: 0;
+
+    .window {
+        position: absolute;
+        display: flex;
+        flex-flow: column nowrap;
+        background-color: $light-primary;
+        height: fit-content;
+        width: fit-content;
+        box-shadow: 0 0 12px #00000080;
+
+        .title-bar {
+            flex: 0;
+            display: flex;
+            background-color: $dark-highlight;
+            padding: 2px;
+            flex-flow: row nowrap;
+            align-items: center;
+            justify-content: center;
+
+            .title {
+                font-family: "Prompt", sans-serif;
+                flex: 1;
+                margin: 2px;
+            }
+
+            .button {
+                flex: 0;
+                margin: 2px;
+            }
+        }
+
+        .viewport {
+            padding: 2px;
+            overflow-x: hidden;
+            overflow-y: auto;
+            display: flex;
+            flex-flow: column nowrap;
+            align-items: center;
+            justify-content: flex-start;
+        }
     }
 }
