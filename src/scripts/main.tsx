@@ -23,7 +23,12 @@ $(() => {
     );
     document.addEventListener('keydown', ev => {
         if (window.desktop.contextResolve) {
-            window.desktop.contextResolve(ev.code);
+            if (ev.code == "Escape") {
+                window.desktop.contextResolve(null);
+            }
+            else {
+                window.desktop.contextResolve(ev.code);
+            }
         }
     });
 });
