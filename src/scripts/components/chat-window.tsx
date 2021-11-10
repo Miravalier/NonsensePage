@@ -3,18 +3,21 @@ import { ApplicationWindow } from "./window";
 
 
 export interface ChatWindowProps {
+    chatId: string;
     id: string;
     onClose: (windowId: string) => void;
     left?: number;
     top?: number;
 };
-export interface ChatWindowState { };
+export interface ChatWindowState {
+    chatId: string;
+};
 
 
 export class ChatWindow extends React.Component<ChatWindowProps, ChatWindowState> {
     constructor(props: ChatWindowProps) {
         super(props);
-        this.state = {};
+        this.state = { chatId: this.props.chatId };
     }
 
     render() {

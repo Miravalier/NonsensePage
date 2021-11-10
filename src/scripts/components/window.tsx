@@ -21,6 +21,7 @@ export interface WindowProps {
     top?: number;
     popOut?: boolean;
 }
+
 export interface WindowState {
     display: DisplayState
     z: number;

@@ -115,6 +115,7 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
         const windowId = randomID();
         if (id == "chat") {
             windows[windowId] = <ChatWindow key={windowId} id={windowId}
+                chatId="current"
                 onClose={(windowId) => this.closeWindow(windowId)}
                 left={ev.clientX} top={ev.clientY} />;
         }
