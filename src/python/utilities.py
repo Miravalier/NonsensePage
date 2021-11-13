@@ -1,6 +1,6 @@
 import string
-from pcg import PcgEngine
 
+from pcg import PcgEngine
 
 engine = PcgEngine()
 alpha = string.ascii_letters

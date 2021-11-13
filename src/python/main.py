@@ -3,9 +3,9 @@ import secrets
 from db import db
 from db_models import DBUser
 from fastapi import FastAPI, HTTPException
-from security import check_password
 from pydantic import BaseModel
 from schemas import schema
+from security import check_password
 from strawberry.fastapi import GraphQLRouter
 
 app = FastAPI()
@@ -39,6 +39,12 @@ async def login(request: LoginRequest):
     token = secrets.token_hex(16)
     db.users.index_set("token", token, user.id)
     return {"status": "success", "token": token}
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    print("Saving database ...")
+    db.save()
 
 
 graphql_app = GraphQLRouter(schema)

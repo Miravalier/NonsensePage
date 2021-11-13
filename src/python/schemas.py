@@ -1,9 +1,9 @@
 import inspect
-import utilities
 import secrets
 from typing import Any, Optional, Union
 
 import strawberry
+import utilities
 from db import db
 from db_models import DBUser
 from fastapi import Request, WebSocket

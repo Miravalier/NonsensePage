@@ -3,6 +3,7 @@ This PCG random number generator implementation uses Melissa O'Neill's
 algorithm described at http://www.pcg-random.org/
 """
 from __future__ import annotations
+
 import secrets
 from typing import MutableSequence, Sequence, TypeVar
 

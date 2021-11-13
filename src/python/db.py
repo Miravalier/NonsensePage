@@ -14,7 +14,7 @@ class Database(dict):
     def __init__(self, path: str = "/data/db/"):
         super().__init__()
         self.path = Path(path)
-        self.persisted = False
+        self.path.mkdir(exist_ok=True)
 
     def __iter__(self) -> Iterator[Collection]:
         return iter(self.values())
@@ -31,27 +31,13 @@ class Database(dict):
             return collection
 
     def save(self):
-        if self.persisted:
-            return
-
-        self.path.mkdir(exist_ok=True)
-
         for collection in self.values():
             collection.save()
 
-        self.persisted = True
-
     def load(self):
-        if self.persisted:
-            return
-
-        self.path.mkdir(exist_ok=True)
-
         for path in self.path.iterdir():
             if path.is_dir():
                 self[path.stem].load()
-
-        self.persisted = True
 
 
 class Collection(dict):
@@ -67,11 +53,13 @@ class Collection(dict):
         return self[id]
 
     def index_set(self, index: str, key: str, id: str):
+        self.persisted = False
         if index not in self.indices:
             self.indices[index] = {}
         self.indices[index][key] = id
 
     def index_delete(self, index: str, key: str):
+        self.persisted = False
         if index not in self.indices:
             return
         self.indices[index].pop(key, None)
@@ -92,7 +80,6 @@ class Collection(dict):
         entry = Entry(self, self.path / entry_id, data)
         self[entry_id] = entry
         self.persisted = False
-        self.database.persisted = False
         return entry
 
     def delete(self, id):
@@ -114,9 +101,6 @@ class Collection(dict):
         self.persisted = True
 
     def load(self):
-        if self.persisted:
-            return
-
         try:
             with open(self.path / "_index", "rb") as f:
                 self.indices = pickle.load(f)
@@ -166,7 +150,6 @@ class Entry:
     def update(self, data: Dict[str, Any]):
         self.persisted = False
         self.collection.persisted = False
-        self.collection.database.persisted = False
         for key, value in data.items():
             self.data[key] = value
             self.counters[key] += 1

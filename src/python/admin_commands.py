@@ -1,7 +1,8 @@
 import argparse
+
 import utilities
-from security import hash_password
 from db import db
+from security import hash_password
 
 
 def add_gm(args):
