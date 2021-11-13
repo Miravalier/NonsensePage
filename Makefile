@@ -1,13 +1,16 @@
 DOMAIN = canonfire.local
 
-.PHONY: help nginx server client pfx
+.PHONY: help backend frontend client nginx pfx
 
 help:
 	@echo "make help"
 	@echo "  Display this message"
 	@echo
-	@echo "make server"
-	@echo "  Start the server in DEBUG mode (requires docker and docker-compose)"
+	@echo "make backend"
+	@echo "  Start the backend in DEBUG mode (requires docker and docker-compose)"
+	@echo
+	@echo "make frontend"
+	@echo "  Build and host the frontend"
 	@echo
 	@echo "make client"
 	@echo "  Run the client in DEBUG mode and connect locally."
@@ -18,15 +21,18 @@ help:
 	@echo "make pfx"
 	@echo "  Create a self-signed pfx file for windows"
 
-server:
+backend:
 	@if [ ! -f .env ]; then \
-			echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
-			exit 1; \
-		fi
-	npm run host
+		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
+		exit 1; \
+	fi
 	docker-compose down
 	docker-compose build
 	docker-compose up -d
+
+frontend:
+	npm run build
+	npm run host
 
 client:
 	npm start

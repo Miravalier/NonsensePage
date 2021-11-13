@@ -45,7 +45,9 @@
     "webpack-cli": "^4.9.1"
   },
   "dependencies": {
+    "@apollo/client": "^3.4.17",
     "electron-squirrel-startup": "^1.0.0",
+    "graphql": "^15.7.2",
     "jquery": "^3.6.0",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",

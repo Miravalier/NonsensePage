@@ -1,4 +1,4 @@
 import "../styles/app.css";
 
 
-console.log(`Canonfire version ${__VERSION__} pop-out`);
+console.log(`Canonfire pop-out version ${__VERSION__}`);

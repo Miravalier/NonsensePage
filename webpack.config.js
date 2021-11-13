@@ -5,6 +5,7 @@ module.exports = {
     entry: {
         main: './build/scripts/main.js',
         popOut: './build/scripts/popOut.js',
+        login: './build/scripts/login.js'
     },
     output: {
         filename: '[name].js',

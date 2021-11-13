@@ -40,6 +40,10 @@ $dark-accent-highlight: #284d77;
     cursor: url("../assets/cursors/pointer.svg") 7 0, pointer;
 }
 
+@mixin cursor-text {
+    cursor: url("../assets/cursors/text.svg") 0 12, text;
+}
+
 // Rules
 ::-webkit-scrollbar {
     width: 8px;
@@ -81,10 +85,47 @@ h1 {
     font-family: $font-accent;
 }
 
+input {
+    color: black;
+}
+
+input[type="text"] {
+    @include cursor-text
+}
+
 #root, #desktop {
     position: absolute;
     height: 100%;
     width: 100%;
+}
+
+#login {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+
+    .button {
+        background: $dark-highlight;
+        border-radius: 8px;
+        padding: 4px;
+        box-shadow: 0 0 4px #00000080;
+    }
+
+    .button:hover {
+        box-shadow: 0 0 4px $light-accent-highlight;
+    }
+
+    .field {
+        display: flex;
+        flex-flow: row nowrap;
+        align-items: center;
+        margin: 4px;
+        .label {
+            margin: 0 4px;
+            min-width: 80px;
+            text-align: right;
+        }
+    }
 }
 
 #context-menu {
@@ -133,14 +174,18 @@ h1 {
 
 .button {
     @include cursor-pointer;
-    i {
+    i, span {
         pointer-events: none;
         color: $light-accent;
+    }
+
+    span {
+        margin: 4px;
     }
 }
 
 .button:hover {
-    i {
+    i, span {
         color: $light-accent-highlight;
     }
 }

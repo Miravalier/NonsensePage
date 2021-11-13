@@ -1,6 +1,6 @@
-import { PcgRandom } from "./pcg-random";
+import { PcgEngine } from "./pcg-random";
 
-const engine = new PcgRandom();
+const engine = new PcgEngine();
 
 const alpha = [
     "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",

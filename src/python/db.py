@@ -1,130 +1,190 @@
 from __future__ import annotations
 
+import os
 import pickle
-import secrets
+from collections import Counter
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Sequence, Tuple, Union
+from typing import Any, Dict, Iterator, Optional
 
-from crc import crc32c
 from permissions import Permissions
 
 
-def process_update(data: Dict, update: Dict, crc: int = 0) -> Tuple[Dict, int]:
-    for key, value in update.items():
-        if isinstance(value, dict):
-            data[key], crc = process_update(data.get(key, {}), value, crc)
-        else:
-            data[key] = value
-            crc = crc32c(crc, key)
-            crc = crc32c(crc, str(value))
-    return data, crc
-
-
-class Database:
-    def __init__(self, path: str, parent: Database = None):
+class Database(dict):
+    def __init__(self, path: str = "/data/db/"):
+        super().__init__()
         self.path = Path(path)
-        self.parent = parent
-        self.children: Dict[str, Union[Database, DatabaseEntry]] = {}
-        self.tag = secrets.randbits(64)
         self.persisted = False
 
-    def __iter__(self):
-        return (child for child in self.children.values() if isinstance(child, DatabaseEntry))
+    def __iter__(self) -> Iterator[Collection]:
+        return iter(self.values())
+
+    def __getattr__(self, name: str) -> Collection:
+        return self[name]
+
+    def __getitem__(self, k: str) -> Collection:
+        try:
+            return super().__getitem__(k)
+        except KeyError:
+            collection = Collection(self, self.path / k)
+            self[k] = collection
+            return collection
 
     def save(self):
         if self.persisted:
             return
 
-        self.path.mkdir(parents=True, exist_ok=True)
-        for link, child in self.children.items():
-            if isinstance(child, Database):
-                child.save()
-            elif isinstance(child, DatabaseEntry):
-                with open(self.path / link, "wb") as f:
-                    pickle.dump(child.data, f)
-                child.persisted = True
+        self.path.mkdir(exist_ok=True)
+
+        for collection in self.values():
+            collection.save()
 
         self.persisted = True
 
     def load(self):
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.persisted = True
+        if self.persisted:
+            return
+
+        self.path.mkdir(exist_ok=True)
+
         for path in self.path.iterdir():
-            if path.is_dir:
-                child = Database(path, self)
-                self.children[path.stem] = child
-                child.load()
-            else:
-                with open(path, "rb") as f:
-                    data = pickle.load(f)
-                child = DatabaseEntry(self, secrets.randbits(64), data)
-                child.persisted = True
-                self.children[path.stem] = child
+            if path.is_dir():
+                self[path.stem].load()
 
-    def resolve_path(
-        self, path: Union[str, Sequence[str]], create: bool = False
-    ) -> Union[None, Database, DatabaseEntry]:
-        # Accept either a / delimited str, or a sequence of str as a path
-        if isinstance(path, str):
-            path = [link for link in path.split("/") if link]
-        endpoint = path.pop()
-        # Navigate to the leaf's parent directory
-        node = self
-        for link in path:
-            # Skip empty links; starting, ending, and adjacent /'s
-            if not link:
+        self.persisted = True
+
+
+class Collection(dict):
+    def __init__(self, database: Database, path: Path):
+        super().__init__()
+        self.database = database
+        self.path = path
+        self.persisted = False
+        self.indices: Dict[str, Dict[str, str]] = {}
+
+    def index_get(self, index: str, key: str) -> Optional[Entry]:
+        id = self.indices.get(index, {}).get(key, None)
+        return self[id]
+
+    def index_set(self, index: str, key: str, id: str):
+        if index not in self.indices:
+            self.indices[index] = {}
+        self.indices[index][key] = id
+
+    def index_delete(self, index: str, key: str):
+        if index not in self.indices:
+            return
+        self.indices[index].pop(key, None)
+
+    def __getitem__(self, k: str) -> Optional[Entry]:
+        try:
+            return super().__getitem__(k)
+        except KeyError:
+            return None
+
+    def __iter__(self) -> Iterator[Entry]:
+        return iter(self.values())
+
+    def add(self, data: Dict[str, Any]) -> Entry:
+        entry_id = data.get("id", None)
+        if entry_id is None:
+            raise ValueError("No id field present in entry")
+        entry = Entry(self, self.path / entry_id, data)
+        self[entry_id] = entry
+        self.persisted = False
+        self.database.persisted = False
+        return entry
+
+    def delete(self, id):
+        del self[id]
+        os.unlink(self.path / id)
+
+    def save(self):
+        if self.persisted:
+            return
+
+        self.path.mkdir(exist_ok=True)
+
+        with open(self.path / "_index", "wb") as f:
+            pickle.dump(self.indices, f)
+
+        for entry in self.values():
+            entry.save()
+
+        self.persisted = True
+
+    def load(self):
+        if self.persisted:
+            return
+
+        try:
+            with open(self.path / "_index", "rb") as f:
+                self.indices = pickle.load(f)
+        except FileNotFoundError:
+            pass
+
+        for path in self.path.iterdir():
+            if path.name.startswith("_"):
                 continue
-            # Get the next node if it exists
-            next_node = node.children.get(link)
-            # Entries cannot be found in the middle of a path
-            if isinstance(next_node, DatabaseEntry):
-                raise TypeError(f"invalid path '{next_node.path}' includes an Entry as a Directory")
-            # If the node is doesn't exist, either create it or declare the path invalid
-            if next_node is None:
-                if create:
-                    next_node = Database(node.path / link, self)
-                    node.children[link] = next_node
-                else:
-                    raise TypeError(f"invalid path '{node.path / link}' does not exist")
-            node = next_node
-        # After resolving path, return the Database or Entry at the end
-        result = node.children.get(endpoint)
-        if create and result is None:
-            result = DatabaseEntry(node)
-            node.children[endpoint] = result
-        return result
+            if path.is_file():
+                entry = Entry.load(path)
+                entry.path = path
+                entry.collection = self
+                self[path.stem] = entry
 
-    def __getitem__(self, path: Union[str, Sequence[str]]) -> Union[Database, DatabaseEntry]:
-        node = self.resolve_path(path, create=False)
-        if isinstance(node, (Database, DatabaseEntry)):
-            return node
-        else:
-            raise KeyError(f"invalid db path '{path}'")
-
-    def __setitem__(self, path: Union[str, Sequence[str]], value: Dict):
-        entry: DatabaseEntry = self.resolve_path(path, create=True)
-        entry.update(value)
+        self.persisted = True
 
 
-class DatabaseEntry:
-    def __init__(self, parent: Database, tag: int = 0, data: Dict = None):
-        if data is None:
-            data = {}
-        self.parent = parent
-        self.tag = tag
-        self.data = data
+def permissions_factory():
+    return {"*": {"*": Permissions.NONE}}
+
+
+@dataclass
+class Entry:
+    collection: Collection
+    path: Path
+    data: Dict[str, Any] = field(default_factory=dict)
+    permissions: Dict[str, Dict[str, Permissions]] = field(default_factory=permissions_factory)
+    counters: Counter = field(default_factory=Counter)
+    persisted: bool = False
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state["collection"]
+        del state["counters"]
+        del state["persisted"]
+        del state["path"]
+        return state
+
+    def __setstate__(self, state: dict):
+        self.__dict__.update(state)
+        self.collection = None
+        self.counters = Counter()
+        self.persisted = True
+        self.path = None
+
+    def update(self, data: Dict[str, Any]):
         self.persisted = False
-        self.permissions = {"*": {"*": Permissions.NONE}}
+        self.collection.persisted = False
+        self.collection.database.persisted = False
+        for key, value in data.items():
+            self.data[key] = value
+            self.counters[key] += 1
 
-    def update(self, data: Dict):
-        self.data, self.tag = process_update(self.data, data, self.tag)
-        self.persisted = False
-        node: Union[Database, None] = self.parent
-        while node is not None:
-            node.tag = self.tag
-            node.persisted = False
-            node: Union[Database, None] = node.parent
+    def save(self):
+        if self.persisted:
+            return
+
+        with open(self.path, "wb") as f:
+            pickle.dump(self, f)
+
+        self.persisted = True
+
+    @staticmethod
+    def load(path: Path) -> Entry:
+        with open(path, "rb") as f:
+            return pickle.load(f)
 
 
-db = Database("/data/db/")
+db = Database()
 db.load()

@@ -2,7 +2,7 @@
  * This PCG random number generator implementation uses Melissa O'Neill's
  * algorithm described at http://www.pcg-random.org/
  */
-export class PcgRandom {
+export class PcgEngine {
     state: bigint;
     inc: bigint;
 
@@ -26,7 +26,9 @@ export class PcgRandom {
             crypto.getRandomValues(values);
             inc = values[0];
         }
-        this.setSeed(seed, inc);
+        if (seed !== null && inc !== null) {
+            this.setSeed(seed, inc);
+        }
     }
 
     private _next(): bigint {
@@ -41,8 +43,18 @@ export class PcgRandom {
      * Creates a new PcgRandom from an existing one.
      * @returns A new PcgRandom.
      */
-    child(): PcgRandom {
-        return new PcgRandom(this.randInt64(), this.randInt64());
+    child(): PcgEngine {
+        return new PcgEngine(this.randInt64(), this.randInt64());
+    }
+
+    /**
+     * Creates a new engine with a copy of the current state.
+     */
+    copy(): PcgEngine {
+        const engine = new PcgEngine(null, null);
+        engine.state = this.state;
+        engine.inc = this.inc;
+        return engine;
     }
 
     /**
