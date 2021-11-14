@@ -84,10 +84,8 @@ export function ChatWindow(props: ChatWindowProps) {
         <ApplicationWindow className="chat" title="Chat" id={props.id}
             width={400} height={600} onClose={(windowId) => props.onClose(windowId)}
             left={props.left} top={props.top} >
-            <div id={scrollId}>
-                <div className="messages">
-                    {content}
-                </div>
+            <div id={scrollId} className="messages">
+                {content}
             </div>
             {input}
         </ApplicationWindow>

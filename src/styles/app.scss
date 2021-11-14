@@ -260,6 +260,7 @@ textarea {
 
 .chat.window {
     .messages {
+        flex: 1;
         display: flex;
         flex-flow: column nowrap;
         width: 100%;
