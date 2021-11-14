@@ -6,6 +6,7 @@ import * as api from "./api";
 import { User } from "./models";
 import { Desktop } from "./components/desktop";
 import { ApolloProvider } from "@apollo/client";
+import { MESSAGE_SUBSCRIPTION, GET_MESSAGES } from "./gql";
 
 
 declare global {
@@ -39,6 +40,35 @@ $(async () => {
         window.location.replace("/login");
         return;
     }
+
+    // Connect to message subscription
+    const messageSub = api.client.subscribe({ query: MESSAGE_SUBSCRIPTION });
+    messageSub.forEach(message => {
+        const messageData = message.data;
+        messageData.__typename = 'Message';
+        const cachedData = api.client.readQuery({ query: GET_MESSAGES, variables: { chatId: "current" } });
+        const messages: Array<any> = cachedData.chat.messages;
+        let existing = false;
+        for (let message of messages) {
+            if (message.id === messageData.id) {
+                Object.assign(message, messageData);
+                existing = true;
+                break;
+            }
+        }
+        if (!existing) {
+            messages.push(messageData);
+        }
+        api.client.writeQuery({
+            query: GET_MESSAGES,
+            variables: { chatId: "current" },
+            data: {
+                chat: {
+                    messages,
+                }
+            }
+        });
+    })
 
     // Render the desktop
     ReactDOM.render(

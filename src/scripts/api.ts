@@ -17,8 +17,9 @@ else {
 const wsLink = new WebSocketLink({
     uri: wsUri,
     options: {
-        reconnect: true
-    }
+        reconnect: true,
+        connectionParams: { "token": localStorage.getItem('token') }
+    },
 });
 
 const httpLink = apollo.createHttpLink({
@@ -46,7 +47,6 @@ const authLink = setContext((_, { headers }) => {
         }
     }
 });
-
 
 
 export const client = new apollo.ApolloClient({

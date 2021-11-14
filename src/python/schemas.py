@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import json
 import secrets
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Type
 
 import strawberry
+import updates
 import utilities
-from db import db
+from db import DBEntry, db
 from db_models import DBChat, DBMessage, DBUser
 from enums import Permissions
-from graphql_models import Chat, Message, User
+from graphql_models import Character, Chat, Message, User
 from graphql_utilities import IsAuthenticated, IsGM, db_to_graphql, get_user_from_context
 from security import check_password, hash_password
 from strawberry.types import Info
@@ -130,7 +132,51 @@ class Mutation:
         message_ids: List[str] = chat.data["message_ids"]
         message_ids.append(message_id)
         chat.update({"message_ids": message_ids})
-        return Message(message_id, timestamp, language, content, user.id, speaker_id, speaker_name)
+        message = Message(message_id, timestamp, language, content, user.id, speaker_id, speaker_name)
+        updates.messages.publish(message)
+        return message
 
 
-schema = strawberry.Schema(Query, Mutation)
+@strawberry.type
+class Subscription:
+    @strawberry.subscription()
+    async def messages(self, info: Info) -> Message:
+        user = get_user_from_context(info.context)
+        if user is None:
+            raise Exception("Unauthenticated websocket user.")
+        with updates.messages.subscribe() as queue:
+            while True:
+                message: Message = await queue.get()
+                queue.task_done()
+
+                character = db_to_graphql(db.characters[user.character_id], Character, info)
+                if user.is_gm or message.language in character.languages:
+                    yield message
+                else:
+                    yield Message(
+                        message.id,
+                        message.timestamp,
+                        message.language,
+                        "Lorem ipsum.",
+                        message.sender_id,
+                        message.speaker_id,
+                        message.speaker_name,
+                    )
+
+    @strawberry.subscription
+    async def general(self, info: Info) -> str:
+        user = get_user_from_context(info.context)
+        with updates.general.subscribe() as queue:
+            while True:
+                # Wait for an entry in the queue
+                entry: DBEntry = await queue.get()
+                queue.task_done()
+                # Publish any fields that the user has access to
+                update = {"collection": entry.collection.name, "id": entry.id}
+                for key, field in entry.data.items():
+                    if entry.has_permission(user.id, key, Permissions.READ):
+                        update[key] = field
+                yield json.dumps(update)
+
+
+schema = strawberry.Schema(Query, Mutation, Subscription)

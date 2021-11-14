@@ -49,6 +49,7 @@ class Collection(dict):
         super().__init__()
         self.database = database
         self.path = path
+        self.name = path.name
         self.persisted = False
         self.indices: Dict[str, Dict[str, str]] = {}
 
@@ -139,6 +140,10 @@ class DBEntry:
     permissions: Dict[str, Dict[str, Permissions]] = field(default_factory=permissions_factory)
     counters: Counter = field(default_factory=Counter)
     persisted: bool = False
+
+    @property
+    def id(self):
+        return self.data["id"]
 
     def as_schema(self, schema: Type[T], info: Info) -> T:
         if hasattr(schema, "from_db_entry"):

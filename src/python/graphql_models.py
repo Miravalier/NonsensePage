@@ -36,7 +36,7 @@ class Character:
     name: str = ""
     alignment: Alignment = Alignment.NONE
     owner_id: str = ""
-    languages: List[str] = strawberry.field(default_factory=[])
+    languages: List[str] = strawberry.field(default_factory=list)
 
     @strawberry.field
     def owner(self, info: Info) -> User:

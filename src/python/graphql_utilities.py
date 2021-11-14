@@ -19,11 +19,23 @@ def db_to_graphql(entry: Optional[DBEntry], schema: Type[T], info: Info) -> T:
         return entry.as_schema(schema, info)
 
 
-def get_user_from_context(context: ContextType) -> Optional[DBUser]:
+def get_user_from_context(context: dict) -> Optional[DBUser]:
     request: Union[Request, WebSocket] = context["request"]
 
     # This user has already been authenticated previously
     if user := context.get("user"):
+        return user
+
+    # Token passed by connection parameter over ws
+    elif isinstance(request, WebSocket):
+        connection_parameters = context["connection_parameters"]
+        if not (token := connection_parameters.get("token")):
+            return None
+        entry = db.users.index_get("token", token)
+        if entry is None:
+            return None
+        user = DBUser.parse_obj(entry.data)
+        context["user"] = user
         return user
 
     # An auth token has been passed

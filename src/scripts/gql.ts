@@ -22,3 +22,14 @@ export const GET_MESSAGES = gql`
         }
     }
 `
+
+export const MESSAGE_SUBSCRIPTION = gql`
+    subscription OnMessageUpdate {
+        messages {
+            id
+            timestamp
+            speakerName
+            content
+        }
+    }
+`;

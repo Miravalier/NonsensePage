@@ -1,7 +1,7 @@
 @use 'fonts';
 
 // Variables
-$font-primary: 'Raleway', sans-serif;
+$font-primary: 'Noto Sans', sans-serif;
 $font-accent: 'Prompt', sans-serif;
 $font-color-primary: #f1f1f1;
 $font-color-shadow: #7c7c7c;
@@ -90,7 +90,15 @@ input {
 }
 
 input[type="text"] {
-    @include cursor-text
+    @include cursor-text;
+}
+
+textarea {
+    @include cursor-text;
+    color: black;
+    resize: none;
+    font-family: monospace;
+    padding: 2px;
 }
 
 #root, #desktop {
@@ -274,6 +282,10 @@ input[type="text"] {
                     font-weight: bold;
                 }
             }
+
+            .content {
+                overflow-wrap: break-word;
+            }
         }
     }
 
@@ -281,10 +293,10 @@ input[type="text"] {
         display: flex;
         flex-flow: column nowrap;
 
-        input[type="text"] {
+        textarea {
             flex: 1;
             margin: 4px;
-            height: 24px;
+            height: 4em;
         }
 
         .button {
@@ -303,7 +315,7 @@ input[type="text"] {
         .compose-area {
             display: flex;
             flex-flow: row nowrap;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             align-items: center;
         }
     }

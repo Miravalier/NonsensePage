@@ -1,4 +1,5 @@
 import secrets
+from typing import Any
 
 from db import db
 from db_models import DBUser
@@ -7,6 +8,9 @@ from pydantic import BaseModel
 from schemas import schema
 from security import check_password
 from strawberry.fastapi import GraphQLRouter
+from strawberry.fastapi.handlers import GraphQLTransportWSHandler, GraphQLWSHandler
+from strawberry.subscriptions.protocols.graphql_transport_ws.types import ConnectionInitMessage
+from strawberry.subscriptions.protocols.graphql_ws.types import OperationMessage
 
 app = FastAPI()
 
@@ -47,5 +51,40 @@ async def shutdown():
     db.save()
 
 
-graphql_app = GraphQLRouter(schema)
+class AuthGraphQLTransportWSHandler(GraphQLTransportWSHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.connection_init_parameters = None
+
+    async def handle_connection_init(self, message: ConnectionInitMessage) -> None:
+        await super().handle_connection_init(message)
+        self.connection_init_parameters = message.payload
+
+    async def get_context(self) -> Any:
+        context = await super().get_context()
+        context["connection_parameters"] = self.connection_init_parameters
+        return context
+
+
+class AuthGraphQLWSHandler(GraphQLWSHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.connection_init_parameters = None
+
+    async def handle_connection_init(self, message: OperationMessage) -> None:
+        await super().handle_connection_init(message)
+        self.connection_init_parameters = message["payload"]
+
+    async def get_context(self) -> Any:
+        context = await super().get_context()
+        context["connection_parameters"] = self.connection_init_parameters
+        return context
+
+
+class AuthGraphQLRouter(GraphQLRouter):
+    graphql_ws_handler_class = AuthGraphQLWSHandler
+    graphql_transport_ws_handler_class = AuthGraphQLTransportWSHandler
+
+
+graphql_app = AuthGraphQLRouter(schema)
 app.include_router(graphql_app, prefix="/api/graphql")
