@@ -2,10 +2,10 @@ import "../styles/app.css";
 
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import * as api from "./api";
+import { User } from "./models";
 import { Desktop } from "./components/desktop";
-import { client } from "./api";
 import { ApolloProvider } from "@apollo/client";
-import { ApplicationWindow } from "./components/window";
 
 
 declare global {
@@ -13,27 +13,42 @@ declare global {
 
     interface Window {
         desktop: Desktop;
-        popOutData: any;
+        user: User;
+        api: any;
     }
 }
-
-
-
+window.api = api;
 
 
 console.log(`Canonfire version ${__VERSION__}`);
 $(async () => {
+    // Verify a valid token
     const token = window.localStorage.getItem("token");
     if (!token) {
         console.log("No auth token - redirecting to /login.");
         window.location.replace("/login");
         return;
     }
+    try {
+        window.user = await api.currentUser();
+        console.log(`Signed in as user "${window.user.name}"`);
+    }
+    catch (e) {
+        console.error(e);
+        console.log("Auth token is invalid.");
+        window.location.replace("/login");
+        return;
+    }
 
+    // Render the desktop
     ReactDOM.render(
-        <Desktop token={token} />,
+        <ApolloProvider client={api.client}>
+            <Desktop />
+        </ApolloProvider>,
         document.getElementById('root')
     );
+
+    // Add escape listener for context menu
     document.addEventListener('keydown', ev => {
         if (window.desktop.contextResolve) {
             if (ev.code == "Escape") {

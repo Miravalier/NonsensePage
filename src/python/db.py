@@ -5,9 +5,13 @@ import pickle
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Dict, Iterator, Optional, Type, TypeVar, Union
 
-from permissions import Permissions
+from enums import Permissions
+from pydantic import BaseModel
+from strawberry.types.info import Info
+
+T = TypeVar("T")
 
 
 class Database(dict):
@@ -48,7 +52,7 @@ class Collection(dict):
         self.persisted = False
         self.indices: Dict[str, Dict[str, str]] = {}
 
-    def index_get(self, index: str, key: str) -> Optional[Entry]:
+    def index_get(self, index: str, key: str) -> Optional[DBEntry]:
         id = self.indices.get(index, {}).get(key, None)
         return self[id]
 
@@ -64,25 +68,29 @@ class Collection(dict):
             return
         self.indices[index].pop(key, None)
 
-    def __getitem__(self, k: str) -> Optional[Entry]:
+    def __getitem__(self, k: str) -> Optional[DBEntry]:
         try:
             return super().__getitem__(k)
         except KeyError:
             return None
 
-    def __iter__(self) -> Iterator[Entry]:
+    def __iter__(self) -> Iterator[DBEntry]:
         return iter(self.values())
 
-    def add(self, data: Dict[str, Any]) -> Entry:
+    def add(self, data: Union[BaseModel, Dict[str, Any]]) -> DBEntry:
+        if isinstance(data, BaseModel):
+            data: Dict[str, Any] = data.dict()
         entry_id = data.get("id", None)
         if entry_id is None:
             raise ValueError("No id field present in entry")
-        entry = Entry(self, self.path / entry_id, data)
+        entry = DBEntry(self, self.path / entry_id, data)
         self[entry_id] = entry
         self.persisted = False
         return entry
 
-    def delete(self, id):
+    def delete(self, id: Union[BaseModel, str]):
+        if isinstance(id, BaseModel):
+            id: str = id.id
         del self[id]
         os.unlink(self.path / id)
 
@@ -111,7 +119,7 @@ class Collection(dict):
             if path.name.startswith("_"):
                 continue
             if path.is_file():
-                entry = Entry.load(path)
+                entry = DBEntry.load(path)
                 entry.path = path
                 entry.collection = self
                 self[path.stem] = entry
@@ -124,13 +132,30 @@ def permissions_factory():
 
 
 @dataclass
-class Entry:
+class DBEntry:
     collection: Collection
     path: Path
     data: Dict[str, Any] = field(default_factory=dict)
     permissions: Dict[str, Dict[str, Permissions]] = field(default_factory=permissions_factory)
     counters: Counter = field(default_factory=Counter)
     persisted: bool = False
+
+    def as_schema(self, schema: Type[T], info: Info) -> T:
+        if hasattr(schema, "from_db_entry"):
+            return schema.from_db_entry(self, info)
+        else:
+            return schema(**self.data)
+
+    def has_permission(self, id: str = "*", field: str = "*", level: Permissions = Permissions.READ) -> bool:
+        # Get the permissions associated with the requesting user
+        permissions = self.permissions.get(id, None)
+        if permissions is None:
+            permissions = self.permissions.get("*", {"*": Permissions.NONE})
+        # Get the permission associated with the exact field
+        permission = permissions.get(field, None)
+        if permission is None:
+            permission = permissions.get("*", Permissions.NONE)
+        return permission >= level
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -164,7 +189,7 @@ class Entry:
         self.persisted = True
 
     @staticmethod
-    def load(path: Path) -> Entry:
+    def load(path: Path) -> DBEntry:
         with open(path, "rb") as f:
             return pickle.load(f)
 

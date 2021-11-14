@@ -7,11 +7,9 @@ import { setStylePosition } from "../positioning";
 import { randomID } from "../utilities";
 
 interface DesktopProps {
-    token: string;
 }
 
 interface DesktopState {
-    token: string;
     windows: Record<string, React.ReactElement>;
 }
 
@@ -22,7 +20,7 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
     constructor(props: DesktopProps) {
         super(props);
         this.contextMenuRef = React.createRef();
-        this.state = { windows: {}, token: props.token };
+        this.state = { windows: {} };
 
         window.desktop = this;
     }

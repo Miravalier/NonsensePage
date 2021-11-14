@@ -1,89 +1,44 @@
-import inspect
+from __future__ import annotations
+
 import secrets
-from typing import Any, Optional, Union
+from datetime import datetime
+from typing import List, Optional
 
 import strawberry
 import utilities
 from db import db
-from db_models import DBUser
-from fastapi import Request, WebSocket
+from db_models import DBChat, DBMessage, DBUser
+from enums import Permissions
+from graphql_models import Chat, Message, User
+from graphql_utilities import IsAuthenticated, IsGM, db_to_graphql, get_user_from_context
 from security import check_password, hash_password
-from strawberry.permission import BasePermission
 from strawberry.types import Info
-from strawberry.types.info import ContextType
-
-
-def get_user_from_context(context: ContextType) -> Optional[DBUser]:
-    request: Union[Request, WebSocket] = context["request"]
-
-    # This user has already been authenticated previously
-    if user := context.get("user"):
-        return user
-
-    # An auth token has been passed
-    elif "Authorization" in request.headers:
-        token: str = request.headers["Authorization"]
-        if token.startswith("Bearer "):
-            token = token[7:]
-        entry = db.users.index_get("token", token)
-        if entry is None:
-            return None
-        user = DBUser.parse_obj(entry.data)
-        context["user"] = user
-        return user
-
-    # No user was found
-    else:
-        return None
-
-
-class Requireable(BasePermission):
-    def require(self, source: Any = None, info: Info = None, **kwargs):
-        if not self.has_permission(source, info, **kwargs):
-            raise Exception(self.message)
-
-    async def has_permission(self, source: Any, info: Info, **kwargs) -> bool:
-        resolver = getattr(self, "resolve")
-        if inspect.iscoroutinefunction(resolver):
-            return await resolver(info)
-        else:
-            return resolver(info)
-
-
-class IsGM(Requireable):
-    message = "User is not a GM"
-
-    def resolve(self, info: Info) -> bool:
-        user = get_user_from_context(info.context)
-        return user is not None and user.is_gm
-
-
-class IsAuthenticated(Requireable):
-    message = "User is not authenticated"
-
-    def resolve(self, info: Info) -> bool:
-        return get_user_from_context(info.context) is not None
-
-
-@strawberry.type
-class User:
-    id: str
-    name: str
-    is_gm: bool
 
 
 @strawberry.type
 class Query:
     @strawberry.field(permission_classes=[IsAuthenticated])
+    def chat(self, info: Info, id: str) -> Chat:
+        if id == "current":
+            entry = db.chats.index_get("tag", "current")
+            if entry is None:
+                id = utilities.random_id()
+                db.chats.add(DBChat(id=id, message_ids=[]))
+                db.chats.index_set("tag", "current", id)
+                entry = db.chats[id]
+        else:
+            entry = db.chats[id]
+        if entry is None:
+            raise ValueError(f"invalid chat id '{id}'")
+        return entry.as_schema(Chat, info)
+
+    @strawberry.field(permission_classes=[IsAuthenticated])
     def user(self, info: Info, id: Optional[str] = None) -> User:
         if id is None:
             user = get_user_from_context(info.context)
+            return User(user.id, user.name, user.is_gm, user.character_id)
         else:
-            entry = db.users[id]
-            if entry is None:
-                raise KeyError(f"User with id '{id}' does not exist")
-            user = DBUser.parse_obj(entry.data)
-        return User(user.id, user.name, user.is_gm)
+            return db_to_graphql(db.users[id], User, info)
 
 
 @strawberry.type
@@ -130,6 +85,52 @@ class Mutation:
             raise Exception("you can't delete your own account")
         db.users.delete(id)
         return True
+
+    @strawberry.mutation(permission_classes=[IsAuthenticated])
+    def send_message(
+        self,
+        info: Info,
+        chat_id: str,
+        language: str,
+        content: str,
+        speaker_id: str,
+        speaker_name: str,
+    ) -> Message:
+        user = get_user_from_context(info.context)
+        if speaker_id:
+            speaker = db.characters[speaker_id]
+            if speaker is None:
+                raise Exception("Invalid speaker id")
+            if not speaker.has_permission(user.id, "speak", Permissions.OWNER):
+                raise Exception("Insufficient permissions to speak as that character")
+        if chat_id == "current":
+            chat = db.chats.index_get("tag", "current")
+            if chat is None:
+                chat_id = utilities.random_id()
+                db.chats.add(DBChat(id=chat_id, message_ids=[]))
+                db.chats.index_set("tag", "current", chat_id)
+                chat = db.chats[chat_id]
+        else:
+            chat = db.chats[chat_id]
+        if chat is None:
+            raise Exception("Invalid chat id")
+        message_id = utilities.random_id()
+        timestamp = datetime.now()
+        db.messages.add(
+            DBMessage(
+                id=message_id,
+                timestamp=timestamp,
+                language=language,
+                content=content,
+                sender_id=user.id,
+                speaker_id=speaker_id,
+                speaker_name=speaker_name,
+            )
+        )
+        message_ids: List[str] = chat.data["message_ids"]
+        message_ids.append(message_id)
+        chat.update({"message_ids": message_ids})
+        return Message(message_id, timestamp, language, content, user.id, speaker_id, speaker_name)
 
 
 schema = strawberry.Schema(Query, Mutation)

@@ -1,6 +1,8 @@
 import * as React from "react";
 import { ApplicationWindow } from "./window";
-
+import { useQuery, useMutation } from '@apollo/client';
+import { GET_MESSAGES, SEND_MESSAGE } from "../gql";
+import { client } from "../api";
 
 export interface ChatWindowProps {
     chatId: string;
@@ -9,66 +11,88 @@ export interface ChatWindowProps {
     left?: number;
     top?: number;
 };
-export interface ChatWindowState {
-    chatId: string;
-};
 
+export function ChatWindow(props: ChatWindowProps) {
+    const [sendMessage, { }] = useMutation(SEND_MESSAGE);
+    const [chatId, setChatId] = React.useState(props.chatId);
+    const [inputText, setInputText] = React.useState("");
 
-export class ChatWindow extends React.Component<ChatWindowProps, ChatWindowState> {
-    constructor(props: ChatWindowProps) {
-        super(props);
-        this.state = { chatId: this.props.chatId };
+    async function onSend() {
+        const content = inputText;
+        const sentChatId = chatId;
+        setInputText("");
+        // Send new message to the server
+        const sendResult = sendMessage({
+            variables: {
+                chatId: sentChatId,
+                language: "Common",
+                content,
+                speakerId: "",
+                speakerName: "Gamemaster",
+            }
+        });
+        // Update cached data locally
+        const responseData = (await sendResult).data
+        const cachedData = client.readQuery({ query: GET_MESSAGES, variables: { chatId: sentChatId } });
+        const newMessage = {
+            id: responseData.id,
+            timestamp: responseData.timestamp,
+            speakerName: "Gamemaster",
+            content,
+            __typename: 'Message',
+        };
+        client.writeQuery({
+            query: GET_MESSAGES,
+            variables: { chatId: sentChatId },
+            data: {
+                chat: {
+                    messages: [...cachedData.chat.messages, newMessage],
+                }
+            }
+        });
     }
 
-    render() {
-        return (
-            <ApplicationWindow className="chat" title="Chat" id={this.props.id}
-                width={400} height={600} onClose={(windowId) => this.props.onClose(windowId)}
-                left={this.props.left} top={this.props.top}>
-                <div>
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque
-                    nec dui sit amet metus euismod rutrum quis et nibh. Nullam nec est a
-                    quam semper malesuada efficitur ac lorem. Nulla eros est, lacinia
-                    sodales sollicitudin vel, dapibus a leo. Curabitur facilisis, dui et
-                    convallis vestibulum, dolor ligula molestie lectus, quis lacinia neque
-                    ex eu leo. Sed consectetur nunc a neque interdum tempor. Fusce a ornare
-                    risus. Ut consectetur odio nulla, vel laoreet leo aliquam non.
-                    Donec efficitur porta sem nec elementum. Orci varius natoque penatibus
-                    et magnis dis parturient montes, nascetur ridiculus mus. Proin sed dui
-                    quis augue rhoncus commodo ut a metus. Nunc suscipit lectus eget massa
-                    pulvinar, vel tincidunt purus tincidunt. Quisque congue rhoncus justo,
-                    at vehicula massa eleifend eu. Pellentesque nec quam nunc. Nullam a
-                    ligula ut odio rutrum viverra. Sed posuere ex ipsum, id elementum
-                    tellus elementum nec. Praesent sit amet lacinia metus, blandit
-                    convallis lacus. Donec arcu neque, porttitor ac ex vel, imperdiet
-                    auctor enim. Mauris vulputate nec sem lacinia aliquet. Aenean convallis
-                    pulvinar aliquam. Fusce venenatis vulputate justo, sed sollicitudin
-                    diam vestibulum et. Sed quam tellus, placerat sed purus non, bibendum
-                    porttitor odio.
-                    Proin auctor massa sit amet dolor pulvinar, sed semper tortor rutrum.
-                    Vestibulum sed tellus facilisis, vulputate urna vel, fringilla magna.
-                    Integer massa nisl, auctor nec nunc a, cursus placerat ligula. Quisque
-                    sed ornare nisi. Nulla nec ipsum lectus. Sed enim ante, viverra at
-                    elementum ut, auctor varius leo. Sed viverra maximus erat sed facilisis.
-                    Etiam vitae odio sed diam imperdiet congue. Aliquam eleifend a mi et
-                    volutpat.
-                    Suspendisse molestie ex eget orci facilisis efficitur. Nunc quis orci
-                    in urna faucibus accumsan nec id turpis. Donec at justo libero. Mauris
-                    sit amet massa ullamcorper, rhoncus libero non, tristique sem. Quisque
-                    eget tincidunt nunc. Curabitur vestibulum facilisis metus, eget rutrum
-                    enim aliquam sed. Duis interdum turpis volutpat libero mattis interdum
-                    ut eget felis. Pellentesque scelerisque urna ex, non hendrerit quam
-                    ultricies ultricies. Mauris lacinia vestibulum leo et bibendum. Quisque
-                    efficitur vitae dolor quis auctor. Maecenas quis arcu orci. Curabitur
-                    mattis elementum dui ac auctor.
-                    Curabitur et pellentesque ante. Quisque sit amet auctor neque, sed
-                    faucibus justo. Integer nec pellentesque dui. Proin ornare, diam ac
-                    lacinia pulvinar, sapien purus scelerisque ante, vel facilisis justo
-                    erat et eros. Morbi ut felis turpis. Quisque id varius velit, sit amet
-                    euismod augue. Suspendisse potenti. Donec accumsan varius porttitor.
-                    Cras pharetra felis a massa lobortis iaculis.
+    const { loading, error, data } = useQuery(
+        GET_MESSAGES,
+        { variables: { chatId } },
+    );
+
+    let content: any;
+    let input: any = null;
+    if (loading) {
+        content = <div className="status">Loading ...</div>
+    }
+    else if (error) {
+        content = <div className="status">Error, chat failed to load.</div>
+    }
+    else {
+        content = [];
+        for (let message of data.chat.messages) {
+            content.push(
+                <div className="message" key={message.id}>
+                    <div className="header">
+                        <div className="speaker">{message.speakerName}</div>
+                        <div className="timestamp">{message.timestamp}</div>
+                    </div>
+                    <div className="content">{message.content}</div>
                 </div>
-            </ApplicationWindow>
+            );
+        }
+        input = (
+            <div className="input">
+                <input type="text" value={inputText} onChange={ev => setInputText(ev.target.value)} />
+                <div className="button" onClick={ev => onSend()}>Send</div>
+            </div>
         );
     }
+    return (
+        <ApplicationWindow className="chat" title="Chat" id={props.id}
+            width={400} height={600} onClose={(windowId) => props.onClose(windowId)}
+            left={props.left} top={props.top}>
+            <div className="messages">
+                {content}
+            </div>
+            {input}
+        </ApplicationWindow>
+    );
 }
