@@ -3,6 +3,7 @@ import { ApplicationWindow } from "./window";
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_MESSAGES, SEND_MESSAGE } from "../gql";
 import { client } from "../api";
+import { randomID } from "../utilities";
 
 export interface ChatWindowProps {
     chatId: string;
@@ -16,6 +17,14 @@ export function ChatWindow(props: ChatWindowProps) {
     const [sendMessage, { }] = useMutation(SEND_MESSAGE);
     const [chatId, setChatId] = React.useState(props.chatId);
     const [inputText, setInputText] = React.useState("");
+    const [scrollId, setScrollId] = React.useState(randomID());
+
+    React.useEffect(() => {
+        const element = document.getElementById(scrollId);
+        if (element !== null) {
+            element.scrollIntoView(false);
+        }
+    });
 
     async function onSend() {
         const content = inputText;
@@ -79,9 +88,11 @@ export function ChatWindow(props: ChatWindowProps) {
             );
         }
         input = (
-            <div className="input">
-                <input type="text" value={inputText} onChange={ev => setInputText(ev.target.value)} />
-                <div className="button" onClick={ev => onSend()}>Send</div>
+            <div id={scrollId} className="input-section">
+                <div className="compose-area">
+                    <input type="text" value={inputText} onChange={ev => setInputText(ev.target.value)} />
+                    <div className="button" onClick={ev => onSend()}>Send</div>
+                </div>
             </div>
         );
     }

@@ -245,7 +245,66 @@ input[type="text"] {
         overflow-y: auto;
         display: flex;
         flex-flow: column nowrap;
-        align-items: center;
-        justify-content: flex-start;
+        align-items: stretch;
+        justify-content: stretch;
+    }
+}
+
+.chat.window {
+    .messages {
+        display: flex;
+        flex-flow: column nowrap;
+        width: 100%;
+
+        .message {
+            display: flex;
+            flex-flow: column nowrap;
+            padding: 4px;
+            background: $dark-primary;
+            margin: 4px;
+            border-radius: 8px;
+
+            .header {
+                display: flex;
+                flex-flow: row wrap;
+                justify-content: space-between;
+
+                * {
+                    color: $font-color-shadow;
+                    font-weight: bold;
+                }
+            }
+        }
+    }
+
+    .input-section {
+        display: flex;
+        flex-flow: column nowrap;
+
+        input[type="text"] {
+            flex: 1;
+            margin: 4px;
+            height: 24px;
+        }
+
+        .button {
+            flex: 0;
+            background: $dark-primary;
+            border-radius: 8px;
+            padding: 4px;
+            margin: 2px;
+            box-shadow: 0 0 4px #00000080;
+        }
+
+        .button:hover {
+            box-shadow: 0 0 4px $light-accent-highlight;
+        }
+
+        .compose-area {
+            display: flex;
+            flex-flow: row nowrap;
+            margin-bottom: 8px;
+            align-items: center;
+        }
     }
 }
