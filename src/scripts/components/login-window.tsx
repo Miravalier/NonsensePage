@@ -55,8 +55,11 @@ export class LoginWindow extends React.Component<LoginProps, LoginState> {
         this.setState(update);
     }
 
-    textInput(key: string) {
-        return <input type="text" value={this.state[key]}
+    input(key: string, type?: string) {
+        if (!type) {
+            type = "text";
+        }
+        return <input type={type} value={this.state[key]}
             data-key={key} onChange={ev => this.onChange(ev)} />
     }
 
@@ -67,11 +70,11 @@ export class LoginWindow extends React.Component<LoginProps, LoginState> {
                 <img className="logo" src="Canonfire.webp"></img>
                 <div className="field">
                     <span className="label">Username</span>
-                    {this.textInput("username")}
+                    {this.input("username")}
                 </div>
                 <div className="field">
                     <span className="label">Password</span>
-                    {this.textInput("password")}
+                    {this.input("password", "password")}
                 </div>
                 <div className="button" onClick={() => this.login()}>
                     <i className="fas fa-sign-in"></i>

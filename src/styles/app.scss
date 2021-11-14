@@ -89,7 +89,7 @@ input {
     color: black;
 }
 
-input[type="text"] {
+input[type="text"], input[type="password"] {
     @include cursor-text;
 }
 
