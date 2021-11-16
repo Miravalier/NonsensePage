@@ -66,8 +66,8 @@ export class LoginWindow extends React.Component<LoginProps, LoginState> {
     render() {
         return (
             <div id="login">
-                <h1>Canonfire</h1>
-                <img className="logo" src="Canonfire.webp"></img>
+                <h1>Canonhead</h1>
+                <img className="logo" src="scroll.png"></img>
                 <div className="field">
                     <span className="label">Username</span>
                     {this.input("username")}

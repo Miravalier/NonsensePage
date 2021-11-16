@@ -11,10 +11,10 @@ function main() {
     });
     mainWindow.setMenuBarVisibility(false);
     if (app.isPackaged) {
-        mainWindow.loadURL('https://canonfire.miramontes.dev/');
+        mainWindow.loadURL('https://canonhead.miramontes.dev/');
     }
     else {
-        mainWindow.loadURL('http://canonfire.local/');
+        mainWindow.loadURL('http://canonhead.local/');
         mainWindow.webContents.openDevTools();
     }
     mainWindow.maximize();

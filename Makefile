@@ -1,4 +1,4 @@
-DOMAIN = canonfire.local
+DOMAIN = canonhead.local
 
 .PHONY: help backend frontend client nginx pfx
 
@@ -54,8 +54,8 @@ nginx:
 	sed -i "s/{DOMAIN}/$(DOMAIN)/" "$(SITE_AVAILABLE)"
 	ln -s "$(SITE_AVAILABLE)" "$(SITE_ENABLED)"
 	service nginx restart
-	@echo "canonfire reachable at http://$(DOMAIN)/"
+	@echo "canonhead reachable at http://$(DOMAIN)/"
 
 pfx:
-	openssl req -x509 -newkey rsa:4096 -keyout canonfire.key -out canonfire.crt -sha256 -days 3650 -nodes
-	openssl pkcs12 -export -in canonfire.crt -inkey canonfire.key -out canonfire.pfx
+	openssl req -x509 -newkey rsa:4096 -keyout canonhead.key -out canonhead.crt -sha256 -days 3650 -nodes
+	openssl pkcs12 -export -in canonhead.crt -inkey canonhead.key -out canonhead.pfx

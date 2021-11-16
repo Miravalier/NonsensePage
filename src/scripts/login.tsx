@@ -5,7 +5,7 @@ import { LoginWindow } from "./components/login-window";
 import * as api from "./api";
 
 
-console.log(`Canonfire login version ${__VERSION__}`);
+console.log(`Canonhead login version ${__VERSION__}`);
 
 
 $(async () => {

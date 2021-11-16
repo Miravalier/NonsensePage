@@ -1,16 +1,16 @@
 version: "3.5"
 
 networks:
-  canonfire:
+  canonhead:
     external: false
 
 services:
     server:
         build: .
-        container_name: canonfire_server
+        container_name: canonhead_server
         networks:
-            - canonfire
+            - canonhead
         volumes:
-            - /var/canonfire:/data
+            - /var/canonhead:/data
         ports:
             - "${HTTP_PORT}:80"

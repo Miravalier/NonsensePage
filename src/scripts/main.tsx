@@ -21,7 +21,7 @@ declare global {
 window.api = api;
 
 
-console.log(`Canonfire version ${__VERSION__}`);
+console.log(`Canonhead version ${__VERSION__}`);
 $(async () => {
     // Verify a valid token
     const token = window.localStorage.getItem("token");
