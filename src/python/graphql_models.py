@@ -57,6 +57,12 @@ class Chat:
 
 
 @strawberry.type
+class MessageUpdate:
+    chat_id: strawberry.ID
+    message: Message
+
+
+@strawberry.type
 class Message:
     id: strawberry.ID = ""
     timestamp: datetime = None

@@ -5,7 +5,7 @@ import * as ReactDOM from "react-dom";
 import * as api from "./api";
 import { User } from "./models";
 import { Desktop } from "./components/desktop";
-import { ApolloProvider } from "@apollo/client";
+import { ApolloProvider, gql } from "@apollo/client";
 import { MESSAGE_SUBSCRIPTION, GET_MESSAGES } from "./gql";
 
 
@@ -41,31 +41,32 @@ $(async () => {
         return;
     }
 
-    // Connect to message subscription
+    // Connect to messages subscription
     const messageSub = api.client.subscribe({ query: MESSAGE_SUBSCRIPTION });
-    messageSub.forEach(message => {
-        const messageData = message.data;
-        messageData.__typename = 'Message';
-        const cachedData = api.client.readQuery({ query: GET_MESSAGES, variables: { chatId: "current" } });
-        const messages: Array<any> = cachedData.chat.messages;
+    messageSub.forEach(async response => {
+        const update = response.data.messages;
+        response = await api.client.query({ query: GET_MESSAGES, variables: { chatId: update.chatId } });
+        const messages = [...response.data.chat.messages];
         let existing = false;
         for (let message of messages) {
-            if (message.id === messageData.id) {
-                Object.assign(message, messageData);
+            if (message.id === update.message.id) {
+                Object.assign(message, update.message);
                 existing = true;
                 break;
             }
         }
         if (!existing) {
-            messages.push(messageData);
+            messages.push(update.message);
         }
-        api.client.writeQuery({
-            query: GET_MESSAGES,
-            variables: { chatId: "current" },
-            data: {
-                chat: {
-                    messages,
+        api.client.writeFragment({
+            id: `Chat:${update.chatId}`,
+            fragment: gql`
+                fragment ChatUpdate on Chat {
+                    messages
                 }
+            `,
+            data: {
+                messages,
             }
         });
     })

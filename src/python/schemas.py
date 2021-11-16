@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import secrets
 from datetime import datetime
-from typing import List, Optional, Type
+from typing import List, Optional
 
 import strawberry
 import updates
@@ -11,7 +11,7 @@ import utilities
 from db import DBEntry, db
 from db_models import DBChat, DBMessage, DBUser
 from enums import Permissions
-from graphql_models import Character, Chat, Message, User
+from graphql_models import Character, Chat, Message, User, MessageUpdate
 from graphql_utilities import IsAuthenticated, IsGM, db_to_graphql, get_user_from_context
 from security import check_password, hash_password
 from strawberry.types import Info
@@ -133,35 +133,35 @@ class Mutation:
         message_ids.append(message_id)
         chat.update({"message_ids": message_ids})
         message = Message(message_id, timestamp, language, content, user.id, speaker_id, speaker_name)
-        updates.messages.publish(message)
+        updates.messages.publish(MessageUpdate(chat.id, message))
         return message
 
 
 @strawberry.type
 class Subscription:
     @strawberry.subscription()
-    async def messages(self, info: Info) -> Message:
+    async def messages(self, info: Info) -> MessageUpdate:
         user = get_user_from_context(info.context)
         if user is None:
             raise Exception("Unauthenticated websocket user.")
         with updates.messages.subscribe() as queue:
             while True:
-                message: Message = await queue.get()
+                update: MessageUpdate = await queue.get()
                 queue.task_done()
 
                 character = db_to_graphql(db.characters[user.character_id], Character, info)
-                if user.is_gm or message.language in character.languages:
-                    yield message
-                else:
-                    yield Message(
-                        message.id,
-                        message.timestamp,
-                        message.language,
+                if not user.is_gm and update.message.language in character.languages:
+                    update.message = Message(
+                        update.message.id,
+                        update.message.timestamp,
+                        update.message.language,
                         "Lorem ipsum.",
-                        message.sender_id,
-                        message.speaker_id,
-                        message.speaker_name,
+                        update.message.sender_id,
+                        update.message.speaker_id,
+                        update.message.speaker_name,
                     )
+
+                yield update
 
     @strawberry.subscription
     async def general(self, info: Info) -> str:

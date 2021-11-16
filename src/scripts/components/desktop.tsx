@@ -16,6 +16,7 @@ interface DesktopState {
 export class Desktop extends React.Component<DesktopProps, DesktopState> {
     contextMenuRef: React.RefObject<ContextMenu>;
     contextResolve: (value?: any | PromiseLike<any>) => void;
+    contextReject: (reason?: any) => void;
 
     constructor(props: DesktopProps) {
         super(props);
@@ -23,6 +24,8 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
         this.state = { windows: {} };
 
         window.desktop = this;
+        this.contextResolve = null;
+        this.contextReject = null;
     }
 
     render() {
@@ -57,12 +60,15 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
     }
 
     async openContextMenu(ev: React.MouseEvent, title: string, options: ContextMenuOption[]): Promise<string> {
+        if (this.contextReject) {
+            this.contextReject("New context menu opened");
+        }
         const contextMenu = this.contextMenuRef.current;
         const style: React.CSSProperties = {
             display: null,
         };
         setStylePosition(style, ev);
-        const id = await new Promise<string>(resolve => {
+        const promise = new Promise<string>((resolve, reject) => {
             /* Prepare shortcut map for keypress interaction */
             const shortcutMap = {};
             for (let option of options) {
@@ -82,6 +88,7 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
                 const shortcut = keypress[keypress.length - 1];
                 resolve(shortcutMap[shortcut]);
             }
+            this.contextReject = reject;
             /* Reveal context menu for mouse interaction */
             contextMenu.setState({
                 title,
@@ -90,12 +97,19 @@ export class Desktop extends React.Component<DesktopProps, DesktopState> {
                 callback: resolve
             });
         });
-        contextMenu.setState({
-            style: { display: "none" },
-            callback: null,
-        });
-        this.contextResolve = null;
-        return id;
+        try {
+            const id = await promise;
+            contextMenu.setState({
+                style: { display: "none" },
+                callback: null,
+            });
+            this.contextResolve = null;
+            this.contextReject = null;
+            return id;
+        }
+        catch {
+            return null;
+        }
     }
 
     closeWindow(windowId: string) {
