@@ -5,6 +5,7 @@ import * as ReactDOM from "react-dom";
 import * as api from "./api";
 import { User } from "./models";
 import { Desktop } from "./components/desktop";
+import { NotificationBar } from "./components/notifications";
 import { ApolloProvider, gql } from "@apollo/client";
 import { MESSAGE_SUBSCRIPTION, GET_MESSAGES } from "./gql";
 
@@ -14,11 +15,10 @@ declare global {
 
     interface Window {
         desktop: Desktop;
+        notifications: NotificationBar;
         user: User;
-        api: any;
     }
 }
-window.api = api;
 
 
 console.log(`Canonhead version ${__VERSION__}`);
@@ -75,6 +75,7 @@ $(async () => {
     ReactDOM.render(
         <ApolloProvider client={api.client}>
             <Desktop />
+            <NotificationBar />
         </ApolloProvider>,
         document.getElementById('root')
     );
@@ -91,5 +92,6 @@ $(async () => {
         }
     });
 });
+
 
 

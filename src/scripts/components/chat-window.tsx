@@ -1,5 +1,4 @@
 import * as React from "react";
-import * as api from "../api";
 import { ApplicationWindow } from "./window";
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_MESSAGES, SEND_MESSAGE } from "../gql";

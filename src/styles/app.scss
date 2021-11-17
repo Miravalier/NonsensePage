@@ -107,6 +107,47 @@ textarea {
     width: 100%;
 }
 
+#desktop {
+    z-index: 0;
+}
+
+#notifications {
+    pointer-events: none;
+    z-index: 1;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+
+    .notification {
+        display: none;
+        border-radius: 36px;
+        margin: 8px;
+        padding: 6px 12px;
+        width: fit-content;
+    }
+
+    .notification.info {
+        background: rgba(0, 128, 255, 0.35);
+    }
+
+    .notification.warning {
+        background: rgba(255, 196, 0, 0.35);
+    }
+
+    .notification.error {
+        background: rgba(255, 0, 0, 0.35);
+    }
+
+    .notification i {
+        margin-right: 4px;
+    }
+}
+
 #login {
     display: flex;
     flex-flow: column nowrap;

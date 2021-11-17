@@ -2,6 +2,7 @@ import "../styles/app.css";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { LoginWindow } from "./components/login-window";
+import { NotificationBar } from "./components/notifications";
 import * as api from "./api";
 
 
@@ -28,7 +29,10 @@ $(async () => {
     }
 
     ReactDOM.render(
-        <LoginWindow />,
+        <div>
+            <LoginWindow />
+            <NotificationBar />
+        </div>,
         document.getElementById('root')
     );
 });

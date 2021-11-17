@@ -20,11 +20,11 @@ export class LoginWindow extends React.Component<LoginProps, LoginState> {
 
     async login() {
         if (!this.state.username) {
-            console.error("The username can't be blank.");
+            window.notifications.warning("The username can't be blank");
             return;
         }
         if (!this.state.password) {
-            console.error("The password can't be blank.");
+            window.notifications.warning("The password can't be blank");
             return;
         }
         try {
@@ -44,7 +44,7 @@ export class LoginWindow extends React.Component<LoginProps, LoginState> {
             window.location.replace("/");
         }
         catch (e) {
-            console.error("Login failed.");
+            window.notifications.error("Incorrect username or password");
         }
     }
 
