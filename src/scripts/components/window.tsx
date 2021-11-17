@@ -20,21 +20,29 @@ export interface WindowProps {
     left?: number;
     top?: number;
     popOut?: boolean;
+    popOutData?: any;
 }
 
 export interface WindowState {
-    display: DisplayState
+    display: DisplayState;
+    x: number;
+    y: number;
     z: number;
 }
 
 
 export class ApplicationWindow extends React.Component<WindowProps, WindowState> {
+    titleHeight: number;
+
     constructor(props: WindowProps) {
         super(props);
         this.state = {
             display: DisplayState.Regular,
-            z: getNextZIndex()
+            x: props.left,
+            y: props.top,
+            z: getNextZIndex(),
         };
+        this.titleHeight = 26;
     }
 
     toggleExpand() {
@@ -55,24 +63,29 @@ export class ApplicationWindow extends React.Component<WindowProps, WindowState>
         }
     }
 
-    popOut() {
+    popOut(): Window {
         this.props.onClose(this.props.id);
-        const popOut = window.open("/pop-out", this.props.id, "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes");
-
+        const popOut = window.open(
+            "/pop-out",
+            this.props.id,
+            "toolbar=no,location=no,directories=no,status=no," +
+            "menubar=no,scrollbars=yes,resizable=yes",
+        );
         popOut.addEventListener('load', () => {
+            popOut.postMessage({
+                id: this.props.id,
+                data: this.props.popOutData
+            }, window.location.origin + "/pop-out");
             popOut.document.title = this.props.title;
-            ReactDOM.render(
-                <ApplicationWindow {...this.props} popOut={true} />,
-                popOut.document.getElementById("root")
-            );
         }, true);
+        return popOut;
     }
 
     render() {
         /* Handle pop out windows */
         if (this.props.popOut) {
             return (
-                <div className={`${this.props.className} window`}
+                <div id={this.props.id} className={`${this.props.className} window`}
                     style={{ width: "100%", height: "100%" }}>
                     <div className="viewport">
                         {this.props.children}
@@ -83,7 +96,7 @@ export class ApplicationWindow extends React.Component<WindowProps, WindowState>
         /* Handle expanded windows */
         if (this.state.display === DisplayState.Expanded) {
             return (
-                <div className={`${this.props.className} window`} style={{
+                <div id={this.props.id} className={`${this.props.className} window`} style={{
                     zIndex: 0, width: "100%", height: "100%"
                 }}>
                     <div className="title-bar" onDoubleClick={() => this.toggleMinimize()}>
@@ -107,22 +120,28 @@ export class ApplicationWindow extends React.Component<WindowProps, WindowState>
                 </div>
             );
         }
-        /* Handle minimized windows */
+        /* Handle minimized and regular windows */
         let viewport;
         if (this.state.display !== DisplayState.Minimized) {
+            // state.x is distance from left to the window, 4px in padding
+            const xConstraint = document.body.clientWidth - (this.state.x + 4);
+            // state.y is distance from top to the window, 4px in padding
+            const yConstraint = document.body.clientHeight - (this.state.y + this.titleHeight + 4);
             viewport = (
                 <ResizableBox className="viewport"
-                    width={this.props.width} height={this.props.height}>
+                    width={this.props.width} height={this.props.height}
+                    maxConstraints={[xConstraint, yConstraint]}>
                     {this.props.children}
                 </ResizableBox>
             );
         }
-        /* Handle regular windows */
         return (
             <Draggable handle=".title-bar" bounds="body" onMouseDown={() => {
                 this.setState({ z: getNextZIndex() });
+            }} onStop={(_, data) => {
+                this.setState({ x: this.props.left + data.x, y: this.props.top + data.y });
             }}>
-                <div className={`${this.props.className} window`} style={{
+                <div id={this.props.id} className={`${this.props.className} window`} style={{
                     left: this.props.left, top: this.props.top, zIndex: this.state.z
                 }}>
                     <div className="title-bar" onDoubleClick={() => this.toggleMinimize()}>
@@ -144,5 +163,14 @@ export class ApplicationWindow extends React.Component<WindowProps, WindowState>
                 </div>
             </Draggable >
         );
+    }
+
+    componentDidMount() {
+        const window = document.getElementById(this.props.id);
+        const titleBar = window.getElementsByClassName("title-bar").item(0);
+        if (titleBar.clientHeight != this.titleHeight) {
+            console.warn(`TitleBar Height ${this.titleHeight} -> ${titleBar.clientHeight}`);
+        }
+        this.titleHeight = titleBar.clientHeight;
     }
 }
