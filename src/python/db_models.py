@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List
 
-from enums import Alignment
 from pydantic import BaseModel
+
+from enums import Alignment
 
 
 class DBMessage(BaseModel):

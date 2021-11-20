@@ -1,8 +1,8 @@
 version: "3.5"
 
 networks:
-  canonhead:
-    external: false
+    canonhead:
+        external: false
 
 services:
     server:
@@ -12,5 +12,6 @@ services:
             - canonhead
         volumes:
             - /var/canonhead:/data
+            - /var/www/canonhead/files:/files
         ports:
             - "${HTTP_PORT}:80"

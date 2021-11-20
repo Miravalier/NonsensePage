@@ -7,9 +7,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional, Type, TypeVar, Union
 
-from enums import Permissions
 from pydantic import BaseModel
 from strawberry.types.info import Info
+
+from enums import Permissions
 
 T = TypeVar("T")
 

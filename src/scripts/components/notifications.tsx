@@ -141,6 +141,7 @@ export class NotificationBar extends React.Component<NotificationBarProps, Notif
             else {
                 notifications.push(
                     <Toast key={notification.id} id={notification.id} className="info">
+                        <i className="fas fa-info-circle"></i>
                         {notification.text}
                     </Toast>
                 );

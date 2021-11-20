@@ -1,24 +1,48 @@
 from __future__ import annotations
 
 import json
+import re
 import secrets
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
 import strawberry
+from strawberry.types import Info
+
+import files
 import updates
 import utilities
 from db import DBEntry, db
 from db_models import DBChat, DBMessage, DBUser
 from enums import Permissions
-from graphql_models import Character, Chat, Message, User, MessageUpdate
+from graphql_models import Character, Chat, File, Message, MessageUpdate, User
 from graphql_utilities import IsAuthenticated, IsGM, db_to_graphql, get_user_from_context
 from security import check_password, hash_password
-from strawberry.types import Info
+
+directory_regex = re.compile(r"/([_a-zA-Z0-9]+/)*")
+filename_regex = re.compile(r"(.[a-zA-Z0-9]+)?")
 
 
 @strawberry.type
 class Query:
+    @strawberry.field(permission_classes=[IsAuthenticated])
+    def files(self, info: Info, path: str) -> List[File]:
+        if not directory_regex.fullmatch(path):
+            raise ValueError("Invalid path")
+        path: Path = Path("/files" + path)
+        if not path.is_dir():
+            raise TypeError("Invalid path, not a directory")
+        results = []
+        for result in path.iterdir():
+            # Strip off the "/files" prefix
+            result_path = "/" + "/".join(result.parts[2:])
+            # Ensure directories end in "/"
+            if result.is_dir():
+                result_path += "/"
+            results.append(File(result_path, files.sniff(result)))
+        return results
+
     @strawberry.field(permission_classes=[IsAuthenticated])
     def chat(self, info: Info, id: str) -> Chat:
         if id == "current":

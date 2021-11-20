@@ -1,16 +1,17 @@
 import secrets
 from typing import Any
 
-from db import db
-from db_models import DBUser
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from schemas import schema
-from security import check_password
 from strawberry.fastapi import GraphQLRouter
 from strawberry.fastapi.handlers import GraphQLTransportWSHandler, GraphQLWSHandler
 from strawberry.subscriptions.protocols.graphql_transport_ws.types import ConnectionInitMessage
 from strawberry.subscriptions.protocols.graphql_ws.types import OperationMessage
+
+from db import db
+from db_models import DBUser
+from schemas import schema
+from security import check_password
 
 app = FastAPI()
 

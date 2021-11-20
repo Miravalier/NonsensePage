@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Optional, Type, TypeVar, Union
 
-from db import DBEntry, db
-from db_models import DBUser
 from fastapi import Request, WebSocket
 from strawberry.permission import BasePermission
 from strawberry.types import Info
-from strawberry.types.info import ContextType
+
+from db import DBEntry, db
+from db_models import DBUser
 
 T = TypeVar("T")
 

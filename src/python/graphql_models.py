@@ -4,11 +4,18 @@ from datetime import datetime
 from typing import List
 
 import strawberry
+from strawberry.types.info import Info
+
 from db import DBEntry, db
 from db_models import DBChat, DBMessage, DBUser
 from enums import Alignment
 from graphql_utilities import db_to_graphql, get_user_from_context
-from strawberry.types.info import Info
+
+
+@strawberry.type
+class File:
+    path: str
+    type: str
 
 
 @strawberry.type
