@@ -7,16 +7,21 @@ html,
 body {
     height: 100%;
     width: 100%;
+    overflow: hidden;
 }
 
 body {
-    background-color: black;
+    background-color: #222222;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-canvas {
-    max-width: 100%;
-    max-height: 100%;
+.window {
+    position: absolute;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    box-shadow: 0 0 12px #00000080;
 }
