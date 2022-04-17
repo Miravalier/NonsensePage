@@ -1,6 +1,21 @@
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #407abd;
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4989d1;
+}
+
 * {
+    font-family: "Noto Sans", sans-serif;
     margin: 0;
     padding: 0;
+    user-select: none;
 }
 
 html,
@@ -17,11 +32,103 @@ body {
     align-items: center;
 }
 
+#windows {
+    height: 100%;
+    width: 100%;
+    z-index: 0;
+}
+
 .window {
     position: absolute;
     display: flex;
     flex-flow: column nowrap;
     justify-content: flex-start;
     align-items: center;
+    border-radius: 2px;
     box-shadow: 0 0 12px #00000080;
+}
+
+.window .resizeHandle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    height: 24px;
+    width: 24px;
+    background: url("handle.png");
+    cursor: se-resize;
+}
+
+.window .viewPort {
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.window .canvasViewPort {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.window .titleBar {
+    width: 100%;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #244e7e;
+}
+
+.window .titleBar .group {
+    font-family: "Prompt", sans-serif;
+    color: white;
+    margin: 2px;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.window .titleBar .group .button {
+    margin: 2px;
+}
+
+.window .content {
+    margin: 2px;
+}
+
+.button svg:hover,
+.button i:hover {
+    cursor: pointer;
+    color: #95c7ff;
+    filter: drop-shadow(0 0 4px #57a6ff);
+}
+
+.contextMenu {
+    position: absolute;
+    display: flex;
+    flex-flow: column nowrap;
+    background-color: white;
+    border-radius: 2px;
+    box-shadow: 0 0 12px #00000080;
+    z-index: 1;
+}
+
+.contextMenu .title {
+    color: white;
+    font-family: "Prompt", sans-serif;
+    background-color: #244e7e;
+    padding: 0 2px;
+}
+
+.contextMenu .choice {
+    padding: 0 2px;
+}
+
+.contextMenu .choice:hover {
+    background-color: #95c7ff;
 }

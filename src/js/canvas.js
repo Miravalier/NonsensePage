@@ -11,7 +11,8 @@ export class Canvas {
         });
 
         this.stage = this.app.stage;
-        this.htmlContainer.appendChild(this.app.view);
+        this.view = this.app.view;
+        this.htmlContainer.appendChild(this.view);
     }
 
     async DrawSprite(resource) {
