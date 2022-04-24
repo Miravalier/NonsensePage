@@ -91,6 +91,36 @@ class Entry(BaseModel):
             self.permissions.pop(id, None)
 
 
+@dataclass
+class Database:
+    # Attributes
+    persist_queue: Set[Entry] = field(default_factory=set)
+    # Collections
+    users: Dict[str, User] = field(default_factory=dict)
+    users_by_token: Dict[str, User] = field(default_factory=dict)
+    users_by_name: Dict[str, User] = field(default_factory=dict)
+    characters: Dict[str, Character] = field(default_factory=dict)
+    messages: Dict[str, Message] = field(default_factory=dict)
+
+    def save(self):
+        DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
+        for entry in self.persist_queue:
+            with open(DATABASE_ROOT / entry.id, "wb") as pickle_file:
+                pickle.dump(entry, pickle_file)
+        self.persist_queue = set()
+
+    @classmethod
+    def load(cls):
+        DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
+        db = cls()
+        for path in DATABASE_ROOT.iterdir():
+            with open(path, "rb") as pickle_file:
+                entry: Entry = pickle.load(pickle_file)
+            for collection, key in entry.collections.items():
+                getattr(db, collection)[key] = entry
+        return db
+
+
 class Message(Entry):
     timestamp: datetime
     language: str
@@ -125,36 +155,6 @@ class User(Entry):
         super().post_create()
         self.add_collection("users", self.id)
         self.add_collection("users_by_name", self.name)
-
-
-@dataclass
-class Database:
-    # Attributes
-    persist_queue: Set[Entry] = field(default_factory=set)
-    # Collections
-    users: Dict[str, User] = field(default_factory=dict)
-    users_by_token: Dict[str, User] = field(default_factory=dict)
-    users_by_name: Dict[str, User] = field(default_factory=dict)
-    characters: Dict[str, Character] = field(default_factory=dict)
-    messages: Dict[str, Message] = field(default_factory=dict)
-
-    def save(self):
-        DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
-        for entry in self.persist_queue:
-            with open(DATABASE_ROOT / entry.id, "wb") as pickle_file:
-                pickle.dump(entry, pickle_file)
-        self.persist_queue = set()
-
-    @classmethod
-    def load(cls):
-        DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
-        db = cls()
-        for path in DATABASE_ROOT.iterdir():
-            with open(path, "rb") as pickle_file:
-                entry: Entry = pickle.load(pickle_file)
-            for collection, key in entry.collections.items():
-                getattr(db, collection)[key] = entry
-        return db
 
 
 db = Database.load()

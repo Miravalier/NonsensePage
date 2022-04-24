@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+
 file_extensions = {
     ".png": "image/png",
     ".webp": "image/webp",
