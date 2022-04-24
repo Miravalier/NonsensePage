@@ -3,8 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from db import db
-from db_models import DBUser
+from database import db, User
 from security import check_password
 
 
@@ -27,11 +26,11 @@ class AuthRequest(BaseModel):
     token: str
 
 
-def get_request_user(request) -> DBUser:
+def get_request_user(request) -> User:
     entry = db.users.index_get("token", request.token)
     if entry is None:
         raise AuthError("invalid or missing token")
-    return DBUser.parse_obj(entry.data)
+    return User.parse_obj(entry.data)
 
 
 @app.post("/api/status")
@@ -53,7 +52,7 @@ async def login(request: LoginRequest):
         raise AuthError("invalid username or password")
 
     # Convert the db entry to a User model
-    user = DBUser.parse_obj(user_entry.data)
+    user = User.parse_obj(user_entry.data)
 
     # Check the password
     if not check_password(request.password, user.hashed_password):

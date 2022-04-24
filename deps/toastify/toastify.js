@@ -40,7 +40,7 @@ export class Toastify {
     callback: function () { },
     destination: undefined,
     newWindow: false,
-    close: false,
+    close: true,
     gravity: "toastify-top",
     positionLeft: false,
     position: "",

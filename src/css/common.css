@@ -1,0 +1,54 @@
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #407abd;
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4989d1;
+}
+
+* {
+    font-family: "Noto Sans", sans-serif;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+html,
+body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    background-color: #222222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.info-toast {
+    color: white;
+    text-shadow: 2px 2px #222222;
+    background-color: #09406d;
+    background: linear-gradient(135deg, #135f9c, #0d4b7e);
+}
+
+.warning-toast {
+    color: white;
+    text-shadow: 2px 2px #222222;
+    background-color: #9c5f19;
+    background: linear-gradient(135deg, #b96d25, #9c5f19);
+}
+
+.error-toast {
+    color: white;
+    text-shadow: 2px 2px #222222;
+    background-color: #800000;
+    background: linear-gradient(135deg, #9c0b0b, #790303);
+}

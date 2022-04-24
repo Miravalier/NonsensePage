@@ -1,7 +1,7 @@
 import argparse
 
 import utils
-from db import db
+from database import db, User
 from security import hash_password
 
 
