@@ -1,0 +1,60 @@
+* {
+    font-family: "Noto Sans", sans-serif;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    color: white;
+}
+
+input {
+    color: black;
+}
+
+html,
+body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    background-color: #222222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#login {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+}
+
+.logo {
+    margin: 4px;
+}
+
+.button {
+    background-color: #333333;
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 0 4px #00000080;
+    cursor: pointer;
+}
+
+.button:hover {
+    box-shadow: 0 0 4px #4989d1;
+}
+
+.field {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    margin: 4px;
+}
+
+.label {
+    margin: 0 4px;
+    min-width: 80px;
+    text-align: right;
+}

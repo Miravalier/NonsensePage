@@ -1,0 +1,17 @@
+version: "3.5"
+
+networks:
+    nonsense:
+        external: false
+
+services:
+    server:
+        build: .
+        container_name: nonsense_server
+        networks:
+            - nonsense
+        volumes:
+            - /var/nonsense:/data
+            - /var/www/nonsense/files:/files
+        ports:
+            - "${HTTP_PORT}:80"

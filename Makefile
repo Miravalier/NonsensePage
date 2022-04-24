@@ -22,6 +22,7 @@ frontend:
 	fi
 	mkdir -p /var/www/nonsense/
 	cp $$(find src -type f) /var/www/nonsense/
+	cp $$(find deps/toastify -type f) /var/www/nonsense/
 	cp -r assets/* /var/www/nonsense/
 
 backend:

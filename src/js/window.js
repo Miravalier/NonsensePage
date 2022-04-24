@@ -1,6 +1,7 @@
 import { Button } from "./button.js";
 import { Vector2 } from "./vector.js";
 import { Canvas } from "./canvas.js";
+import { ApiRequest } from "./requests.js";
 import {
     PageCenter,
     Parameter,
@@ -195,5 +196,30 @@ export class ContentWindow extends BaseWindow {
         super(options);
         this.content = this.viewPort.appendChild(document.createElement("div"));
         this.content.className = "content";
+    }
+}
+
+
+export class FilesWindow extends ContentWindow {
+    constructor(options) {
+        super(options);
+        this.files = this.content.appendChild(document.createElement("div"));
+        this.files.className = "files";
+    }
+
+    async load(path) {
+        this.files.remove();
+        this.files = this.content.appendChild(document.createElement("div"));
+        this.files.className = "files";
+
+        await ApiRequest("/file/list", { path });
+    }
+
+    addFolder(name) {
+
+    }
+
+    addFile(img, name) {
+
     }
 }
