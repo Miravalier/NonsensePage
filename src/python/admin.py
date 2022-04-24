@@ -1,21 +1,11 @@
 import argparse
 
-import utils
 from database import db, User
 from security import hash_password
 
 
 def add_gm(args):
-    id = utils.random_id()
-    db.users.add(
-        {
-            "id": id,
-            "name": args.username,
-            "hashed_password": hash_password(args.password),
-            "is_gm": True,
-        }
-    )
-    db.users.index_set("username", args.username, id)
+    User.create(name=args.username, hashed_password=hash_password(args.password), is_gm=True)
     db.save()
 
 

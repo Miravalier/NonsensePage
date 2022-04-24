@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import pickle
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -137,11 +139,21 @@ class Database:
     messages: Dict[str, Message] = field(default_factory=dict)
 
     def save(self):
-        pass
+        DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
+        for entry in self.persist_queue:
+            with open(DATABASE_ROOT / entry.id, "wb") as pickle_file:
+                pickle.dump(entry, pickle_file)
+        self.persist_queue = set()
 
     @classmethod
     def load(cls):
+        DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
         db = cls()
+        for path in DATABASE_ROOT.iterdir():
+            with open(path, "rb") as pickle_file:
+                entry: Entry = pickle.load(pickle_file)
+            for collection, key in entry.collections.items():
+                getattr(db, collection)[key] = entry
         return db
 
 

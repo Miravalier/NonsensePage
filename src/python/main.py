@@ -27,10 +27,10 @@ class AuthRequest(BaseModel):
 
 
 def get_request_user(request) -> User:
-    entry = db.users.index_get("token", request.token)
-    if entry is None:
+    user = db.users_by_token.get(request.token, None)
+    if user is None:
         raise AuthError("invalid or missing token")
-    return User.parse_obj(entry.data)
+    return user
 
 
 @app.post("/api/status")
@@ -47,12 +47,9 @@ class LoginRequest(BaseModel):
 @app.post("/api/login")
 async def login(request: LoginRequest):
     # Find the requested user by username
-    user_entry = db.users.index_get("username", request.username)
-    if user_entry is None:
+    user = db.users_by_name.get(request.username, None)
+    if user is None:
         raise AuthError("invalid username or password")
-
-    # Convert the db entry to a User model
-    user = User.parse_obj(user_entry.data)
 
     # Check the password
     if not check_password(request.password, user.hashed_password):
@@ -60,7 +57,7 @@ async def login(request: LoginRequest):
 
     # Generate a token and create a session
     token = secrets.token_hex(16)
-    db.users.index_set("token", token, user.id)
+    user.add_collection("users_by_token", token)
     return {"status": "success", "token": token}
 
 
