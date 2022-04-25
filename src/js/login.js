@@ -1,4 +1,4 @@
-import { ApiRequest, LoginRequest, RequestSession } from "./requests.js"
+import { ApiRequest, LoginRequest, Session } from "./requests.js"
 import { InfoToast, WarningToast, ErrorToast } from "./notifications.js";
 
 $(async () => {
@@ -6,8 +6,8 @@ $(async () => {
     window.ErrorToast = ErrorToast;
     window.WarningToast = WarningToast;
 
-    RequestSession.token = localStorage.getItem("token");
-    if (RequestSession.token) {
+    Session.token = localStorage.getItem("token");
+    if (Session.token) {
         const response = await ApiRequest("/status");
         console.log("Auth Status", response);
 
@@ -21,8 +21,15 @@ $(async () => {
 
     $("#login .button").on("click", async () => {
         const username = $("#login .username").val();
+        if (!username) {
+            ErrorToast("You must enter a username.");
+            return;
+        }
         const password = $("#login .password").val();
-        console.log(username, password);
+        if (!password) {
+            ErrorToast("You must enter a password.");
+            return;
+        }
         const response = await LoginRequest(username, password);
         if (response.status === "success") {
             console.log("Auth successful, redirecting to main application")

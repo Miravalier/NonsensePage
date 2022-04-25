@@ -1,10 +1,15 @@
 import secrets
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from pathlib import Path
 from pydantic import BaseModel
 
+import files
 from database import db, User
 from security import check_password
+
+
+FILES_ROOT = Path("/files")
 
 
 class AuthError(Exception):
@@ -20,23 +25,6 @@ async def auth_error_handler(request: Request, exc: AuthError):
         "status": "error",
         "reason": str(exc)
     })
-
-
-class AuthRequest(BaseModel):
-    token: str
-
-
-def get_request_user(request) -> User:
-    user = db.users_by_token.get(request.token, None)
-    if user is None:
-        raise AuthError("invalid or missing token")
-    return user
-
-
-@app.post("/api/status")
-async def status(request: AuthRequest):
-    user = get_request_user(request)
-    return {"status": "success", "username": user.name}
 
 
 class LoginRequest(BaseModel):
@@ -58,7 +46,64 @@ async def login(request: LoginRequest):
     # Generate a token and create a session
     token = secrets.token_hex(16)
     user.add_collection("users_by_token", token)
-    return {"status": "success", "token": token}
+    return {"status": "success", "token": token, "gm": user.is_gm}
+
+
+class AuthRequest(BaseModel):
+    token: str
+
+
+def get_request_user(request) -> User:
+    user = db.users_by_token.get(request.token, None)
+    if user is None:
+        raise AuthError("invalid or missing token")
+    return user
+
+
+@app.post("/api/status")
+async def status(request: AuthRequest):
+    user = get_request_user(request)
+    return {"status": "success", "username": user.name, "gm": user.is_gm}
+
+
+class ListFilesRequest(AuthRequest):
+    path: str
+
+
+@app.post("/api/files/list")
+async def list_files(request: ListFilesRequest):
+    user = get_request_user(request)
+    # Make sure path is absolute
+    path = Path(request.path)
+    if not path.is_absolute():
+        return {"status": "error", "reason": "not an absolute path"}
+    # Resolve '..' and symlinks in path
+    path = path.resolve(strict=False)
+    # Make path relative to user root
+    if user.is_gm:
+        user_root = FILES_ROOT
+    else:
+        user_root = FILES_ROOT / user.name
+    path = user_root / Path(str(path)[1:])
+    # Check that path is a directory that exists
+    if not path.is_dir():
+        return {"status": "error", "reason": "not a directory"}
+    # Get list of files
+    if path == user_root:
+        returned_path = "/"
+    else:
+        returned_path = "/" + str(path.relative_to(user_root))
+    return {
+        "status": "success",
+        "path": returned_path,
+        "files": [
+            (
+                files.sniff(subpath),
+                "/" + str(subpath.relative_to(user_root))
+            )
+            for subpath in path.iterdir()
+        ]
+    }
 
 
 @app.on_event("shutdown")

@@ -1,23 +1,27 @@
-export class RequestSession {
+export class Session {
     static token = null;
+    static gm = false;
+    static username = "<Invalid>";
 }
 
 
 export async function LoginRequest(username, password) {
-    RequestSession.token = null;
+    Session.token = null;
     const response = await ApiRequest("/login", { username, password });
     if (response.status === "success") {
         localStorage.setItem("token", response.token);
-        RequestSession.token = response.token;
+        Session.token = response.token;
     }
+    Session.gm = response.gm;
+    Session.username = username;
     return response;
 }
 
 
 export async function ApiRequest(endpoint, data) {
     if (!data) data = {};
-    if (RequestSession.token !== null) {
-        data.token = RequestSession.token;
+    if (Session.token !== null) {
+        data.token = Session.token;
     }
     const response = await fetch(`/api${endpoint}`, {
         method: 'POST',
@@ -33,5 +37,7 @@ export async function ApiRequest(endpoint, data) {
             console.error(`${item.msg}: ${item.loc.slice(1).join(", ")}`);
         }
     }
+    console.log("[API REQUEST]", endpoint, data);
+    console.log("[API REPLY]", replyData);
     return replyData;
 }

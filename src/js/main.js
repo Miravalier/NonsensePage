@@ -1,20 +1,20 @@
 import { Vector2 } from "./vector.js";
-import { CanvasWindow, ContentWindow } from "./window.js";
+import { CanvasWindow, ContentWindow, FilesWindow } from "./window.js";
 import { ContextMenu } from "./contextmenu.js";
 import { LoremIpsum } from "./utils.js";
-import { ApiRequest, RequestSession } from "./requests.js"
+import { ApiRequest, Session } from "./requests.js";
 
 
 $(async () => {
     window.LogOut = () => {
         localStorage.removeItem("token");
-        RequestSession.token = null;
+        Session.token = null;
         console.log("Logged out, redirecting to /login");
         window.location.href = "/login";
     };
 
-    RequestSession.token = localStorage.getItem("token");
-    if (!RequestSession.token) {
+    Session.token = localStorage.getItem("token");
+    if (!Session.token) {
         console.error("No token found in local storage, redirecting to /login");
         window.location.href = "/login";
     }
@@ -26,6 +26,9 @@ $(async () => {
         console.error(response.reason);
         window.location.href = "/login";
     }
+
+    Session.gm = response.gm;
+    Session.username = response.username;
 
     Main();
 });
@@ -57,13 +60,23 @@ function Main() {
                     contentWindow.content.appendChild(document.createTextNode(LoremIpsum()));
                 },
                 "Circle": async () => {
-                    const canvasWindow = new CanvasWindow({ title: "Circle" });
+                    const canvasWindow = new CanvasWindow({
+                        title: "Circle",
+                        position: new Vector2(ev.clientX, ev.clientY),
+                    });
                     canvasWindow.canvas.DrawCircle({
                         position: new Vector2(60, 60),
                         radius: 50,
                         fillColor: 0x000000,
                     });
                 },
+                "Files": async () => {
+                    const filesWindow = new FilesWindow({
+                        title: "Files",
+                        position: new Vector2(ev.clientX, ev.clientY),
+                    });
+                    await filesWindow.load("/");
+                }
             },
         });
     });

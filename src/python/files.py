@@ -20,18 +20,18 @@ file_extensions = {
     ".xml": "text/xml",
     ".html": "text/html",
     ".xhtml": "text/xhtml",
-    ".py": "text/python",
-    ".c": "text/c",
-    ".h": "text/h",
-    ".js": "text/js",
-    ".jsx": "text/jsx",
-    ".ts": "text/ts",
-    ".tsx": "text/tsx",
-    ".cpp": "text/cpp",
-    ".c++": "text/cpp",
-    ".hpp": "text/hpp",
-    ".h++": "text/hpp",
     ".ini": "text/ini",
+    ".py": "code/python",
+    ".c": "code/c",
+    ".h": "code/h",
+    ".js": "code/js",
+    ".jsx": "code/jsx",
+    ".ts": "code/ts",
+    ".tsx": "code/tsx",
+    ".cpp": "code/cpp",
+    ".c++": "code/cpp",
+    ".hpp": "code/hpp",
+    ".h++": "code/hpp",
     ".avi": "video/avi",
     ".m4v": "video/mp4",
     ".mkv": "video/mkv",
@@ -52,6 +52,8 @@ file_extensions = {
     ".woff": "font/woff",
     ".otf": "font/otf",
     ".pdf": "pdf",
+    ".csv": "csv",
+    ".exe": "exe/unknown",
 }
 
 
@@ -82,8 +84,8 @@ file_signatures = (
     (b"ftypisom", "video/mp4"),
     # Misc
     (b"\x25\x50\x44\x46\x2d", "pdf"),
-    (b"\x4d\x5a", "exe"),
-    (b"\x5a\x4d", "exe"),
+    (b"\x4d\x5a", "exe/exe"),
+    (b"\x5a\x4d", "exe/exe"),
     (b"\x50\x4b\x03\x04", "archive/zip"),
     (b"\x50\x4b\x05\x06", "archive/zip"),
     (b"\x50\x4b\x07\x08", "archive/zip"),
@@ -95,10 +97,10 @@ file_signatures = (
     (b"\x1f\x8b", "archive/gz"),
     (b"\xfd\x37\x7a\x58\x5a\x00", "archive/xz"),
     (b"\x04\x22\x4d\x18", "archive/lz4"),
-    (b"\x7f\x45\x4c\x46", "elf"),
-    (b"\x00\x61\x73\x6d", "wasm"),
-    # Text Formats
-    (b"<?xml ", "text/xml"),
+    (b"\x7f\x45\x4c\x46", "exe/elf"),
+    (b"\x00\x61\x73\x6d", "exe/wasm"),
+    # Text
+    (b"<?xml ", "code/xml"),
 )
 
 

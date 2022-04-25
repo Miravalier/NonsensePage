@@ -67,6 +67,22 @@
     margin: 2px;
 }
 
+.files .item {
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.files .item:hover {
+    background-color: #95c7ff;
+}
+
+.files .item svg,
+.files .item i {
+    width: 16px;
+    height: 16px;
+    margin: 0 4px;
+}
+
 .button svg:hover,
 .button i:hover {
     cursor: pointer;
