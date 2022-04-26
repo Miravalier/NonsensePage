@@ -1,11 +1,15 @@
 import { Vector2 } from "./vector.js";
-import { CanvasWindow, ContentWindow, FilesWindow } from "./window.js";
+import { CanvasWindow, ContentWindow } from "./window.js";
+import { FileWindow } from "./file_window.js";
 import { ContextMenu } from "./contextmenu.js";
 import { LoremIpsum } from "./utils.js";
 import { ApiRequest, Session } from "./requests.js";
 
 
 $(async () => {
+    window.Session = Session;
+    window.ApiRequest = ApiRequest;
+
     window.LogOut = () => {
         localStorage.removeItem("token");
         Session.token = null;
@@ -70,12 +74,12 @@ function Main() {
                         fillColor: 0x000000,
                     });
                 },
-                "Files": async () => {
-                    const filesWindow = new FilesWindow({
+                "File Browser": async () => {
+                    const fileWindow = new FileWindow({
                         title: "Files",
                         position: new Vector2(ev.clientX, ev.clientY),
                     });
-                    await filesWindow.load("/");
+                    await fileWindow.load("/");
                 }
             },
         });

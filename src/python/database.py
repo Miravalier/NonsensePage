@@ -100,7 +100,6 @@ class Database:
     users_by_token: Dict[str, User] = field(default_factory=dict)
     users_by_name: Dict[str, User] = field(default_factory=dict)
     characters: Dict[str, Character] = field(default_factory=dict)
-    messages: Dict[str, Message] = field(default_factory=dict)
 
     def save(self):
         DATABASE_ROOT.mkdir(parents=True, exist_ok=True)

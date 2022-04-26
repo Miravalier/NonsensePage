@@ -5,6 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 import files
+from messages import messages
 from database import db, User
 from security import check_password
 
@@ -58,6 +59,27 @@ def get_request_user(request) -> User:
     if user is None:
         raise AuthError("invalid or missing token")
     return user
+
+
+class SendMessageRequest(AuthRequest):
+    speaker: str
+    content: str
+
+
+@app.post("/api/messages/send")
+async def send_message(request: SendMessageRequest):
+    user = get_request_user(request)
+    message = messages.create(speaker=request.speaker, content=request.content)
+    return {"status": "success", "id": message.id}
+
+
+@app.post("/api/messages/recent")
+async def recent_messages(request: AuthRequest):
+    user = get_request_user(request)
+    return {
+        "status": "success",
+        "messages": [message.dict() for message in messages.recent]
+    }
 
 
 @app.post("/api/status")

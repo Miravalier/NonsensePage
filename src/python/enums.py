@@ -13,3 +13,7 @@ class Alignment(Enum):
     ENEMY = 1
     NEUTRAL = 2
     ALLY = 3
+
+
+class Language(IntEnum):
+    COMMON = 0
