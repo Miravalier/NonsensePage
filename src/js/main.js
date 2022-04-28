@@ -62,7 +62,7 @@ function Main() {
                         title: "Char",
                         position: new Vector2(ev.clientX, ev.clientY),
                     });
-                    await chatWindow.loadRecents();
+                    await chatWindow.loadMessages();
                 },
                 "File Browser": async () => {
                     const fileWindow = new FileWindow({

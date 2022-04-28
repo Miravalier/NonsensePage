@@ -32,6 +32,13 @@ body {
     align-items: center;
 }
 
+textarea {
+    color: black;
+    resize: none;
+    font-family: monospace;
+    padding: 2px;
+}
+
 .info-toast {
     color: white;
     text-shadow: 2px 2px #222222;

@@ -20,6 +20,7 @@ const FILE_ICONS = {
 
 export class FileWindow extends ContentWindow {
     constructor(options) {
+        options.classList = ["file"];
         super(options);
         this.files = this.content.appendChild(document.createElement("div"));
         this.files.className = "files";

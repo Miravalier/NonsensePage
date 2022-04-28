@@ -18,12 +18,14 @@ export class BaseWindow {
         const size = Parameter(options.size, new Vector2(600, 400));
         const position = Parameter(options.position, PageCenter().subtract(size).divide(2));
         const backgroundColor = Parameter(options.backgroundColor, "#FFFFFF");
+        const classList = Parameter(options.classList, []);
+        classList.push("window");
 
         this.minimized = false;
         this.fullscreen = false;
 
         this.container = document.createElement("div");
-        this.container.className = "window";
+        this.container.classList = classList.join(" ");
         this.container.style.left = position.x;
         this.container.style.top = position.y;
         this.container.style.zIndex = ++nextZIndex;

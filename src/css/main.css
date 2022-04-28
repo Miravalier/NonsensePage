@@ -67,6 +67,50 @@
     margin: 2px;
 }
 
+.chat.window .content {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: stretch;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.chat.window .input-section {
+    display: flex;
+    flex-flow: column nowrap;
+}
+
+.chat.window .messages {
+    display: flex;
+    flex-flow: column nowrap;
+}
+
+.chat.window .message {
+    display: flex;
+    flex-flow: column nowrap;
+    background: #0080FF20;
+    margin: 4px;
+}
+
+.chat.window .message .header {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+}
+
+.chat.window .message .speaker {
+    font-weight: bold;
+}
+
+.chat.window .message .timestamp {
+    font-style: italic;
+}
+
+.window .input-section textarea {
+    margin: 4px;
+    height: 4em;
+}
+
 .files .item {
     cursor: pointer;
     border-radius: 2px;

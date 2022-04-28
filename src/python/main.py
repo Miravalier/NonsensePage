@@ -1,6 +1,7 @@
 import secrets
 from dataclasses import dataclass
 from fastapi import FastAPI, Request, WebSocket
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
@@ -79,7 +80,7 @@ class AuthRequest(BaseModel):
     def resolve_requester(cls, value):
         user = db.users_by_token.get(value, None)
         if user is None:
-            raise AuthError("invalid username or password")
+            raise AuthError("invalid token")
         return user
 
 
@@ -110,9 +111,9 @@ async def send_message(request: SendMessageRequest):
         language=request.language
     )
     # Inform subscribers
-    full_broadcast = message.dict()
+    full_broadcast = jsonable_encoder(message.dict())
     full_broadcast["type"] = "send"
-    foreign_broadcast = message.foreign_dict()
+    foreign_broadcast = jsonable_encoder(message.foreign_dict())
     foreign_broadcast["type"] = "send"
     for subscriber in MESSAGE_SUBSCRIBERS.values():
         if request.language in subscriber.user.languages:
@@ -175,10 +176,16 @@ async def delete_message(request: DeleteMessageRequest):
 MESSAGE_SUBSCRIBERS: Dict[str, Subscriber] = {}
 @app.websocket("/api/messages/subscribe")
 async def message_subscription(websocket: WebSocket):
-    print("/api/messages/subscribe - Headers -", websocket.headers)
+    # Accept the connection
     await websocket.accept()
-
-    MESSAGE_SUBSCRIBERS[id(websocket)] = Subscriber(None, websocket)
+    # Find the user
+    handshake = await websocket.receive_json()
+    user = db.users_by_token.get(handshake["token"], None)
+    if user is None:
+        raise AuthError("invalid token")
+    print("/api/messages/subscribe - Handshake -", user.name)
+    # Begin subscription loop
+    MESSAGE_SUBSCRIBERS[id(websocket)] = Subscriber(user, websocket)
     try:
         while True:
             request = await websocket.receive_json()
