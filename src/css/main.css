@@ -90,6 +90,8 @@
     flex-flow: column nowrap;
     background: #0080FF20;
     margin: 4px;
+    padding: 0px 4px;
+    border-radius: 4px;
 }
 
 .chat.window .message .header {
