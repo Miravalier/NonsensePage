@@ -1,4 +1,13 @@
+import { PcgEngine } from "./pcg-random.js";
 import { Vector2 } from "./vector.js";
+
+
+export async function DerivePcgEngine(id) {
+    return new PcgEngine(
+        BigInt(parseInt(id.substr(0, 6), 36)),
+        BigInt(parseInt(id.substr(6, 6), 36))
+    );
+}
 
 
 export function Bound(min, value, max) {
@@ -32,6 +41,64 @@ export function Require(argument) {
     }
     return argument;
 }
+
+
+const FREQUENCIES = [
+    0.075187970,
+    0.015037594,
+    0.028195489,
+    0.041353383,
+    0.112781955,
+    0.023496241,
+    0.015977444,
+    0.060150376,
+    0.075187970,
+    0.003759398,
+    0.007518797,
+    0.037593985,
+    0.028195489,
+    0.075187970,
+    0.075187970,
+    0.015977444,
+    0.004699248,
+    0.058270677,
+    0.075187970,
+    0.084586466,
+    0.031954887,
+    0.011278195,
+    0.018796992,
+    0.003759398,
+    0.018796992,
+    0.001879699,
+]
+const LETTERS = "abcdefghijklmnopqrstuvwxyz";
+const LETTER_FREQUENCIES = [];
+let LETTER_FREQUENCY_SUM = 0;
+for (let i = 0; i < FREQUENCIES.length; i++) {
+    LETTER_FREQUENCY_SUM += FREQUENCIES[i];
+    LETTER_FREQUENCIES.push([LETTER_FREQUENCY_SUM, LETTERS[i]]);
+}
+
+export function RandomLetter(engine) {
+    const value = engine.randFloat();
+    for (const [limit, letter] of LETTER_FREQUENCIES) {
+        if (value < limit) {
+            return letter;
+        }
+    }
+    // Most common letter for weird edge cases
+    return 'e';
+}
+
+
+export function RandomText(engine, length) {
+    let result = "";
+    for (let i = 0; i < length; i++) {
+        result += RandomLetter(engine);
+    }
+    return result;
+}
+
 
 export function LoremIpsum() {
     return `

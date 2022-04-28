@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import os
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import Deque, List, Optional
+from typing import Any, Deque, Dict, List, Optional
 
 from enums import Language
+from errors import EntityError
 from utils import ctx_open, random_id
 
 
@@ -18,7 +20,7 @@ PAGE_HEADER_SIZE = 8
 MESSAGE_SIZE = 52
 PAGE_MESSAGE_CAPACITY = 128
 
-DELETED_FLAG = 1
+FLAG_DELETED = 1
 
 
 def write_all(fd: int, data: bytes):
@@ -36,7 +38,7 @@ def read_all(fd: int, size: int) -> bytes:
     return result
 
 
-def open_page(page: int) -> int:
+def get_page(page: int) -> int:
     path = MESSAGE_ROOT / "{:08x}".format(page)
     new_page = not path.exists()
     fd = os.open(str(path), os.O_RDWR|os.O_CREAT, 0o664)
@@ -45,7 +47,7 @@ def open_page(page: int) -> int:
     return fd
 
 
-def load_page(page: int) -> List[Message]:
+def get_page_messages(page: int) -> List[Message]:
     messages: List[Message] = []
     path = MESSAGE_ROOT / "{:08x}".format(page)
     with ctx_open(str(path), os.O_RDONLY) as fd:
@@ -65,6 +67,20 @@ class Messages:
     page_index: int = 0
     recent: Deque[Message] = field(default_factory=deque)
 
+    @contextmanager
+    def open_page(self, page: int):
+        if page == self.page_number:
+            try:
+                yield self.fd
+            finally:
+                pass
+        else:
+            fd = get_page(page)
+            try:
+                yield fd
+            finally:
+                os.close(fd)
+
     @classmethod
     def load(cls):
         MESSAGE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -72,10 +88,10 @@ class Messages:
         messages = cls()
 
         if page_count >= 2:
-            messages.recent.extend(load_page(page_count - 2))
+            messages.recent.extend(get_page_messages(page_count - 2))
 
         if page_count >= 1:
-            page = load_page(page_count - 1)
+            page = get_page_messages(page_count - 1)
             messages.page_number = page_count - 1
             messages.page_index = len(page)
         else:
@@ -86,8 +102,20 @@ class Messages:
         messages.recent.extend(page)
         while len(messages.recent) > PAGE_MESSAGE_CAPACITY:
             messages.recent.popleft()
-        messages.fd = open_page(messages.page_number)
+        messages.fd = get_page(messages.page_number)
         return messages
+
+    def get(self, page: int, index: int) -> Message:
+        # Check recents
+        for message in self.recent:
+            if message.page == page and message.index == index:
+                return message
+        # Check previous pages
+        if page < self.page_number and index <= PAGE_MESSAGE_CAPACITY:
+            with self.open_page(page) as fd:
+                return Message.read(fd, page, index)
+        else:
+            raise EntityError("no message found with the given page and index")
 
     def create(self, **kwargs) -> Message:
         # Expand to next page if necessary
@@ -95,7 +123,7 @@ class Messages:
             self.page_number += 1
             self.page_index = 0
             os.close(self.fd)
-            self.fd = open_page(self.page_number)
+            self.fd = get_page(self.page_number)
         # Create message
         kwargs["page"] = self.page_number
         kwargs["index"] = self.page_index
@@ -117,20 +145,25 @@ class Message(BaseModel):
     id: str = Field(default_factory=random_id)
     character_id: Optional[str]
     timestamp: datetime = Field(default_factory=datetime.now)
-    flags: int = 0
+    flags: int = Field(default=0, exclude=True)
     language: Language = Language.COMMON
     speaker: str = ""
     content: str = ""
     page: int
     index: int
 
-    def __setattr__(self, name, value):
-        print("Setattr", name, value)
-        return super().__setattr__(name, value)
+    def foreign_dict(self) -> Dict[str, Any]:
+        result = self.dict(exclude={"content": True})
+        result["length"] = len(self.content)
+        return result
 
     @staticmethod
     def create(**kwargs):
         return messages.create(**kwargs)
+
+    @staticmethod
+    def get(page: int, index: int):
+        return messages.get(page, index)
 
     def __hash__(self):
         return hash(self.id)
@@ -153,10 +186,10 @@ class Message(BaseModel):
             message_id,
             character_id,
             timestamp,
-            content_offset,
             speaker_offset,
-            content_length,
+            content_offset,
             speaker_length,
+            content_length,
             language,
             flags,
         ))
@@ -222,6 +255,70 @@ class Message(BaseModel):
         # Write speaker and content side by side in strings section
         os.lseek(fd, speaker_offset, os.SEEK_SET)
         write_all(fd, speaker + content)
+
+    def swap(self, other: Message):
+        with messages.open_page(self.page) as fd:
+            if self.page == other.page:
+                os.lseek(fd, PAGE_HEADER_SIZE + (MESSAGE_SIZE * self.index), os.SEEK_SET)
+                msg_a = read_all(fd, MESSAGE_SIZE)
+                os.lseek(fd, PAGE_HEADER_SIZE + (MESSAGE_SIZE * other.index), os.SEEK_SET)
+                msg_b = read_all(fd, MESSAGE_SIZE)
+                os.lseek(fd, PAGE_HEADER_SIZE + (MESSAGE_SIZE * self.index), os.SEEK_SET)
+                write_all(fd, msg_b)
+                os.lseek(fd, PAGE_HEADER_SIZE + (MESSAGE_SIZE * other.index), os.SEEK_SET)
+                write_all(fd, msg_a)
+                self.index, other.index = other.index, self.index
+            else:
+                with messages.open_page(other.page) as other_fd:
+                    self.page, other.page = other.page, self.page
+                    self.index, other.index = other.index, self.index
+                    self.write(other_fd)
+                    other.write(fd)
+
+    def edit(self, content: str):
+        self.content = content
+        binary_content = content.encode('utf-8')
+        with messages.open_page(self.page) as fd:
+            # Find the message header in memory
+            message_base = PAGE_HEADER_SIZE + (MESSAGE_SIZE * self.index)
+            # Read the old content offset
+            os.lseek(fd, message_base + 40, os.SEEK_SET)
+            old_content_offset = int.from_bytes(read_all(fd, 4), 'big', signed=False)
+            # Read the old content length
+            os.lseek(fd, message_base + 46, os.SEEK_SET)
+            old_content_length = int.from_bytes(read_all(fd, 2), 'big', signed=False)
+            # If the new content is longer than the old, find a new content offset spot
+            # and write the content offset to file
+            if len(binary_content) > old_content_length:
+                content_offset = max(
+                    os.lseek(fd, 0, os.SEEK_END),
+                    PAGE_HEADER_SIZE + (MESSAGE_SIZE * PAGE_MESSAGE_CAPACITY)
+                )
+                os.lseek(fd, message_base + 40, os.SEEK_SET)
+                write_all(fd, content_offset.to_bytes(4, 'big', signed=False))
+            # If the new content is less than or equal the old, just keep the old offset
+            else:
+                content_offset = old_content_offset
+            # Write the new content to the file
+            os.lseek(fd, content_offset, os.SEEK_SET)
+            write_all(fd, binary_content)
+            # If the content length changed, write the new content length to file
+            if len(binary_content) != old_content_length:
+                os.lseek(fd, message_base + 46, os.SEEK_SET)
+                write_all(fd, len(binary_content).to_bytes(2, 'big', signed=False))
+
+    def delete(self):
+        self.flags |= FLAG_DELETED
+        with messages.open_page(self.page) as fd:
+            # Find the message header in memory
+            message_base = PAGE_HEADER_SIZE + (MESSAGE_SIZE * self.index)
+            # Write new flags
+            os.lseek(fd, message_base + 50, os.SEEK_SET)
+            write_all(fd, self.flags.to_bytes(2, 'big', signed=False))
+
+    @property
+    def is_deleted(self):
+        return self.flags & FLAG_DELETED
 
 
 messages = Messages.load()

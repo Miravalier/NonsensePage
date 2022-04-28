@@ -1,5 +1,6 @@
 import { Vector2 } from "./vector.js";
-import { CanvasWindow, ContentWindow } from "./window.js";
+import { CanvasWindow } from "./window.js";
+import { ChatWindow } from "./chat_window.js";
 import { FileWindow } from "./file_window.js";
 import { ContextMenu } from "./contextmenu.js";
 import { LoremIpsum } from "./utils.js";
@@ -56,12 +57,19 @@ function Main() {
             position: new Vector2(ev.clientX, ev.clientY),
             title: "Create Window",
             choices: {
-                "Lorem Ipsum": async () => {
-                    const contentWindow = new ContentWindow({
-                        title: "Lorem Ipsum",
+                "Chat": async () => {
+                    const chatWindow = new ChatWindow({
+                        title: "Char",
                         position: new Vector2(ev.clientX, ev.clientY),
                     });
-                    contentWindow.content.appendChild(document.createTextNode(LoremIpsum()));
+                    await chatWindow.loadRecents();
+                },
+                "File Browser": async () => {
+                    const fileWindow = new FileWindow({
+                        title: "Files",
+                        position: new Vector2(ev.clientX, ev.clientY),
+                    });
+                    await fileWindow.load("/");
                 },
                 "Circle": async () => {
                     const canvasWindow = new CanvasWindow({
@@ -74,13 +82,6 @@ function Main() {
                         fillColor: 0x000000,
                     });
                 },
-                "File Browser": async () => {
-                    const fileWindow = new FileWindow({
-                        title: "Files",
-                        position: new Vector2(ev.clientX, ev.clientY),
-                    });
-                    await fileWindow.load("/");
-                }
             },
         });
     });

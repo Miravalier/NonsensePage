@@ -32,7 +32,6 @@ export class FileWindow extends ContentWindow {
 
         const response = await ApiRequest("/files/list", { path });
         if (response.status != "success") {
-            this.files = this.content.appendChild(document.createElement("div"));
             this.files.className = "files-error";
             this.files.appendChild(document.createTextNode(`Error: Failed to load files at '${path}'`));
             return;

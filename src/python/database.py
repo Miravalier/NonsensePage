@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import Set, List, Dict
+from typing import Optional, Set, List, Dict
 
-from enums import Alignment, Permissions
+from enums import Alignment, Language, Permissions
 from utils import random_id
 
 
@@ -137,7 +137,7 @@ class Character(Entry):
     name: str
     alignment: Alignment
     owner_id: str
-    languages: List[str]
+    languages: List[Language] = Field(default_factory=list)
 
     def post_create(self):
         super().post_create()
@@ -148,12 +148,20 @@ class User(Entry):
     name: str
     hashed_password: bytes
     is_gm: bool = False
-    character_id: str = ""
+    character_id: Optional[str] = None
 
     def post_create(self):
         super().post_create()
         self.add_collection("users", self.id)
         self.add_collection("users_by_name", self.name)
+
+    @property
+    def languages(self):
+        if self.character_id is not None:
+            character = db.characters.get(self.character_id, None)
+            if character is not None:
+                return character.languages
+        return [Language.COMMON]
 
 
 db = Database.load()
