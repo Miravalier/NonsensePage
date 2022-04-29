@@ -66,6 +66,7 @@ class Messages:
     page_number: int = 0
     page_index: int = 0
     recent: Deque[Message] = field(default_factory=deque)
+    speaker_cache: Dict[str, int] = field(default_factory=dict)
 
     @contextmanager
     def open_page(self, page: int):
@@ -124,6 +125,7 @@ class Messages:
             self.page_index = 0
             os.close(self.fd)
             self.fd = get_page(self.page_number)
+            self.speaker_cache = {}
         # Create message
         kwargs["page"] = self.page_number
         kwargs["index"] = self.page_index
@@ -229,12 +231,22 @@ class Message(BaseModel):
         speaker = self.speaker.encode('utf-8')
         content = self.content.encode('utf-8')
 
-        # Get offsets at file end
-        speaker_offset = max(
+        file_end = max(
             os.lseek(fd, 0, os.SEEK_END),
             PAGE_HEADER_SIZE + (MESSAGE_SIZE * PAGE_MESSAGE_CAPACITY)
         )
-        content_offset = speaker_offset + len(speaker)
+
+        # Try cache finds
+        speaker_hit = True
+        speaker_offset = messages.speaker_cache.get(self.speaker, None)
+
+        # If cache missed, get offset at file end
+        if speaker_offset is None:
+            speaker_offset = file_end
+            file_end += len(speaker)
+            speaker_hit = False
+            messages.speaker_cache[self.speaker] = speaker_offset
+        content_offset = file_end
 
         result = bytearray(MESSAGE_SIZE)
         result[0:16] = self.id.encode('ascii')
@@ -252,9 +264,12 @@ class Message(BaseModel):
         os.lseek(fd, PAGE_HEADER_SIZE + (MESSAGE_SIZE * self.index), os.SEEK_SET)
         write_all(fd, result)
 
-        # Write speaker and content side by side in strings section
-        os.lseek(fd, speaker_offset, os.SEEK_SET)
-        write_all(fd, speaker + content)
+        # Write speaker and content in strings section
+        if not speaker_hit:
+            os.lseek(fd, speaker_offset, os.SEEK_SET)
+            write_all(fd, speaker)
+        os.lseek(fd, content_offset, os.SEEK_SET)
+        write_all(fd, content)
 
     def swap(self, other: Message):
         with messages.open_page(self.page) as fd:

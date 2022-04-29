@@ -12,6 +12,7 @@ export class ChatWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["chat"];
         super(options);
+        this.ws = null;
         this.messages = {};
         this.messageContainer = this.content.appendChild(document.createElement("div"));
         this.messageContainer.className = "messages";
@@ -29,13 +30,20 @@ export class ChatWindow extends ContentWindow {
         })
     }
 
+    close() {
+        if (this.ws) {
+            this.ws.close();
+        }
+        super.close();
+    }
+
     async loadMessages() {
         let ws_prefix = (window.location.protocol === "https:" ? "wss:" : "ws:");
-        const ws = new WebSocket(`${ws_prefix}//${window.location.host}/api/messages/subscribe`);
-        ws.onopen = ev => {
-            ws.send(JSON.stringify({ "token": Session.token }));
+        this.ws = new WebSocket(`${ws_prefix}//${window.location.host}/api/messages/subscribe`);
+        this.ws.onopen = ev => {
+            this.ws.send(JSON.stringify({ "token": Session.token }));
         }
-        ws.onmessage = ev => {
+        this.ws.onmessage = ev => {
             const data = JSON.parse(event.data);
             if (data.type == "send") {
                 this.addMessage(data);
