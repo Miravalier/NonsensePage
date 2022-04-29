@@ -1,3 +1,4 @@
+import html
 import secrets
 from dataclasses import dataclass
 from fastapi import FastAPI, Request, WebSocket
@@ -90,6 +91,10 @@ class SendMessageRequest(AuthRequest):
     character_id: Optional[str]
     language: Language = Language.COMMON
 
+    @validator('content')
+    def escape_content(cls, value):
+        return html.escape(value)
+
 
 @app.post("/api/messages/send")
 async def send_message(request: SendMessageRequest):
@@ -144,6 +149,10 @@ class EditMessageRequest(AuthRequest):
     index: int
     page: int
     content: str
+
+    @validator('content')
+    def escape_content(cls, value):
+        return html.escape(value)
 
 
 @app.post("/api/messages/edit")
