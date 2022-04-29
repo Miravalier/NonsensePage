@@ -44,7 +44,7 @@ export class ChatWindow extends ContentWindow {
             this.ws.send(JSON.stringify({ "token": Session.token }));
         }
         this.ws.onmessage = ev => {
-            const data = JSON.parse(event.data);
+            const data = JSON.parse(ev.data);
             if (data.type == "send") {
                 this.addMessage(data);
             }

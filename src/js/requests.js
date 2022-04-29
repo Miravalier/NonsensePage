@@ -5,6 +5,13 @@ export class Session {
 }
 
 
+export async function FetchHtml(url) {
+    const response = await fetch(url);
+    const text = await response.text();
+    return new DOMParser().parseFromString(text, 'text/html');
+}
+
+
 export async function LoginRequest(username, password) {
     Session.token = null;
     const response = await ApiRequest("/login", { username, password });

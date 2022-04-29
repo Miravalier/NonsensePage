@@ -129,6 +129,16 @@
     margin: 0 4px;
 }
 
+.row {
+    display: flex;
+    flex-flow: row nowrap;
+}
+
+.column {
+    display: flex;
+    flex-flow: column nowrap;
+}
+
 .button svg:hover,
 .button i:hover {
     cursor: pointer;

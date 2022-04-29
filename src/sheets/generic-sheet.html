@@ -1,0 +1,37 @@
+<template>
+    <div class="character sheet generic">
+        <div class="sheet-header row">
+            <img class="token">
+            <div class="header-details column">
+                <div class="header-name row">
+                    <div class="label">Name</div>
+                    <input class="name value" type="text" placeholder="Name">
+                </div>
+                <div class="header-attributes row">
+                    <div class="header-attribute row">
+                        <div class="label">HP</div>
+                        <input class="hp value" type="number" placeholder="HP">
+                        /
+                        <input class="max-hp value" type="number" placeholder="Max">
+                    </div>
+                    <div class="header-attribute row">
+                        <div class="label">Size</div>
+                        <select class="size value">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div class="header-attribute row">
+                        <div class="label">Scale</div>
+                        <input class="scale value" type="number" placeholder="Scale">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="sheet-body column">
+            <p>Lorem ipsum.</p>
+        </div>
+    </div>
+</template>

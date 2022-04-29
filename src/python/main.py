@@ -203,6 +203,25 @@ async def message_subscription(websocket: WebSocket):
         del MESSAGE_SUBSCRIBERS[id(websocket)]
 
 
+@app.websocket("/api/character/subscribe")
+async def character_subscription(websocket: WebSocket):
+     # Accept the connection
+    await websocket.accept()
+    # Find the user
+    handshake = await websocket.receive_json()
+    user = db.users_by_token.get(handshake["token"], None)
+    if user is None:
+        raise AuthError("invalid token")
+    print("/api/character/subscribe - Handshake -", user.name)
+    # Begin subscription loop
+    try:
+        while True:
+            request = await websocket.receive_json()
+            print("/api/character/subscribe - Request -", request)
+    except:
+        pass
+
+
 @app.post("/api/status")
 async def status(request: AuthRequest):
     return {"status": "success", "username": request.requester.name, "gm": request.requester.is_gm}

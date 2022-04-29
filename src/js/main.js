@@ -5,6 +5,7 @@ import { FileWindow } from "./file_window.js";
 import { ContextMenu } from "./contextmenu.js";
 import { LoremIpsum } from "./utils.js";
 import { ApiRequest, Session } from "./requests.js";
+import { CharacterWindow } from "./character_window.js";
 
 
 $(async () => {
@@ -70,6 +71,13 @@ function Main() {
                         position: new Vector2(ev.clientX, ev.clientY),
                     });
                     await fileWindow.load("/");
+                },
+                "Character Sheet": async () => {
+                    const characterWindow = new CharacterWindow({
+                        title: "Character Sheet",
+                        position: new Vector2(ev.clientX, ev.clientY),
+                    });
+                    await characterWindow.load();
                 },
                 "Circle": async () => {
                     const canvasWindow = new CanvasWindow({

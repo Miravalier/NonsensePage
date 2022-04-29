@@ -21,7 +21,7 @@ frontend:
 		exit 1; \
 	fi
 	mkdir -p /var/www/nonsense/
-	cp $$(find src -type f) /var/www/nonsense/
+	cp $$(find src/ -name '*.js' -or -name '*.css' -or -name '*.html') /var/www/nonsense
 	cp $$(find deps/toastify -type f) /var/www/nonsense/
 	cp -r assets/* /var/www/nonsense/
 
