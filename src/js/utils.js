@@ -2,6 +2,12 @@ import { PcgEngine } from "./pcg-random.js";
 import { Vector2 } from "./vector.js";
 
 
+export function ParseHtml(str) {
+    const html = new DOMParser().parseFromString(str, 'text/html');
+    return document.importNode(html.body.firstChild, true);
+}
+
+
 export function DerivePcgEngine(id) {
     return new PcgEngine(
         BigInt(parseInt(id.substr(0, 6), 36)),

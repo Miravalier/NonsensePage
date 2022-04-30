@@ -1,18 +1,19 @@
-from enum import Enum, IntEnum
+from enum import IntEnum
 
 
 class Permissions(IntEnum):
-    NONE = 0
-    READ = 1
-    WRITE = 2
-    OWNER = 3
+    INHERIT = 0
+    NONE = 1
+    READ = 2
+    WRITE = 3
+    OWNER = 4
 
 
-class Alignment(Enum):
-    NONE = 0
-    ENEMY = 1
-    NEUTRAL = 2
-    ALLY = 3
+class Alignment(IntEnum):
+    ENEMY = 0
+    NEUTRAL = 1
+    ALLY = 2
+    PLAYER = 3
 
 
 class Language(IntEnum):

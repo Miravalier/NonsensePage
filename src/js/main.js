@@ -41,6 +41,9 @@ $(async () => {
 
 async function Main() {
     await WsConnect();
+    setInterval(() => {
+        Session.ws.send(JSON.stringify({ type: "heartbeat" }));
+    }, 5000);
     let contextMenu = null;
     document.addEventListener("click", () => {
         if (contextMenu !== null) {

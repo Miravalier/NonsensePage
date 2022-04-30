@@ -1,5 +1,5 @@
 from __future__ import annotations
-from email import message
+from ctypes import alignment
 
 import html
 import secrets
@@ -12,11 +12,11 @@ from pydantic import BaseModel, Field, validator
 from typing import Dict, Iterator, Optional, Set, Any
 
 import files
-from database import db, User
-from enums import Language, Permissions
+from database import Character, db, User
+from enums import Alignment, Language, Permissions
 from errors import AuthError, JsonError
 from messages import messages
-from security import check_password
+from security import check_password, hash_password
 
 
 @dataclass
@@ -41,6 +41,10 @@ class Pool:
 
     def discard(self, connection: Connection):
         self.connections.discard(connection)
+
+    async def broadcast(self, obj: Dict[str, Any]):
+        for connection in self.connections:
+            await connection.send(obj)
 
     def __iter__(self) -> Iterator[Connection]:
         return iter(self.connections)
@@ -112,6 +116,92 @@ class AuthRequest(BaseModel):
         return user
 
 
+class GMRequest(BaseModel):
+    requester: User = Field(alias="token", exclude=True)
+
+    @validator('requester', pre=True)
+    def resolve_requester(cls, value):
+        user = db.users_by_token.get(value, None)
+        if user is None:
+            raise AuthError("invalid token")
+        if not user.is_gm:
+            raise AuthError("insufficient permission")
+        return user
+
+
+class UserCreateRequest(GMRequest):
+    username: str
+    password: str
+
+
+@app.post("/api/user/create")
+async def user_create(request: UserCreateRequest):
+    user = User.create(name=request.username, hashed_password=hash_password(request.password))
+    return {"status": "success", "id": user.id}
+
+
+class CharacterCreateRequest(AuthRequest):
+    name: str
+    alignment: Optional[Alignment]
+
+
+@app.post("/api/character/create")
+async def character_create(request: CharacterCreateRequest):
+    main_character = False
+    if request.alignment is None:
+        if request.requester.is_gm:
+            request.alignment = Alignment.NEUTRAL
+        elif request.requester.character_id is None:
+            request.alignment = Alignment.PLAYER
+            main_character = True
+        else:
+            request.alignment = Alignment.ALLY
+    character = Character.create(name=request.name, alignment=request.alignment)
+    if not request.requester.is_gm:
+        character.set_permission(request.requester.id, "*", Permissions.OWNER)
+        if main_character:
+            request.requester.character_id = character.id
+    return {"status": "success", "id": character.id}
+
+
+class CharacterGetRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/character/get")
+async def character_get(request: CharacterGetRequest):
+    character = db.characters[request.id]
+    if not character.has_permission(request.requester.id, "*", Permissions.READ):
+        raise AuthError("insufficient permission")
+    return {"status": "success", "character": character.dict()}
+
+
+class RollRequest(AuthRequest):
+    speaker: str
+    formula: str
+    character_id: Optional[str]
+
+
+@app.post("/api/messages/roll")
+async def send_roll(request: RollRequest):
+    # Permissions checks
+    if not request.requester.is_gm and request.character_id is not None:
+        character = db.characters[request.character_id]
+        require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
+    # Create message
+    message = messages.create(
+        speaker=request.speaker,
+        content="<p>TODO</p>",
+        character_id=request.character_id,
+    )
+    # Inform subscribers
+    broadcast = jsonable_encoder(message.dict())
+    broadcast["type"] = "send"
+    broadcast["pool"] = "messages"
+    await MESSAGE_POOL.broadcast(broadcast)
+    return {"status": "success", "id": message.id}
+
+
 class SendMessageRequest(AuthRequest):
     speaker: str
     content: str
@@ -120,10 +210,10 @@ class SendMessageRequest(AuthRequest):
 
     @validator('content')
     def escape_content(cls, value):
-        return html.escape(value)
+        return html.escape(value).replace('\n', '<br>')
 
 
-@app.post("/api/messages/send")
+@app.post("/api/messages/speak")
 async def send_message(request: SendMessageRequest):
     # Permissions checks
     if not request.requester.is_gm:
@@ -138,7 +228,7 @@ async def send_message(request: SendMessageRequest):
     # Create message
     message = messages.create(
         speaker=request.speaker,
-        content=request.content,
+        content=f"<p>{request.content}</p>",
         character_id=request.character_id,
         language=request.language
     )
@@ -252,8 +342,7 @@ async def live_connection(websocket: WebSocket):
     connection = Connection(user, websocket)
     try:
         while True:
-            request: dict = await websocket.receive_json()
-            handle_request(connection, request)
+            await handle_request(connection, await websocket.receive_json())
     except:
         for pool in connection.pools:
             pool.discard(connection)

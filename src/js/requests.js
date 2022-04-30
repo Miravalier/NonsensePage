@@ -2,7 +2,7 @@ export class Session {
     static token = null;
     static gm = false;
     static username = "<Invalid>";
-    static ws = null;
+    static ws;
     static subscriptions = {};
 }
 
@@ -12,6 +12,11 @@ export async function WsConnect() {
     Session.ws = new WebSocket(`${ws_prefix}//${window.location.host}/api/live`);
     Session.ws.onopen = ev => {
         Session.ws.send(JSON.stringify({ "token": Session.token }));
+        for (let [pool, subscription_set] of Object.entries(Session.subscriptions)) {
+            if (subscription_set.size != 0) {
+                Session.ws.send(JSON.stringify({ type: "subscribe", pool }));
+            }
+        }
     }
     Session.ws.onmessage = ev => {
         const data = JSON.parse(ev.data);
@@ -28,9 +33,6 @@ export async function WsConnect() {
         await new Promise(resolve => setTimeout(resolve, 1000));
         WsConnect();
     };
-    setInterval(() => {
-        Session.ws.send(JSON.stringify({ type: "heartbeat" }));
-    }, 5000);
 }
 
 

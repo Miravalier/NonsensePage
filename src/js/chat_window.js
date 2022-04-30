@@ -1,6 +1,6 @@
 import { ContentWindow } from "./window.js";
 import { ApiRequest, Subscribe, Session } from "./requests.js";
-import { DerivePcgEngine, RandomText } from "./utils.js";
+import { DerivePcgEngine, RandomText, ParseHtml } from "./utils.js";
 
 
 const LANGUAGES = [
@@ -25,7 +25,7 @@ export class ChatWindow extends ContentWindow {
                 ev.preventDefault();
                 const content = this.textarea.value;
                 this.textarea.value = "";
-                await ApiRequest("/messages/send", { content: content, speaker: Session.username });
+                await ApiRequest("/messages/speak", { content: content, speaker: Session.username });
             }
         })
     }
@@ -96,16 +96,18 @@ export class ChatWindow extends ContentWindow {
 
         const content = element.appendChild(document.createElement("div"));
         if (message.content) {
-            content.classList = `content spoken ${LANGUAGES[message.language]}`;
-            content.appendChild(document.createTextNode(message.content));
+            content.classList = `text spoken ${LANGUAGES[message.language]}`;
+            content.appendChild(ParseHtml(message.content));
         }
         else {
             const engine = DerivePcgEngine(message.id);
-            content.classList = `content foreign ${LANGUAGES[message.language]}`;
+            content.classList = `text foreign ${LANGUAGES[message.language]}`;
             content.appendChild(document.createTextNode(
                 RandomText(engine, message.length)
             ));
         }
+
+
 
         this.viewPort.scrollTop = this.viewPort.scrollHeight;
 

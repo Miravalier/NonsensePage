@@ -31,6 +31,7 @@ class Entry(BaseModel):
         return hash(self.id)
 
     def post_create(self):
+        self.add_collection("entries", self.id)
         db.persist_queue.add(self)
 
     @classmethod
@@ -69,11 +70,14 @@ class Entry(BaseModel):
         field_permission = entity_permissions.get(field, None)
         if field_permission is None:
             field_permission = entity_permissions.get("*", Permissions.NONE)
+        # Resolve inherited permissions for specific IDs
+        if id != "*" and field_permission == Permissions.INHERIT:
+            return self.get_permission("*", field)
         return field_permission
 
     def set_permission(self, id: str = "*", field: str = "*", level: Permissions = Permissions.READ):
         if id not in self.permissions:
-            self.permissions[id] = {"*": Permissions.NONE}
+            self.permissions[id] = {"*": Permissions.INHERIT}
         self.permissions[id][field] = level
 
     def has_permission(self, id: str = "*", field: str = "*", level: Permissions = Permissions.READ) -> bool:
@@ -96,6 +100,7 @@ class Database:
     # Attributes
     persist_queue: Set[Entry] = field(default_factory=set)
     # Collections
+    entries: Dict[str, Entry] = field(default_factory=dict)
     users: Dict[str, User] = field(default_factory=dict)
     users_by_token: Dict[str, User] = field(default_factory=dict)
     users_by_name: Dict[str, User] = field(default_factory=dict)
@@ -135,13 +140,19 @@ class Message(Entry):
 
 class Character(Entry):
     name: str
-    alignment: Alignment
-    owner_id: str
-    languages: List[Language] = Field(default_factory=list)
+    alignment: Alignment = Alignment.NEUTRAL
+    languages: Set[Language] = Field(default_factory=set)
+    hp: int = 0
+    max_hp: int = 0
+    size: int = 1
+    scale: float = 1.0
+    description: str = ""
+
 
     def post_create(self):
         super().post_create()
         self.add_collection("characters", self.id)
+        self.languages.add(Language.COMMON)
 
 
 class User(Entry):
