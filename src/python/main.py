@@ -1,28 +1,55 @@
+from __future__ import annotations
+from email import message
+
 import html
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
-from typing import Dict, Optional
+from typing import Dict, Iterator, Optional, Set, Any
 
 import files
 from database import db, User
 from enums import Language, Permissions
-from errors import AuthError, EntityError
+from errors import AuthError, JsonError
 from messages import messages
 from security import check_password
 
 
 @dataclass
-class Subscriber:
+class Connection:
     user: User
     websocket: WebSocket
+    pools: Set[Pool] = field(default_factory=set)
 
     async def send(self, jsonable):
         await self.websocket.send_json(jsonable)
+
+    def __hash__(self):
+        return hash(id(self))
+
+
+class Pool:
+    def __init__(self):
+        self.connections = set()
+
+    def add(self, connection: Connection):
+        self.connections.add(connection)
+
+    def discard(self, connection: Connection):
+        self.connections.discard(connection)
+
+    def __iter__(self) -> Iterator[Connection]:
+        return iter(self.connections)
+
+    def __hash__(self):
+        return hash(id(self))
+
+
+MESSAGE_POOL = Pool()
 
 
 FILES_ROOT = Path("/files")
@@ -39,8 +66,8 @@ async def auth_error_handler(request: Request, exc: AuthError):
     })
 
 
-@app.exception_handler(EntityError)
-async def entity_error_handler(request: Request, exc: EntityError):
+@app.exception_handler(JsonError)
+async def json_error_handler(request: Request, exc: JsonError):
     return JSONResponse(status_code=400, content={
         "status": "error",
         "reason": str(exc)
@@ -118,13 +145,15 @@ async def send_message(request: SendMessageRequest):
     # Inform subscribers
     full_broadcast = jsonable_encoder(message.dict())
     full_broadcast["type"] = "send"
+    full_broadcast["pool"] = "messages"
     foreign_broadcast = jsonable_encoder(message.foreign_dict())
     foreign_broadcast["type"] = "send"
-    for subscriber in MESSAGE_SUBSCRIBERS.values():
-        if request.language in subscriber.user.languages:
-            await subscriber.send(full_broadcast)
+    foreign_broadcast["pool"] = "messages"
+    for connection in MESSAGE_POOL:
+        if request.language in connection.user.languages:
+            await connection.send(full_broadcast)
         else:
-            await subscriber.send(foreign_broadcast)
+            await connection.send(foreign_broadcast)
     return {"status": "success", "id": message.id}
 
 
@@ -160,9 +189,9 @@ async def edit_message(request: EditMessageRequest):
     require(request.requester.is_gm)
     message = messages.get(request.page, request.index)
     message.edit(request.content)
-    broadcast = {"type": "edit", "id": message.id, "content": message.content}
-    for subscriber in MESSAGE_SUBSCRIBERS.values():
-        await subscriber.send(broadcast)
+    broadcast = {"pool": "messages", "type": "edit", "id": message.id, "content": message.content}
+    for connection in MESSAGE_POOL:
+        await connection.send(broadcast)
     return {"status": "success"}
 
 
@@ -176,50 +205,58 @@ async def delete_message(request: DeleteMessageRequest):
     require(request.requester.is_gm)
     message = messages.get(request.page, request.index)
     message.delete()
-    broadcast = {"type": "delete", "id": message.id}
-    for subscriber in MESSAGE_SUBSCRIBERS.values():
-        await subscriber.send(broadcast)
+    broadcast = {"pool": "messages", "type": "delete", "id": message.id}
+    for connection in MESSAGE_POOL:
+        await connection.send(broadcast)
     return {"status": "success"}
 
 
-MESSAGE_SUBSCRIBERS: Dict[str, Subscriber] = {}
-@app.websocket("/api/messages/subscribe")
-async def message_subscription(websocket: WebSocket):
+async def handle_request(connection: Connection, request: Dict[str, Any]):
+    if not isinstance(request, dict):
+                raise JsonError("invalid json request")
+    print("/api/live - Request -", request)
+    message_type = request.get("type")
+    if message_type == "heartbeat":
+        return
+    # Get the pool to operate on
+    pool_name = request.get("pool")
+    if pool_name == "messages":
+        pool = MESSAGE_POOL
+    else:
+        raise JsonError("invalid pool name")
+    # Perform the operation
+    if message_type == "subscribe":
+        pool.add(connection)
+        connection.pools.add(pool)
+    elif message_type == "unsubscribe":
+        pool.discard(connection)
+        connection.pools.discard(pool)
+    else:
+        raise JsonError("invalid request type")
+
+
+@app.websocket("/api/live")
+async def live_connection(websocket: WebSocket):
     # Accept the connection
     await websocket.accept()
     # Find the user
-    handshake = await websocket.receive_json()
-    user = db.users_by_token.get(handshake["token"], None)
+    while True:
+        request: dict = await websocket.receive_json()
+        if request.get("token"):
+            break
+    user = db.users_by_token.get(request["token"], None)
     if user is None:
         raise AuthError("invalid token")
-    print("/api/messages/subscribe - Handshake -", user.name)
+    print("/api/live - Handshake -", user.name)
     # Begin subscription loop
-    MESSAGE_SUBSCRIBERS[id(websocket)] = Subscriber(user, websocket)
+    connection = Connection(user, websocket)
     try:
         while True:
-            request = await websocket.receive_json()
-            print("/api/messages/subscribe - Request -", request)
+            request: dict = await websocket.receive_json()
+            handle_request(connection, request)
     except:
-        del MESSAGE_SUBSCRIBERS[id(websocket)]
-
-
-@app.websocket("/api/character/subscribe")
-async def character_subscription(websocket: WebSocket):
-     # Accept the connection
-    await websocket.accept()
-    # Find the user
-    handshake = await websocket.receive_json()
-    user = db.users_by_token.get(handshake["token"], None)
-    if user is None:
-        raise AuthError("invalid token")
-    print("/api/character/subscribe - Handshake -", user.name)
-    # Begin subscription loop
-    try:
-        while True:
-            request = await websocket.receive_json()
-            print("/api/character/subscribe - Request -", request)
-    except:
-        pass
+        for pool in connection.pools:
+            pool.discard(connection)
 
 
 @app.post("/api/status")

@@ -2,5 +2,5 @@ class AuthError(Exception):
     pass
 
 
-class EntityError(Exception):
+class JsonError(Exception):
     pass

@@ -1,5 +1,5 @@
 import { ContentWindow } from "./window.js";
-import { ApiRequest, Session } from "./requests.js";
+import { ApiRequest, Subscribe, Session } from "./requests.js";
 import { DerivePcgEngine, RandomText } from "./utils.js";
 
 
@@ -31,20 +31,14 @@ export class ChatWindow extends ContentWindow {
     }
 
     close() {
-        if (this.ws) {
-            this.ws.close();
+        if (this.subscription) {
+            this.subscription.cancel();
         }
         super.close();
     }
 
     async loadMessages() {
-        let ws_prefix = (window.location.protocol === "https:" ? "wss:" : "ws:");
-        this.ws = new WebSocket(`${ws_prefix}//${window.location.host}/api/messages/subscribe`);
-        this.ws.onopen = ev => {
-            this.ws.send(JSON.stringify({ "token": Session.token }));
-        }
-        this.ws.onmessage = ev => {
-            const data = JSON.parse(ev.data);
+        this.subscription = await Subscribe("messages", async data => {
             if (data.type == "send") {
                 this.addMessage(data);
             }
@@ -66,7 +60,7 @@ export class ChatWindow extends ContentWindow {
                 message.remove();
                 delete this.messages[data.id];
             }
-        };
+        });
 
         const response = await ApiRequest("/messages/recent");
         if (response.status != "success") {
@@ -77,11 +71,11 @@ export class ChatWindow extends ContentWindow {
 
         this.titleNode.textContent = `Chat`;
         for (const message of response.messages) {
-            await this.addMessage(message);
+            this.addMessage(message);
         }
     }
 
-    async addMessage(message) {
+    addMessage(message) {
         if (this.messages[message.id]) {
             return null;
         }
@@ -106,7 +100,7 @@ export class ChatWindow extends ContentWindow {
             content.appendChild(document.createTextNode(message.content));
         }
         else {
-            const engine = await DerivePcgEngine(message.id);
+            const engine = DerivePcgEngine(message.id);
             content.classList = `content foreign ${LANGUAGES[message.language]}`;
             content.appendChild(document.createTextNode(
                 RandomText(engine, message.length)

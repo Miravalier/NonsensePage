@@ -113,6 +113,8 @@ def sample(path: Path) -> bytes:
 
 
 def sniff(path: Path):
+    if path.is_symlink():
+        path = path.resolve()
     # Check for directory
     if path.is_dir():
         return "directory"

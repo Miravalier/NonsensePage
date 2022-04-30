@@ -2,7 +2,7 @@ import { PcgEngine } from "./pcg-random.js";
 import { Vector2 } from "./vector.js";
 
 
-export async function DerivePcgEngine(id) {
+export function DerivePcgEngine(id) {
     return new PcgEngine(
         BigInt(parseInt(id.substr(0, 6), 36)),
         BigInt(parseInt(id.substr(6, 6), 36))

@@ -2,6 +2,66 @@ export class Session {
     static token = null;
     static gm = false;
     static username = "<Invalid>";
+    static ws = null;
+    static subscriptions = {};
+}
+
+
+export async function WsConnect() {
+    let ws_prefix = (window.location.protocol === "https:" ? "wss:" : "ws:");
+    Session.ws = new WebSocket(`${ws_prefix}//${window.location.host}/api/live`);
+    Session.ws.onopen = ev => {
+        Session.ws.send(JSON.stringify({ "token": Session.token }));
+    }
+    Session.ws.onmessage = ev => {
+        const data = JSON.parse(ev.data);
+        const pool = Session.subscriptions[data.pool];
+        if (!pool) {
+            console.warn(`Ignoring message bound for pool: ${data.pool}`)
+            return;
+        }
+        for (let subscription of pool) {
+            subscription.callback(data);
+        }
+    };
+    Session.ws.onclose = async ev => {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        WsConnect();
+    };
+    setInterval(() => {
+        Session.ws.send(JSON.stringify({ type: "heartbeat" }));
+    }, 5000);
+}
+
+
+export class Subscription {
+    constructor(pool, callback) {
+        this.pool = pool;
+        this.callback = callback;
+    }
+
+    cancel() {
+        let subscription_set = Session.subscriptions[this.pool];
+        subscription_set.delete(this);
+        if (subscription_set.size == 0) {
+            Session.ws.send(JSON.stringify({ type: "unsubscribe", pool: this.pool }));
+        }
+    }
+}
+
+
+export async function Subscribe(pool, callback) {
+    let subscription_set = Session.subscriptions[pool];
+    if (!subscription_set) {
+        subscription_set = new Set();
+        Session.subscriptions[pool] = subscription_set;
+    }
+    if (subscription_set.size == 0) {
+        Session.ws.send(JSON.stringify({ type: "subscribe", pool }));
+    }
+    let subscription = new Subscription(pool, callback);
+    subscription_set.add(subscription);
+    return subscription;
 }
 
 

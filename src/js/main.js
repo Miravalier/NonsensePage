@@ -3,8 +3,7 @@ import { CanvasWindow } from "./window.js";
 import { ChatWindow } from "./chat_window.js";
 import { FileWindow } from "./file_window.js";
 import { ContextMenu } from "./contextmenu.js";
-import { LoremIpsum } from "./utils.js";
-import { ApiRequest, Session } from "./requests.js";
+import { ApiRequest, Session, WsConnect } from "./requests.js";
 import { CharacterWindow } from "./character_window.js";
 
 
@@ -40,7 +39,8 @@ $(async () => {
 });
 
 
-function Main() {
+async function Main() {
+    await WsConnect();
     let contextMenu = null;
     document.addEventListener("click", () => {
         if (contextMenu !== null) {

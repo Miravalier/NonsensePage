@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from typing import Any, Deque, Dict, List, Optional
 
 from enums import Language
-from errors import EntityError
+from errors import JsonError
 from utils import ctx_open, random_id
 
 
@@ -116,7 +116,7 @@ class Messages:
             with self.open_page(page) as fd:
                 return Message.read(fd, page, index)
         else:
-            raise EntityError("no message found with the given page and index")
+            raise JsonError("no message found with the given page and index")
 
     def create(self, **kwargs) -> Message:
         # Expand to next page if necessary
