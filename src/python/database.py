@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import Optional, Set, List, Dict
+from typing import Optional, Set, List, Dict, Union
 
 from enums import Alignment, Language, Permissions
 from utils import random_id
@@ -16,6 +16,12 @@ DATABASE_ROOT = Path("/data/db/")
 
 def new_permissions():
     return {"*": {"*": Permissions.NONE}}
+
+
+@dataclass
+class Stat:
+    name: str
+    value: Union[int,str]
 
 
 class Entry(BaseModel):
@@ -45,7 +51,7 @@ class Entry(BaseModel):
         for collection, key in self.collections.items():
             del getattr(db, collection)[key]
         # Make sure this object isn't re-persisted after delete
-        db.persist_queue.remove(self)
+        db.persist_queue.discard(self)
         # Delete actual file
         (DATABASE_ROOT / self.id).unlink(missing_ok=True)
 
@@ -105,6 +111,8 @@ class Database:
     users_by_token: Dict[str, User] = field(default_factory=dict)
     users_by_name: Dict[str, User] = field(default_factory=dict)
     characters: Dict[str, Character] = field(default_factory=dict)
+    items: Dict[str, Item] = field(default_factory=dict)
+    containers: Dict[str, Container] = field(default_factory=dict)
 
     def save(self):
         DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -125,29 +133,72 @@ class Database:
         return db
 
 
-class Message(Entry):
-    timestamp: datetime
-    language: str
-    content: str
-    sender_id: str
-    speaker_id: str
-    speaker_name: str
+class Container(Entry):
+    stat_map: Dict[str, Stat] = Field(default_factory=dict)
+    stat_order: List[str] = Field(default_factory=list)
+    item_order: List[str] = Field(default_factory=list)
 
     def post_create(self):
         super().post_create()
-        self.add_collection("messages", self.id)
+        self.add_collection("containers", self.id)
+
+    @property
+    def stats(self):
+        for stat in self.stat_order:
+            yield self.stat_map[stat]
+
+    @property
+    def items(self):
+        for id in self.item_order:
+            yield db.items[id]
+
+    def update_stat(self, name: str, value: Union[str, int, None]):
+        if value is None:
+            if name in self.stat_map:
+                self.stat_order.remove(name)
+                self.stat_map.pop(name)
+        else:
+            stat = self.stat_map.get(name)
+            if stat is None:
+                self.stat_order.append(name)
+                self.stat_map[name] = Stat()
+            else:
+                stat.value = value
+        db.persist_queue.add(self)
+
+    def add_item(self, name: str = "New Item", description: str = "") -> Item:
+        item = Item.create(name=name, description=description, container_id=self.id)
+        self.item_order.append(item.id)
+        db.persist_queue.add(self)
+        return item
+
+    def remove_item(self, id: str):
+        item = db.items[id]
+        if item.container_id != self.id:
+            raise ValueError("attempted to remove un-owned item")
+        self.item_order.remove(item.id)
+        item.delete()
 
 
-class Character(Entry):
+class Item(Container):
     name: str
+    description: str = ""
+    container_id: Optional[str] = None
+
+    def post_create(self):
+        super().post_create()
+        self.add_collection("items", self.id)
+
+
+class Character(Container):
+    name: str
+    description: str = ""
     alignment: Alignment = Alignment.NEUTRAL
     languages: Set[Language] = Field(default_factory=set)
     hp: int = 0
     max_hp: int = 0
     size: int = 1
     scale: float = 1.0
-    description: str = ""
-
 
     def post_create(self):
         super().post_create()
@@ -172,7 +223,7 @@ class User(Entry):
             character = db.characters.get(self.character_id, None)
             if character is not None:
                 return character.languages
-        return [Language.COMMON]
+        return {Language.COMMON}
 
 
 db = Database.load()
