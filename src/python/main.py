@@ -1,5 +1,4 @@
 from __future__ import annotations
-from ctypes import alignment
 
 import html
 import secrets
@@ -9,11 +8,11 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
-from typing import Dict, Iterator, Optional, Set, Any
+from typing import Dict, Iterator, List, Optional, Set, Any, Tuple, Union
 
 import files
 from database import Character, db, User
-from enums import Alignment, Language, Permissions
+from enums import Alignment, Language, ListDirection, Permissions
 from errors import AuthError, JsonError
 from messages import messages
 from security import check_password, hash_password
@@ -164,6 +163,55 @@ async def character_create(request: CharacterCreateRequest):
     return {"status": "success", "id": character.id}
 
 
+class CharacterUpdateRequest(AuthRequest):
+    id: str
+    name: Optional[str]
+    alignment: Optional[Alignment]
+    description: Optional[str]
+    hp: Optional[int]
+    max_hp: Optional[int]
+    size: Optional[int]
+    scale: Optional[float]
+    add_languages: Optional[List[Language]]
+    remove_languages: Optional[List[Language]]
+    set_stats: Optional[Dict[str, Union[str, int, None]]]
+    move_stat: Optional[Tuple[str, ListDirection]]
+    create_item: Optional[str]
+    move_item: Optional[Tuple[str, ListDirection]]
+
+
+
+@app.post("/api/character/update")
+async def character_update(request: CharacterUpdateRequest):
+    character = db.characters[request.id]
+    if not character.has_permission(request.requester.id, "*", Permissions.WRITE):
+        raise AuthError("insufficient permission")
+    if request.name is not None:
+        character.name = request.name
+    if request.alignment is not None:
+        character.alignment = request.alignment
+    if request.description is not None:
+        character.description = request.description
+    if request.hp is not None:
+        character.hp = request.hp
+    if request.max_hp is not None:
+        character.max_hp = request.max_hp
+    if request.size is not None:
+        character.size = request.size
+    if request.scale is not None:
+        character.scale = request.scale
+    if request.add_languages is not None:
+        for language in request.add_languages:
+            character.languages.add(language)
+    if request.remove_languages is not None:
+        for language in request.remove_languages:
+            character.languages.discard(language)
+    if request.set_stats is not None:
+        for name, value in request.set_stats.items():
+            character.set_stat(name, value)
+    return {"status": "success"}
+
+
 class CharacterGetRequest(AuthRequest):
     id: str
 
@@ -281,7 +329,8 @@ async def edit_message(request: EditMessageRequest):
     message.edit(request.content)
     broadcast = {"pool": "messages", "type": "edit", "id": message.id, "content": message.content}
     for connection in MESSAGE_POOL:
-        await connection.send(broadcast)
+        if message.language in connection.user.languages:
+            await connection.send(broadcast)
     return {"status": "success"}
 
 
@@ -296,14 +345,13 @@ async def delete_message(request: DeleteMessageRequest):
     message = messages.get(request.page, request.index)
     message.delete()
     broadcast = {"pool": "messages", "type": "delete", "id": message.id}
-    for connection in MESSAGE_POOL:
-        await connection.send(broadcast)
+    await MESSAGE_POOL.broadcast(broadcast)
     return {"status": "success"}
 
 
 async def handle_request(connection: Connection, request: Dict[str, Any]):
     if not isinstance(request, dict):
-                raise JsonError("invalid json request")
+        raise JsonError("invalid json request")
     print("/api/live - Request -", request)
     message_type = request.get("type")
     if message_type == "heartbeat":

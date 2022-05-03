@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pickle
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Optional, Set, List, Dict, Union
@@ -113,6 +112,7 @@ class Database:
     characters: Dict[str, Character] = field(default_factory=dict)
     items: Dict[str, Item] = field(default_factory=dict)
     containers: Dict[str, Container] = field(default_factory=dict)
+    entities: Dict[str, Entity] = field(default_factory=dict)
 
     def save(self):
         DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -133,9 +133,52 @@ class Database:
         return db
 
 
-class Container(Entry):
+class Entity(Entry):
     stat_map: Dict[str, Stat] = Field(default_factory=dict)
     stat_order: List[str] = Field(default_factory=list)
+
+    def post_create(self):
+        super().post_create()
+        self.add_collection("entities", self.id)
+
+    def set_stat(self, name: str, value: Union[str, int, None]):
+        if value is None:
+            if name in self.stat_map:
+                self.stat_order.remove(name)
+                self.stat_map.pop(name)
+        else:
+            stat = self.stat_map.get(name)
+            if stat is None:
+                self.stat_order.append(name)
+                self.stat_map[name] = Stat()
+            else:
+                stat.value = value
+        db.persist_queue.add(self)
+
+    def move_stat_up(self, id: str):
+        index = self.stat_order.index(id)
+        if len(self.stat_order) <= 1:
+            return
+        if index == 0:
+            return
+        previous = self.stat_order[index - 1]
+        self.stat_order[index - 1] = self.stat_order[index]
+        self.stat_order[index] = previous
+        db.persist_queue.add(self)
+
+    def move_stat_down(self, id: str):
+        index = self.stat_order.index(id)
+        if len(self.stat_order) <= 1:
+            return
+        if index == len(self.stat_order) - 1:
+            return
+        next = self.stat_order[index + 1]
+        self.stat_order[index + 1] = self.stat_order[index]
+        self.stat_order[index] = next
+        db.persist_queue.add(self)
+
+
+class Container(Entry):
     item_order: List[str] = Field(default_factory=list)
 
     def post_create(self):
@@ -152,35 +195,36 @@ class Container(Entry):
         for id in self.item_order:
             yield db.items[id]
 
-    def update_stat(self, name: str, value: Union[str, int, None]):
-        if value is None:
-            if name in self.stat_map:
-                self.stat_order.remove(name)
-                self.stat_map.pop(name)
-        else:
-            stat = self.stat_map.get(name)
-            if stat is None:
-                self.stat_order.append(name)
-                self.stat_map[name] = Stat()
-            else:
-                stat.value = value
-        db.persist_queue.add(self)
-
-    def add_item(self, name: str = "New Item", description: str = "") -> Item:
+    def create_item(self, name: str = "New Item", description: str = "") -> Item:
         item = Item.create(name=name, description=description, container_id=self.id)
         self.item_order.append(item.id)
         db.persist_queue.add(self)
         return item
 
-    def remove_item(self, id: str):
-        item = db.items[id]
-        if item.container_id != self.id:
-            raise ValueError("attempted to remove un-owned item")
-        self.item_order.remove(item.id)
-        item.delete()
+    def move_item_up(self, id: str):
+        index = self.item_order.index(id)
+        if len(self.item_order) <= 1:
+            return
+        if index == 0:
+            return
+        previous = self.item_order[index - 1]
+        self.item_order[index - 1] = self.item_order[index]
+        self.item_order[index] = previous
+        db.persist_queue.add(self)
+
+    def move_item_down(self, id: str):
+        index = self.item_order.index(id)
+        if len(self.item_order) <= 1:
+            return
+        if index == len(self.item_order) - 1:
+            return
+        next = self.item_order[index + 1]
+        self.item_order[index + 1] = self.item_order[index]
+        self.item_order[index] = next
+        db.persist_queue.add(self)
 
 
-class Item(Container):
+class Item(Entity, Container):
     name: str
     description: str = ""
     container_id: Optional[str] = None
@@ -189,8 +233,15 @@ class Item(Container):
         super().post_create()
         self.add_collection("items", self.id)
 
+    def delete(self):
+        container = db.containers.get(self.container_id, None)
+        if container is not None:
+            container.item_order.remove(self.id)
+            db.persist_queue.add(container)
+        super().delete()
 
-class Character(Container):
+
+class Character(Entity, Container):
     name: str
     description: str = ""
     alignment: Alignment = Alignment.NEUTRAL
