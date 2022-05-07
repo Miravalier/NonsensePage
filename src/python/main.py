@@ -10,8 +10,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Dict, List, Optional, Any, Tuple, Union
 
 import files
-from connections import Connection, Pool
-from database import Character, Item, db, User
+from database import Character, Item, db, User, Connection, Pool
 from enums import Alignment, Language, ListDirection, Permissions
 from errors import AuthError, JsonError
 from messages import messages
