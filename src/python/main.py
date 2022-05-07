@@ -2,59 +2,23 @@ from __future__ import annotations
 
 import html
 import secrets
-from dataclasses import dataclass, field
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
-from typing import Dict, Iterator, List, Optional, Set, Any, Tuple, Union
+from typing import Dict, List, Optional, Any, Tuple, Union
 
 import files
-from database import Character, db, User
+from connections import Connection, Pool
+from database import Character, Item, db, User
 from enums import Alignment, Language, ListDirection, Permissions
 from errors import AuthError, JsonError
 from messages import messages
 from security import check_password, hash_password
 
 
-@dataclass
-class Connection:
-    user: User
-    websocket: WebSocket
-    pools: Set[Pool] = field(default_factory=set)
-
-    async def send(self, jsonable):
-        await self.websocket.send_json(jsonable)
-
-    def __hash__(self):
-        return hash(id(self))
-
-
-class Pool:
-    def __init__(self):
-        self.connections = set()
-
-    def add(self, connection: Connection):
-        self.connections.add(connection)
-
-    def discard(self, connection: Connection):
-        self.connections.discard(connection)
-
-    async def broadcast(self, obj: Dict[str, Any]):
-        for connection in self.connections:
-            await connection.send(obj)
-
-    def __iter__(self) -> Iterator[Connection]:
-        return iter(self.connections)
-
-    def __hash__(self):
-        return hash(id(self))
-
-
 MESSAGE_POOL = Pool()
-
-
 FILES_ROOT = Path("/files")
 
 
@@ -77,9 +41,23 @@ async def json_error_handler(request: Request, exc: JsonError):
     })
 
 
-def require(expr: bool, message: str = "insufficient permissions"):
+def require(expr: bool, message: str = "insufficient permission"):
     if not expr:
         raise AuthError(message)
+
+
+def get_character(id: str) -> Character:
+    character = db.characters.get(id)
+    if character is None:
+        raise JsonError("invalid character id")
+    return character
+
+
+def get_item(id: str) -> Item:
+    item = db.items.get(id)
+    if item is None:
+        raise JsonError("invalid item id")
+    return item
 
 
 class LoginRequest(BaseModel):
@@ -139,6 +117,19 @@ async def user_create(request: UserCreateRequest):
     return {"status": "success", "id": user.id}
 
 
+class ItemDeleteRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/item/delete")
+async def item_delete(request: ItemDeleteRequest):
+    item = get_item(request.id)
+    if not request.requester.is_gm:
+        require(item.has_permission(request.requester.id, "*", Permissions.OWNER))
+    item.delete()
+    return {"status": "success"}
+
+
 class CharacterCreateRequest(AuthRequest):
     name: str
     alignment: Optional[Alignment]
@@ -163,6 +154,19 @@ async def character_create(request: CharacterCreateRequest):
     return {"status": "success", "id": character.id}
 
 
+class CharacterDeleteRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/character/delete")
+async def character_delete(request: CharacterDeleteRequest):
+    character = get_character(request.id)
+    if not request.requester.is_gm:
+        require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
+    character.delete()
+    return {"status": "success"}
+
+
 class CharacterUpdateRequest(AuthRequest):
     id: str
     name: Optional[str]
@@ -180,12 +184,11 @@ class CharacterUpdateRequest(AuthRequest):
     move_item: Optional[Tuple[str, ListDirection]]
 
 
-
 @app.post("/api/character/update")
 async def character_update(request: CharacterUpdateRequest):
-    character = db.characters[request.id]
-    if not character.has_permission(request.requester.id, "*", Permissions.WRITE):
-        raise AuthError("insufficient permission")
+    character = get_character(request.id)
+    if not request.requester.is_gm:
+        require(character.has_permission(request.requester.id, "*", Permissions.WRITE))
     if request.name is not None:
         character.name = request.name
     if request.alignment is not None:
@@ -209,6 +212,21 @@ async def character_update(request: CharacterUpdateRequest):
     if request.set_stats is not None:
         for name, value in request.set_stats.items():
             character.set_stat(name, value)
+    if request.move_stat is not None:
+        stat_id, direction = request.move_stat
+        if direction == ListDirection.UP:
+            character.move_stat_up(stat_id)
+        else:
+            character.move_stat_down(stat_id)
+    if request.create_item is not None:
+        character.create_item(request.create_item)
+    if request.move_item is not None:
+        item_id, direction = request.move_item
+        if direction == ListDirection.UP:
+            character.move_item_up(item_id)
+        else:
+            character.move_item_down(item_id)
+    await character.broadcast_update()
     return {"status": "success"}
 
 
@@ -218,9 +236,9 @@ class CharacterGetRequest(AuthRequest):
 
 @app.post("/api/character/get")
 async def character_get(request: CharacterGetRequest):
-    character = db.characters[request.id]
-    if not character.has_permission(request.requester.id, "*", Permissions.READ):
-        raise AuthError("insufficient permission")
+    character = get_character(request.id)
+    if not request.requester.is_gm:
+        require(character.has_permission(request.requester.id, "*", Permissions.READ))
     return {"status": "success", "character": character.dict()}
 
 
@@ -349,7 +367,7 @@ async def delete_message(request: DeleteMessageRequest):
     return {"status": "success"}
 
 
-async def handle_request(connection: Connection, request: Dict[str, Any]):
+async def handle_ws_request(connection: Connection, request: Dict[str, Any]):
     if not isinstance(request, dict):
         raise JsonError("invalid json request")
     print("/api/live - Request -", request)
@@ -361,7 +379,10 @@ async def handle_request(connection: Connection, request: Dict[str, Any]):
     if pool_name == "messages":
         pool = MESSAGE_POOL
     else:
-        raise JsonError("invalid pool name")
+        entry = db.entries.get(pool_name)
+        if entry is None:
+            raise JsonError("invalid pool name")
+        pool = entry.pool
     # Perform the operation
     if message_type == "subscribe":
         pool.add(connection)
@@ -390,7 +411,7 @@ async def live_connection(websocket: WebSocket):
     connection = Connection(user, websocket)
     try:
         while True:
-            await handle_request(connection, await websocket.receive_json())
+            await handle_ws_request(connection, await websocket.receive_json())
     except:
         for pool in connection.pools:
             pool.discard(connection)

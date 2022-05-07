@@ -6,11 +6,13 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Optional, Set, List, Dict, Union
 
+from connections import Pool
 from enums import Alignment, Language, Permissions
 from utils import random_id
 
 
 DATABASE_ROOT = Path("/data/db/")
+ENTRY_POOLS: Dict[str, Pool] = {}
 
 
 def new_permissions():
@@ -38,6 +40,17 @@ class Entry(BaseModel):
     def post_create(self):
         self.add_collection("entries", self.id)
         db.persist_queue.add(self)
+
+    @property
+    def pool(self):
+        pool = ENTRY_POOLS.get(self.id)
+        if pool is None:
+            pool = Pool()
+            ENTRY_POOLS[self.id] = pool
+        return pool
+
+    async def broadcast_update(self):
+        await self.pool.broadcast({"pool": self.id, "type": "update", "entry": self.dict()})
 
     @classmethod
     def create(cls, **kwargs):
@@ -184,6 +197,12 @@ class Container(Entry):
     def post_create(self):
         super().post_create()
         self.add_collection("containers", self.id)
+
+    def delete(self):
+        for item in self.items:
+            item.container_id = None
+            item.delete()
+        super().delete()
 
     @property
     def stats(self):
