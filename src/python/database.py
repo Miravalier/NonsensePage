@@ -303,6 +303,7 @@ class Character(Entity, Container):
     max_hp: int = 0
     size: int = 1
     scale: float = 1.0
+    sheet_type: str = "Generic"
 
     def post_create(self):
         super().post_create()

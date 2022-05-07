@@ -4,7 +4,7 @@ import { ChatWindow } from "./chat_window.js";
 import { FileWindow } from "./file_window.js";
 import { ContextMenu } from "./contextmenu.js";
 import { ApiRequest, Session, WsConnect } from "./requests.js";
-import { CharacterWindow } from "./character_window.js";
+import { CharacterListWindow } from "./character_list_window.js";
 
 
 $(async () => {
@@ -68,30 +68,19 @@ async function Main() {
                     });
                     await chatWindow.loadMessages();
                 },
-                "File Browser": async () => {
+                "Characters": async () => {
+                    const characterListWindow = new CharacterListWindow({
+                        title: "Characters",
+                        position: new Vector2(ev.clientX, ev.clientY),
+                    });
+                    await characterListWindow.load();
+                },
+                "Files": async () => {
                     const fileWindow = new FileWindow({
                         title: "Files",
                         position: new Vector2(ev.clientX, ev.clientY),
                     });
                     await fileWindow.load("/");
-                },
-                "Character Sheet": async () => {
-                    const characterWindow = new CharacterWindow({
-                        title: "Character Sheet",
-                        position: new Vector2(ev.clientX, ev.clientY),
-                    });
-                    await characterWindow.load();
-                },
-                "Circle": async () => {
-                    const canvasWindow = new CanvasWindow({
-                        title: "Circle",
-                        position: new Vector2(ev.clientX, ev.clientY),
-                    });
-                    canvasWindow.canvas.DrawCircle({
-                        position: new Vector2(60, 60),
-                        radius: 50,
-                        fillColor: 0x000000,
-                    });
                 },
             },
         });

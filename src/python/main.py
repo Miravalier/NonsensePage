@@ -168,6 +168,7 @@ async def character_delete(request: CharacterDeleteRequest):
 
 class CharacterUpdateRequest(AuthRequest):
     id: str
+    sheet_type: Optional[str]
     name: Optional[str]
     alignment: Optional[Alignment]
     description: Optional[str]
@@ -188,6 +189,8 @@ async def character_update(request: CharacterUpdateRequest):
     character = get_character(request.id)
     if not request.requester.is_gm:
         require(character.has_permission(request.requester.id, "*", Permissions.WRITE))
+    if request.sheet_type is not None:
+        character.sheet_type = request.sheet_type
     if request.name is not None:
         character.name = request.name
     if request.alignment is not None:
@@ -239,6 +242,19 @@ async def character_get(request: CharacterGetRequest):
     if not request.requester.is_gm:
         require(character.has_permission(request.requester.id, "*", Permissions.READ))
     return {"status": "success", "character": character.dict()}
+
+
+@app.post("/api/character/list")
+async def character_list(request: AuthRequest):
+    characters = []
+    if request.requester.is_gm:
+        for character in db.characters.values():
+            characters.append((character.id, character.name))
+    else:
+        for character in db.characters.values():
+            if character.has_permission(request.requester.id, level=Permissions.READ):
+                characters.append((character.id, character.name))
+    return {"status": "success", "characters": characters}
 
 
 class RollRequest(AuthRequest):

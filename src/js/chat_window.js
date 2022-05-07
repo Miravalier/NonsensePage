@@ -12,7 +12,7 @@ export class ChatWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["chat"];
         super(options);
-        this.ws = null;
+        this.subscription = null;
         this.messages = {};
         this.messageContainer = this.content.appendChild(document.createElement("div"));
         this.messageContainer.className = "messages";
