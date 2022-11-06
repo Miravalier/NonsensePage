@@ -1,4 +1,4 @@
-import { Button } from "./button.js";
+import { Button } from "./elements.js";
 import { Vector2 } from "./vector.js";
 import { Canvas } from "./canvas.js";
 import {
@@ -21,6 +21,8 @@ export class BaseWindow {
         const classList = Parameter(options.classList, []);
         classList.push("window");
         const resizable = Parameter(options.resizable, true);
+
+        this.on_close = [];
 
         this.minimized = false;
         this.fullscreen = false;
@@ -71,26 +73,28 @@ export class BaseWindow {
         rightGroup.className = "group";
 
         if (resizable) {
-            this.minimizeButton = rightGroup.appendChild(Button("fa-window-minimize"));
+            this.minimizeButton = rightGroup.appendChild(Button("window-minimize"));
             this.minimizeButton.addEventListener("click", () => {
                 this.toggleMinimize();
             })
 
-            this.fullscreenButton = rightGroup.appendChild(Button("fa-expand-alt"));
+            this.fullscreenButton = rightGroup.appendChild(Button("expand-alt"));
             this.fullscreenButton.addEventListener("click", () => {
                 this.toggleFullscreen();
             });
         }
 
-        this.closeButton = rightGroup.appendChild(Button("fa-window-close"));
+        this.closeButton = rightGroup.appendChild(Button("window-close"));
         this.closeButton.addEventListener("click", () => {
             this.close();
         });
 
         this.viewPort = this.container.appendChild(document.createElement("div"));
         this.viewPort.className = "viewPort";
-        this.viewPort.style.width = size.x;
-        this.viewPort.style.height = size.y;
+        if (resizable) {
+            this.viewPort.style.width = size.x;
+            this.viewPort.style.height = size.y;
+        }
 
         if (resizable) {
             const resizeHandle = this.container.appendChild(document.createElement("div"));
@@ -184,6 +188,9 @@ export class BaseWindow {
 
     close() {
         this.container.remove();
+        for (let callback of this.on_close) {
+            callback()
+        }
     }
 }
 
@@ -210,6 +217,7 @@ export class Dialog extends ContentWindow {
     constructor(options) {
         // Default resizable to false instead of true
         options.resizable = Parameter(options.resizable, false);
+        options.title = Parameter(options.title, "New Dialog");
         super(options);
         this.content.classList.add("dialog");
 
@@ -222,7 +230,7 @@ export class Dialog extends ContentWindow {
         // Add sub elements
         const elements = Parameter(options.elements, []);
         this.elements = this.content.appendChild(document.createElement("div"));
-        this.elements.classList = "inputs column";
+        this.elements.classList = "elements column";
         for (let element of elements) {
             this.addElement(this.elements, element);
         }
@@ -250,4 +258,35 @@ export class Dialog extends ContentWindow {
             container.appendChild(element);
         }
     }
+}
+
+
+export function ConfirmDialog(prompt) {
+    const confirmButton = Button("check");
+    confirmButton.appendChild(document.createTextNode("Confirm"));
+    const cancelButton = Button("ban");
+    cancelButton.appendChild(document.createTextNode("Cancel"));
+
+    const dialog = new Dialog({
+        title: "Confirm",
+        description: prompt,
+        elements: [
+            [confirmButton, cancelButton],
+        ],
+    });
+
+    return new Promise((resolve) => {
+        let result = false;
+        confirmButton.addEventListener("click", () => {
+            result = true;
+            dialog.close();
+        });
+        cancelButton.addEventListener("click", () => {
+            result = false;
+            dialog.close();
+        });
+        dialog.on_close.push(() => {
+            resolve(result);
+        });
+    });
 }
