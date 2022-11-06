@@ -110,3 +110,15 @@ export async function ApiRequest(endpoint, data) {
     console.log("[API REPLY]", replyData);
     return replyData;
 }
+
+
+export async function FileUpload(file, path) {
+    const formData = new FormData();
+    formData.append('token', Session.token);
+    formData.append('path', path)
+    formData.append('file', file, file.name)
+    await fetch("/api/files/upload", {
+        method: 'POST',
+        body: formData,
+    });
+}

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import html
 import secrets
-from fastapi import FastAPI, Request, WebSocket
+import shutil
+from fastapi import FastAPI, Request, WebSocket, Form, UploadFile, File
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pathlib import Path
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Dict, List, Optional, Any, Tuple, Union
 
 import files
+import ws_handlers
 from database import Character, Item, db, User, Connection, Pool
 from enums import Alignment, Language, ListDirection, Permissions
 from errors import AuthError, JsonError
@@ -382,13 +384,7 @@ async def delete_message(request: DeleteMessageRequest):
     return {"status": "success"}
 
 
-async def handle_ws_request(connection: Connection, request: Dict[str, Any]):
-    if not isinstance(request, dict):
-        raise JsonError("invalid json request")
-    print("/api/live - Request -", request)
-    message_type = request.get("type")
-    if message_type == "heartbeat":
-        return
+def get_pool(request: Dict[str, Any]):
     # Get the pool to operate on
     pool_name = request.get("pool")
     if pool_name == "messages":
@@ -398,15 +394,30 @@ async def handle_ws_request(connection: Connection, request: Dict[str, Any]):
         if entry is None:
             raise JsonError("invalid pool name")
         pool = entry.pool
-    # Perform the operation
-    if message_type == "subscribe":
+    return pool
+
+
+async def handle_ws_request(connection: Connection, request: Dict[str, Any]):
+    if not isinstance(request, dict):
+        raise JsonError("invalid json request")
+    print("/api/live - Request -", request)
+    message_type = request.get("type")
+    if message_type == "heartbeat":
+        return
+    elif message_type == "subscribe":
+        pool = get_pool(request)
         pool.add(connection)
         connection.pools.add(pool)
     elif message_type == "unsubscribe":
+        pool = get_pool(request)
         pool.discard(connection)
         connection.pools.discard(pool)
     else:
-        raise JsonError("invalid request type")
+        handler = ws_handlers.registered_handlers.get(message_type)
+        if handler is None:
+            raise JsonError("invalid request type")
+        else:
+            handler(connection, request)
 
 
 @app.websocket("/api/live")
@@ -437,32 +448,72 @@ async def status(request: AuthRequest):
     return {"status": "success", "username": request.requester.name, "gm": request.requester.is_gm}
 
 
+def validate_directory(requester: User, path: str) -> Path:
+    # Make sure path is absolute
+    path = Path(path)
+    if not path.is_absolute():
+        raise JsonError("not an absolute path")
+    # Resolve '..' and symlinks in path
+    path = path.resolve(strict=False)
+    # Make path relative to user root
+    if requester.is_gm:
+        user_root = FILES_ROOT
+    else:
+        user_root = FILES_ROOT / requester.name
+    path = user_root / Path(str(path)[1:])
+    # Check that path is a directory that exists
+    if not path.is_dir():
+        raise JsonError("not a directory")
+    return path
+
+
+class CreateFolderRequest(AuthRequest):
+    path: str
+    name: str
+
+
+@app.post("/api/files/mkdir")
+async def files_mkdir(request: CreateFolderRequest):
+    path = validate_directory(request.requester, request.path)
+    new_path = path / request.name
+    new_path.mkdir()
+    return {"status": "success"}
+
+
+@app.post("/api/files/upload")
+async def upload_file(token: str = Form(...), path: str = Form(...), file: UploadFile = File(...)):
+    requester = db.users_by_token.get(token, None)
+    if requester is None:
+        raise AuthError("invalid token")
+
+    path = validate_directory(requester, path)
+
+    # Copy file to permanent location
+    with open(path / file.filename, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    return {"status": "success"}
+
+
 class ListFilesRequest(AuthRequest):
     path: str
 
 
 @app.post("/api/files/list")
 async def list_files(request: ListFilesRequest):
-    # Make sure path is absolute
-    path = Path(request.path)
-    if not path.is_absolute():
-        return {"status": "error", "reason": "not an absolute path"}
-    # Resolve '..' and symlinks in path
-    path = path.resolve(strict=False)
+    # Validate path
+    path = validate_directory(request.requester, request.path)
     # Make path relative to user root
     if request.requester.is_gm:
         user_root = FILES_ROOT
     else:
         user_root = FILES_ROOT / request.requester.name
-    path = user_root / Path(str(path)[1:])
-    # Check that path is a directory that exists
-    if not path.is_dir():
-        return {"status": "error", "reason": "not a directory"}
     # Get list of files
     if path == user_root:
         returned_path = "/"
     else:
         returned_path = "/" + str(path.relative_to(user_root))
+
     return {
         "status": "success",
         "path": returned_path,
