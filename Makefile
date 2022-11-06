@@ -20,7 +20,7 @@ frontend:
 		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
 		exit 1; \
 	fi
-	mkdir -p /var/www/nonsense/
+	mkdir -p /var/www/nonsense/ /var/www/nonsense/files/
 	cp $$(find src/ -name '*.js' -or -name '*.css' -or -name '*.html') /var/www/nonsense
 	cp $$(find deps/toastify -type f) /var/www/nonsense/
 	cp -r assets/* /var/www/nonsense/
