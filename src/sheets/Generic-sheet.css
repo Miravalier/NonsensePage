@@ -1,3 +1,52 @@
 .character.sheet.generic {
-    background-color: pink;
+    padding: 4px;
+}
+
+.character.sheet.generic img.token {
+    height: 48px;
+    width: 48px;
+    margin: 0px 4px;
+}
+
+.character.sheet.generic .header-attributes {
+    justify-content: space-evenly;
+    margin: 4px 0;
+}
+
+.character.sheet.generic input.name {
+    flex: 1;
+}
+
+.character.sheet.generic textarea.description {
+    margin: 0px 4px;
+    height: 24em;
+    flex: 1;
+}
+
+.character.sheet.generic input.hp,
+.character.sheet.generic input.max-hp {
+    width: 4em;
+}
+
+.character.sheet.generic input.scale {
+    width: 4em;
+}
+
+.character.sheet.generic .header-details {
+    flex: 1;
+}
+
+.character.sheet.generic .sheet-body .elements .outer.column {
+    flex: 1;
+    align-items: center;
+    margin: 8px 0;
+}
+
+.character.sheet.generic .sheet-body .elements .inner.column {
+    flex: 1;
+    align-items: center;
+}
+
+.character.sheet.generic .label {
+    margin-right: 4px;
 }

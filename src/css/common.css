@@ -3,6 +3,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
+    cursor: pointer;
     background: #407abd;
     border-radius: 8px;
 }
@@ -33,6 +34,7 @@ body {
 }
 
 textarea {
+    cursor: auto;
     color: black;
     resize: none;
     font-family: monospace;
@@ -58,4 +60,14 @@ textarea {
     text-shadow: 2px 2px #222222;
     background-color: #800000;
     background: linear-gradient(135deg, #9c0b0b, #790303);
+}
+
+.column {
+    display: flex;
+    flex-flow: column nowrap;
+}
+
+.row {
+    display: flex;
+    flex-flow: row nowrap;
 }

@@ -1,10 +1,10 @@
 import { Vector2 } from "./vector.js";
-import { CanvasWindow } from "./window.js";
 import { ChatWindow } from "./chat_window.js";
 import { FileWindow } from "./file_window.js";
 import { ContextMenu } from "./contextmenu.js";
 import { ApiRequest, Session, WsConnect } from "./requests.js";
 import { CharacterListWindow } from "./character_list_window.js";
+import { CheckUpdates } from "./pending_updates.js";
 
 
 $(async () => {
@@ -44,6 +44,8 @@ async function Main() {
     setInterval(() => {
         Session.ws.send(JSON.stringify({ type: "heartbeat" }));
     }, 5000);
+    setInterval(CheckUpdates, 1000);
+
     let contextMenu = null;
     document.addEventListener("click", () => {
         if (contextMenu !== null) {

@@ -122,6 +122,11 @@
     background-color: #95c7ff;
 }
 
+.character.window .character.sheet {
+    display: flex;
+    flex-flow: column nowrap;
+}
+
 .files .item {
     cursor: pointer;
     border-radius: 2px;
@@ -136,16 +141,6 @@
     width: 16px;
     height: 16px;
     margin: 0 4px;
-}
-
-.row {
-    display: flex;
-    flex-flow: row nowrap;
-}
-
-.column {
-    display: flex;
-    flex-flow: column nowrap;
 }
 
 .button svg:hover,

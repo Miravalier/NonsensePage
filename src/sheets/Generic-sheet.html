@@ -1,5 +1,5 @@
 <template>
-    <div class="character sheet generic">
+    <form class="character sheet generic" spellcheck="false">
         <div class="sheet-header row">
             <img class="token">
             <div class="header-details column">
@@ -31,7 +31,25 @@
             </div>
         </div>
         <div class="sheet-body column">
-            <p>Lorem ipsum.</p>
+            <div class="description row">
+                <textarea class="description"></textarea>
+            </div>
+            <div class="elements row">
+                <div class="stats column outer">
+                    <span>STATS</span>
+                    <div class="stats column inner"></div>
+                    <button type="button" class="create-stat">
+                        Create Stat
+                    </button>
+                </div>
+                <div class="items column outer">
+                    <span>ITEMS</span>
+                    <div class="items column inner"></div>
+                    <button type="button" class="create-item">
+                        Create Item
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
+        </div>
 </template>

@@ -107,8 +107,6 @@ export class ChatWindow extends ContentWindow {
             ));
         }
 
-
-
         this.viewPort.scrollTop = this.viewPort.scrollHeight;
 
         this.messages[message.id] = element;

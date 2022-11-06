@@ -3,6 +3,7 @@ from __future__ import annotations
 import pickle
 from dataclasses import dataclass, field
 from fastapi import WebSocket
+from fastapi.encoders import jsonable_encoder
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Optional, Set, List, Dict, Union, Iterator, Any
@@ -84,7 +85,11 @@ class Entry(BaseModel):
         return pool
 
     async def broadcast_update(self):
-        await self.pool.broadcast({"pool": self.id, "type": "update", "entry": self.dict()})
+        await self.pool.broadcast(jsonable_encoder({
+            "pool": self.id,
+            "type": "update",
+            "entry": self.dict()
+        }))
 
     @classmethod
     def create(cls, **kwargs):
@@ -297,6 +302,7 @@ class Item(Entity, Container):
 class Character(Entity, Container):
     name: str
     description: str = ""
+    token_url: str = ""
     alignment: Alignment = Alignment.NEUTRAL
     languages: Set[Language] = Field(default_factory=set)
     hp: int = 0

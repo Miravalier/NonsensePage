@@ -26,20 +26,22 @@ export class CharacterSheetWindow extends ContentWindow {
             return;
         }
         const characterData = response.character;
-        this.titleNode.textContent = `Character Sheet - ${characterData.name}`;
+        this.titleNode.textContent = characterData.name;
         const sheetType = characterData.sheet_type;
 
         // Load sheet content
         const sheetClass = (await import(`./${sheetType}-sheet.js`)).default;
         await Templates.loadCss(`${sheetType}-sheet.css`);
-        const sheetElement = this.content.appendChild(await Templates.loadHtml(`${sheetType}-sheet.html`));
-        const sheet = new sheetClass(sheetElement);
+        this.content.appendChild(await Templates.loadHtml(`${sheetType}-sheet.html`));
+        const sheet = new sheetClass(characterData.id, this);
         sheet.addListeners();
         sheet.update(characterData);
+        Object.assign(sheet.cachedData, characterData);
 
         // Set up update watcher
         this.subscription = await Subscribe(id, async updateData => {
-            sheet.update(updateData);
+            sheet.update(updateData.entry);
+            Object.assign(sheet.cachedData, updateData.entry);
         });
     }
 }

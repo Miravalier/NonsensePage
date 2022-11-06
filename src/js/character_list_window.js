@@ -12,6 +12,7 @@ export class CharacterListWindow extends ContentWindow {
         this.characters.className = "characters";
         this.createCharacterButton = this.content.appendChild(document.createElement("button"));
         this.createCharacterButton.className = "create-character";
+        this.createCharacterButton.type = "button";
         this.createCharacterButton.appendChild(document.createTextNode("Create Character"));
         this.createCharacterButton.addEventListener("click", async () => {
             await ApiRequest("/character/create", { name: `${Session.username}'s Character` });
