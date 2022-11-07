@@ -290,3 +290,37 @@ export function ConfirmDialog(prompt) {
         });
     });
 }
+
+export function ImageSelectDialog(prompt, previous) {
+    const confirmButton = Button("check");
+    confirmButton.appendChild(document.createTextNode("Confirm"));
+    const cancelButton = Button("ban");
+    cancelButton.appendChild(document.createTextNode("Cancel"));
+
+    const filePicker = document.createElement("input");
+    filePicker.type = "file";
+
+    const dialog = new Dialog({
+        title: "Confirm",
+        description: prompt,
+        elements: [
+            filePicker,
+            [confirmButton, cancelButton],
+        ],
+    });
+
+    return new Promise((resolve) => {
+        let result = false;
+        confirmButton.addEventListener("click", () => {
+            result = filePicker.files[0].name;
+            dialog.close();
+        });
+        cancelButton.addEventListener("click", () => {
+            result = false;
+            dialog.close();
+        });
+        dialog.on_close.push(() => {
+            resolve(result);
+        });
+    });
+}

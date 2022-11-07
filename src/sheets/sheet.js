@@ -1,5 +1,6 @@
 import { AddCharacterUpdate } from "./pending_updates.js";
 import { ApiRequest } from "./requests.js";
+import { ImageSelectDialog } from "./window.js";
 
 export class Sheet {
     constructor(id, window) {
@@ -39,6 +40,20 @@ export class Sheet {
         });
         this.inputs.push([key, element]);
         return element;
+    }
+
+    registerImageInput(selector, key) {
+        /** @type {HTMLImageElement} */
+        const element = this.window.content.querySelector(selector);
+        if (!element) {
+            console.error(`Can't find "${selector}" in character sheet`)
+        }
+        element.addEventListener("click", async () => {
+            const update = { id: this.id };
+            const newImage = await ImageSelectDialog(`Select an image:`, this.cachedData[key]);
+            update[key] = newImage;
+            await ApiRequest("/character/update", update);
+        });
     }
 
     addListeners() {

@@ -302,7 +302,7 @@ class Item(Entity, Container):
 class Character(Entity, Container):
     name: str
     description: str = ""
-    token_url: str = ""
+    image: str = ""
     alignment: Alignment = Alignment.NEUTRAL
     languages: Set[Language] = Field(default_factory=set)
     hp: int = 0
