@@ -448,9 +448,28 @@ async def status(request: AuthRequest):
     return {"status": "success", "username": request.requester.name, "gm": request.requester.is_gm}
 
 
+def validate_path(requester: User, path: str) -> Path:
+    # Make sure path is absolute
+    path: Path = Path(path)
+    if not path.is_absolute():
+        raise JsonError("not an absolute path")
+    # Resolve '..' and symlinks in path
+    path = path.resolve(strict=False)
+    # Make path relative to user root
+    if requester.is_gm:
+        user_root = FILES_ROOT
+    else:
+        user_root = FILES_ROOT / requester.name
+    path = user_root / Path(str(path)[1:])
+    # Check that path is a directory that exists
+    if not path.exists():
+        raise JsonError("path does not exist")
+    return path
+
+
 def validate_directory(requester: User, path: str) -> Path:
     # Make sure path is absolute
-    path = Path(path)
+    path: Path = Path(path)
     if not path.is_absolute():
         raise JsonError("not an absolute path")
     # Resolve '..' and symlinks in path
@@ -477,6 +496,26 @@ async def files_mkdir(request: CreateFolderRequest):
     path = validate_directory(request.requester, request.path)
     new_path = path / request.name
     new_path.mkdir()
+    return {"status": "success"}
+
+
+def recursive_delete(path: Path):
+    if path.is_dir():
+        for sub_path in list(path.iterdir()):
+            recursive_delete(sub_path)
+        path.rmdir()
+    else:
+        path.unlink(path)
+
+
+class DeleteFileRequest(AuthRequest):
+    path: str
+
+
+@app.post("/api/files/delete")
+async def delete_file(request: DeleteFileRequest):
+    path = validate_path(request.requester, request.path)
+    recursive_delete(path)
     return {"status": "success"}
 
 

@@ -1,5 +1,8 @@
-import { ContentWindow, Dialog } from "./window.js";
+import { ContentWindow, ConfirmDialog, Dialog } from "./window.js";
 import { ApiRequest, Session, FileUpload } from "./requests.js";
+import { Vector2 } from "./vector.js";
+import { Button } from "./elements.js";
+import { Parameter } from "./utils.js";
 
 
 const FILE_ICONS = {
@@ -21,6 +24,7 @@ const FILE_ICONS = {
 export class FileWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["file"];
+        options.size = Parameter(options.size, new Vector2(400, 400));
         super(options);
 
         this.files = this.content.appendChild(document.createElement("div"));
@@ -135,26 +139,52 @@ export class FileWindow extends ContentWindow {
         const icon = document.createElement("i");
         icon.classList = `fa-solid fa-${img}`;
 
-        const element = this.files.appendChild(document.createElement("div"));
-        element.className = "item directory";
-        element.appendChild(icon);
-        element.appendChild(document.createTextNode(name));
+        const item = this.files.appendChild(document.createElement("div"));
+        item.className = "item directory";
 
-        element.addEventListener("click", () => {
+        const nameElement = item.appendChild(document.createElement("div"));
+        nameElement.className = "name";
+        nameElement.appendChild(icon);
+        nameElement.appendChild(document.createTextNode(name));
+
+        if (name != "..") {
+            const deleteButton = item.appendChild(Button("trash"));
+            deleteButton.addEventListener("click", async () => {
+                if (!(await ConfirmDialog(`Are you sure you want to delete ${path}?`))) {
+                    return;
+                }
+                await ApiRequest("/files/delete", { path });
+                this.load(this.path);
+            });
+        }
+
+        nameElement.addEventListener("click", () => {
             this.load(path);
-        })
+        });
     }
 
     addFile(img, name, path) {
         const icon = document.createElement("i");
         icon.classList = `fa-solid fa-${img}`;
 
-        const element = this.files.appendChild(document.createElement("div"));
-        element.className = "item file";
-        element.appendChild(icon);
-        element.appendChild(document.createTextNode(name));
+        const item = this.files.appendChild(document.createElement("div"));
+        item.className = "item file";
 
-        element.addEventListener("click", () => {
+        const nameElement = item.appendChild(document.createElement("div"));
+        nameElement.className = "name";
+        nameElement.appendChild(icon);
+        nameElement.appendChild(document.createTextNode(name));
+
+        const deleteButton = item.appendChild(Button("trash"));
+        deleteButton.addEventListener("click", async () => {
+            if (!(await ConfirmDialog(`Are you sure you want to delete ${name}?`))) {
+                return;
+            }
+            await ApiRequest("/files/delete", { path });
+            this.load(this.path);
+        });
+
+        nameElement.addEventListener("click", () => {
             if (Session.gm) {
                 window.open(`/files${path}`, path);
             }
