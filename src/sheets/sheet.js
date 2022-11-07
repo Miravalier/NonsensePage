@@ -50,7 +50,8 @@ export class Sheet {
         }
         element.addEventListener("click", async () => {
             const update = { id: this.id };
-            const newImage = await ImageSelectDialog(`Select an image:`, this.cachedData[key]);
+            const newImage = "";
+            //const newImage = await ImageSelectDialog(`Select an image:`, this.cachedData[key]);
             update[key] = newImage;
             await ApiRequest("/character/update", update);
         });
