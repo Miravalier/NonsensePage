@@ -20,6 +20,7 @@ from security import check_password, hash_password
 
 
 MESSAGE_POOL = Pool()
+COMBAT_TRACKER_POOL = Pool()
 FILES_ROOT = Path("/files")
 
 
@@ -392,6 +393,8 @@ def get_pool(request: Dict[str, Any]):
     pool_name = request.get("pool")
     if pool_name == "messages":
         pool = MESSAGE_POOL
+    elif pool_name == "combat-tracker":
+        pool = COMBAT_TRACKER_POOL
     else:
         entry = db.entries.get(pool_name)
         if entry is None:
