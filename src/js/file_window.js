@@ -2,7 +2,7 @@ import { ContentWindow, ConfirmDialog, Dialog } from "./window.js";
 import { ApiRequest, Session, FileUpload } from "./requests.js";
 import { Vector2 } from "./vector.js";
 import { Button } from "./elements.js";
-import { Parameter } from "./utils.js";
+import { Parameter, AddDragListener } from "./utils.js";
 
 
 const FILE_ICONS = {
@@ -130,7 +130,7 @@ export class FileWindow extends ContentWindow {
             }
             else {
                 const img = FILE_ICONS[filetype.split("/").at(0)];
-                this.addFile(img, name, path);
+                this.addFile(filetype, img, name, path);
             }
         }
     }
@@ -163,7 +163,7 @@ export class FileWindow extends ContentWindow {
         });
     }
 
-    addFile(img, name, path) {
+    addFile(filetype, img, name, path) {
         const icon = document.createElement("i");
         icon.classList = `fa-solid fa-${img}`;
 
@@ -174,6 +174,15 @@ export class FileWindow extends ContentWindow {
         nameElement.className = "name";
         nameElement.appendChild(icon);
         nameElement.appendChild(document.createTextNode(name));
+
+        let url_path = null;
+        if (Session.gm) {
+            url_path = `/files${path}`;
+        }
+        else {
+            url_path = `/files/${Session.username}${path}`;
+        }
+        AddDragListener(nameElement, {type: "file", filetype, path: url_path});
 
         const deleteButton = item.appendChild(Button("trash"));
         deleteButton.addEventListener("click", async () => {
