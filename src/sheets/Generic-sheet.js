@@ -12,7 +12,7 @@ export default class GenericSheet extends Sheet {
         this.scaleInput = this.registerInput("input.scale", "scale");
         this.description = this.registerBatchedInput("textarea.description", "description");
 
-        this.token = this.window.content.querySelector("img.token");
+        this.token = this.registerImageInput("img.token", "image");
         this.createStatButton = this.window.content.querySelector("button.create-stat");
         this.createItemButton = this.window.content.querySelector("button.create-item");
         this.statContainer = this.window.content.querySelector(".stats.inner");

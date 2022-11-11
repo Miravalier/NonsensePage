@@ -172,6 +172,7 @@ class CharacterUpdateRequest(AuthRequest):
     id: str
     sheet_type: Optional[str]
     name: Optional[str]
+    image: Optional[str]
     alignment: Optional[Alignment]
     description: Optional[str]
     hp: Optional[int]
@@ -195,6 +196,8 @@ async def character_update(request: CharacterUpdateRequest):
         character.sheet_type = request.sheet_type
     if request.name is not None:
         character.name = request.name
+    if request.image is not None:
+        character.image = request.image
     if request.alignment is not None:
         character.alignment = request.alignment
     if request.description is not None:
