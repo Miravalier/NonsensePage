@@ -245,9 +245,18 @@ class CharacterGetRequest(AuthRequest):
 @app.post("/api/character/get")
 async def character_get(request: CharacterGetRequest):
     character = get_character(request.id)
-    if not request.requester.is_gm:
-        require(character.has_permission(request.requester.id, "*", Permissions.READ))
-    return {"status": "success", "character": character.dict()}
+    permission = request.requester.is_gm or character.has_permission(request.requester.id, "*", Permissions.READ)
+    if permission:
+        return {"status": "success", "character": character.dict()}
+    else:
+        return {
+            "status": "partial",
+            "character": {
+                "name": character.name,
+                "image": character.image,
+                "sheet_type": character.sheet_type,
+            },
+        }
 
 
 @app.post("/api/character/list")
@@ -261,6 +270,11 @@ async def character_list(request: AuthRequest):
             if character.has_permission(request.requester.id, level=Permissions.READ):
                 characters.append((character.id, character.name))
     return {"status": "success", "characters": characters}
+
+
+@app.post("/api/combat-tracker/list")
+async def combat_tracker_list(request: AuthRequest):
+    return {"status": "success"}
 
 
 class RollRequest(AuthRequest):

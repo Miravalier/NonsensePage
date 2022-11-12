@@ -8,7 +8,6 @@ import { Vector2 } from "./vector.js";
 export function AddDragListener(element, data) {
     element.draggable = true;
     element.addEventListener("dragstart", (ev) => {
-        console.log("Drag start");
         ev.dataTransfer.setData("application/nonsense", JSON.stringify(data));
         if (data.img) {
             const image = new Image();
