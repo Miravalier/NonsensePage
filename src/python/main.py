@@ -12,7 +12,10 @@ from typing import Dict, List, Optional, Any, Tuple, Union
 
 import files
 import ws_handlers
-from database import Character, Item, db, User, Connection, Pool
+from database import (
+    Character, Item, db, User,
+    Connection, Pool, Combat, Combatant
+)
 from enums import Alignment, Language, ListDirection, Permissions
 from errors import AuthError, JsonError
 from messages import messages
@@ -270,6 +273,11 @@ async def character_list(request: AuthRequest):
             if character.has_permission(request.requester.id, level=Permissions.READ):
                 characters.append((character.id, character.name))
     return {"status": "success", "characters": characters}
+
+
+@app.post("/api/combat-tracker/new")
+async def combat_tracker_new(request: AuthRequest):
+    return {"status": "success"}
 
 
 @app.post("/api/combat-tracker/list")

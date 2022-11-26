@@ -64,6 +64,7 @@ class Entry(BaseModel):
     id: str = Field(default_factory=random_id)
     collections: Dict[str, str] = Field(default_factory=dict)
     permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
+    active: bool = False
 
     def __setattr__(self, name, value):
         db.persist_queue.add(self)
@@ -103,8 +104,18 @@ class Entry(BaseModel):
             del getattr(db, collection)[key]
         # Make sure this object isn't re-persisted after delete
         db.persist_queue.discard(self)
+        # Remove active reference
+        if db.active_entries[self.__class__.__name__] is self:
+            db.active_entries.pop(self.__class__.__name__, None)
         # Delete actual file
         (DATABASE_ROOT / self.id).unlink(missing_ok=True)
+
+    def set_active(self):
+        previous_active_entry = db.active_entries.get(self.__class__.__name__, None)
+        if previous_active_entry is not None:
+            previous_active_entry.active = False
+        self.active = True
+        db.active_entries[self.__class__.__name__] = self
 
     def add_collection(self, collection: str, key: str):
         """
@@ -156,6 +167,7 @@ class Entry(BaseModel):
 class Database:
     # Attributes
     persist_queue: Set[Entry] = field(default_factory=set)
+    active_entries: Dict[str, Entry] = field(default_factory=dict)
     # Collections
     entries: Dict[str, Entry] = field(default_factory=dict)
     users: Dict[str, User] = field(default_factory=dict)
@@ -165,6 +177,8 @@ class Database:
     items: Dict[str, Item] = field(default_factory=dict)
     containers: Dict[str, Container] = field(default_factory=dict)
     entities: Dict[str, Entity] = field(default_factory=dict)
+    combatants: Dict[str, Combatant] = field(default_factory=dict)
+    combats: Dict[str, Combat] = field(default_factory=dict)
 
     def save(self):
         DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -182,6 +196,10 @@ class Database:
                 entry: Entry = pickle.load(pickle_file)
             for collection, key in entry.collections.items():
                 getattr(db, collection)[key] = entry
+            if not hasattr(entry, 'active'):
+                entry.__dict__['active'] = False
+            if entry.active:
+                db.active_entries[entry.__class__.__name__] = entry
         return db
 
 
@@ -335,6 +353,26 @@ class User(Entry):
             if character is not None:
                 return character.languages
         return {Language.COMMON}
+
+
+class Combatant(Entry):
+    character: Character
+    initiative: int = 0
+
+    def post_create(self):
+        super().post_create()
+        self.add_collection("combatants", self.id)
+
+
+class Combat(Entry):
+    combatants: List[Combatant] = Field(default_factory=list)
+
+    def post_create(self):
+        super().post_create()
+        self.add_collection("combats", self.id)
+
+    def set_active(self):
+        db.active_combat = self
 
 
 db = Database.load()
