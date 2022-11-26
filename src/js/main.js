@@ -8,7 +8,13 @@ import { CharacterListWindow } from "./character_list_window.js";
 import { CheckUpdates } from "./pending_updates.js";
 
 
-$(async () => {
+window.addEventListener("load", async () => {
+    await OnLoad();
+    await Main();
+});
+
+
+async function OnLoad() {
     window.Session = Session;
     window.ApiRequest = ApiRequest;
 
@@ -35,9 +41,7 @@ $(async () => {
 
     Session.gm = response.gm;
     Session.username = response.username;
-
-    Main();
-});
+}
 
 
 async function Main() {

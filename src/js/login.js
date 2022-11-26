@@ -1,7 +1,7 @@
 import { ApiRequest, LoginRequest, Session } from "./requests.js"
 import { InfoToast, WarningToast, ErrorToast } from "./notifications.js";
 
-$(async () => {
+window.addEventListener("load", async () => {
     window.InfoToast = InfoToast;
     window.ErrorToast = ErrorToast;
     window.WarningToast = WarningToast;
@@ -19,13 +19,13 @@ $(async () => {
 
     window.LoginRequest = LoginRequest;
 
-    $("#login .button").on("click", async () => {
-        const username = $("#login .username").val();
+    document.querySelector("#login .button").addEventListener("click", async () => {
+        const username = document.querySelector("#login .username").value;
         if (!username) {
             ErrorToast("You must enter a username.");
             return;
         }
-        const password = $("#login .password").val();
+        const password = document.querySelector("#login .password").value;
         if (!password) {
             ErrorToast("You must enter a password.");
             return;
