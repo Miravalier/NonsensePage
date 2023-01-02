@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import pickle
 from dataclasses import dataclass, field
+from collections import deque
 from fastapi import WebSocket
 from fastapi.encoders import jsonable_encoder
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import Optional, Set, List, Dict, Union, Iterator, Any
+from typing import Any, Dict, Deque, Iterator, List, Optional, TypeVar, Union, Set
 
 from enums import Alignment, Language, Permissions
 from utils import random_id
+
+T = TypeVar('T')
 
 
 @dataclass
@@ -62,13 +65,17 @@ class Stat:
 
 class Entry(BaseModel):
     id: str = Field(default_factory=random_id)
+    deferred_attributes: Dict[str, str] = Field(default_factory=dict)
     collections: Dict[str, str] = Field(default_factory=dict)
     permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
     active: bool = False
 
+    def raw_setattr(self, name, value):
+        super().__setattr__(name, value)
+
     def __setattr__(self, name, value):
         db.persist_queue.add(self)
-        return super().__setattr__(name, value)
+        super().__setattr__(name, value)
 
     def __hash__(self):
         return hash(self.id)
@@ -93,7 +100,7 @@ class Entry(BaseModel):
         }))
 
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls: T, **kwargs) -> T:
         obj = cls.parse_obj(kwargs)
         obj.post_create()
         return obj
@@ -109,6 +116,18 @@ class Entry(BaseModel):
             db.active_entries.pop(self.__class__.__name__, None)
         # Delete actual file
         (DATABASE_ROOT / self.id).unlink(missing_ok=True)
+
+    def __getstate__(self) -> Dict:
+        state = super().__getstate__()
+        attributes: Dict = state.get('__dict__')
+        if attributes is None:
+            return state
+        for name in self.deferred_attributes:
+            attribute: Entry = attributes.pop(name, None)
+            if attribute is None:
+                continue
+            attributes[name] = attribute.id
+        return state
 
     def set_active(self):
         previous_active_entry = db.active_entries.get(self.__class__.__name__, None)
@@ -191,15 +210,41 @@ class Database:
     def load(cls):
         DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
         db = cls()
+
+        # Unpickle all entries and restore collections and active mark
         for path in DATABASE_ROOT.iterdir():
-            with open(path, "rb") as pickle_file:
-                entry: Entry = pickle.load(pickle_file)
+            # Load entry
+            try:
+                with open(path, "rb") as pickle_file:
+                    entry: Entry = pickle.load(pickle_file)
+            except:
+                print("Failed to load", path)
+                continue
+            # Ensure any newly added fields are initialized
+            for field in entry.__fields__.values():
+                if not hasattr(entry, field.name):
+                    if field.default_factory is not None:
+                        default_value = field.default_factory()
+                    else:
+                        default_value = field.default
+                    entry.raw_setattr(field.name, default_value)
+                    print(f"Adding missing field '{field.name}' to entry <{entry}>")
+                    db.persist_queue.add(entry)
+            # Re-add to collections
             for collection, key in entry.collections.items():
                 getattr(db, collection)[key] = entry
-            if not hasattr(entry, 'active'):
-                entry.__dict__['active'] = False
+            # Re-add to active_entries mapping
             if entry.active:
-                db.active_entries[entry.__class__.__name__] = entry
+                entry.set_active()
+
+            print(entry.id, entry.__class__.__name__)
+        # Expand deferred attributes by looking up with IDs
+        for entry in db.entries.values():
+            for attribute_name, collection_name in entry.deferred_attributes.items():
+                attribute_id: str = getattr(entry, attribute_name)
+                collection: Dict[str, Entry] = getattr(db, collection_name)
+                entry.raw_setattr(attribute_name, collection.get(attribute_id, None))
+
         return db
 
 
@@ -356,23 +401,22 @@ class User(Entry):
 
 
 class Combatant(Entry):
-    character: Character
+    character: Optional[Character] = None
     initiative: int = 0
 
     def post_create(self):
         super().post_create()
         self.add_collection("combatants", self.id)
+        self.deferred_attributes['character'] = "characters"
 
 
 class Combat(Entry):
-    combatants: List[Combatant] = Field(default_factory=list)
+    name: str = "New Combat"
+    combatants: Deque[Combatant] = Field(default_factory=deque)
 
     def post_create(self):
         super().post_create()
         self.add_collection("combats", self.id)
-
-    def set_active(self):
-        db.active_combat = self
 
 
 db = Database.load()

@@ -49,6 +49,7 @@ async def json_error_handler(request: Request, exc: JsonError):
 def require(expr: bool, message: str = "insufficient permission"):
     if not expr:
         raise AuthError(message)
+    return expr
 
 
 def get_character(id: str) -> Character:
@@ -275,13 +276,60 @@ async def character_list(request: AuthRequest):
     return {"status": "success", "characters": characters}
 
 
-@app.post("/api/combat-tracker/new")
-async def combat_tracker_new(request: AuthRequest):
+class NewCombatRequest(GMRequest):
+    name: str
+
+
+@app.post("/api/combat/new")
+async def combat_new(request: NewCombatRequest):
+    combat = Combat.create(name=request.name)
+    combat.set_active()
     return {"status": "success"}
 
 
-@app.post("/api/combat-tracker/list")
-async def combat_tracker_list(request: AuthRequest):
+class GetCombatRequest(AuthRequest):
+    id: Optional[str]
+
+
+@app.post("/api/combat/get")
+async def combat_get(request: GetCombatRequest):
+    combat = db.combats.get(request.id)
+    if combat is None:
+        raise JsonError("invalid combat id")
+    if not request.requester.is_gm:
+        require(combat.active)
+    return {
+        "status": "success",
+        "combat": {
+            "id": combat.id,
+            "name": combat.name,
+            "combatants": [combat.combatants]
+        }
+    }
+
+
+
+@app.post("/api/combat/list")
+async def combat_list(request: AuthRequest):
+    return {
+        "status": "success",
+        "combats": {
+            combat.id: {"name": combat.name, "active": combat.active}
+            for combat in db.combats.values()
+        },
+    }
+
+
+class SetActiveCombatRequest(GMRequest):
+    combat_id: str
+
+
+@app.post("/api/combat/set-active")
+async def combat_set_active(request: SetActiveCombatRequest):
+    combat = db.combats.get(request.combat_id)
+    if combat is None:
+        raise JsonError("invalid combat id")
+    combat.set_active()
     return {"status": "success"}
 
 
@@ -459,14 +507,15 @@ async def live_connection(websocket: WebSocket):
             break
     user = db.users_by_token.get(request["token"], None)
     if user is None:
-        raise AuthError("invalid token")
+        await websocket.close()
+        return
     print("/api/live - Handshake -", user.name)
     # Begin subscription loop
     connection = Connection(user, websocket)
     try:
         while True:
             await handle_ws_request(connection, await websocket.receive_json())
-    except:
+    finally:
         for pool in connection.pools:
             pool.discard(connection)
 
