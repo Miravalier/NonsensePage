@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import hashlib
 import html
+import os
 import secrets
 import shutil
 from fastapi import FastAPI, Request, WebSocket, Form, UploadFile, File
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from hmac import compare_digest
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
 from typing import Dict, List, Optional, Any, Tuple, Union
@@ -20,6 +23,9 @@ from enums import Alignment, Language, ListDirection, Permissions
 from errors import AuthError, JsonError
 from messages import messages
 from security import check_password, hash_password
+
+
+ADMIN_HASH = hashlib.sha256(os.environ.get("ADMIN_TOKEN", "").encode()).digest()
 
 
 MESSAGE_POOL = Pool()
@@ -64,6 +70,30 @@ def get_item(id: str) -> Item:
     if item is None:
         raise JsonError("invalid item id")
     return item
+
+
+class AdminConsoleRequest(BaseModel):
+    admin_token: str
+
+    @validator('admin_token')
+    def resolve_admin_token(cls, value: str):
+        request_hash = hashlib.sha256(value.encode()).digest()
+        if not compare_digest(ADMIN_HASH, request_hash):
+            raise JsonError("invalid admin key")
+        return value
+
+
+class CreateAdminRequest(AdminConsoleRequest):
+    username: str
+    password: str
+
+
+@app.post("/admin/create")
+async def admin_create_request(request: CreateAdminRequest):
+    if request.username in db.users_by_name:
+        raise JsonError("username taken")
+    user = User.create(name=request.username, hashed_password=hash_password(request.password), is_gm=True)
+    return {"status": "success", "id": user.id}
 
 
 class LoginRequest(BaseModel):
@@ -119,6 +149,8 @@ class UserCreateRequest(GMRequest):
 
 @app.post("/api/user/create")
 async def user_create(request: UserCreateRequest):
+    if request.username in db.users_by_name:
+        raise JsonError("username taken")
     user = User.create(name=request.username, hashed_password=hash_password(request.password))
     return {"status": "success", "id": user.id}
 
