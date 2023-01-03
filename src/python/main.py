@@ -320,25 +320,67 @@ async def combat_new(request: NewCombatRequest):
 
 
 class GetCombatRequest(AuthRequest):
-    id: Optional[str]
+    combat_id: Optional[str]
+    create: Optional[bool]
 
 
 @app.post("/api/combat/get")
 async def combat_get(request: GetCombatRequest):
-    combat = db.combats.get(request.id)
+    print("Active Entries", db.active_entries)
+
+    if request.combat_id is None:
+        combat = db.active_entries.get("Combat")
+    else:
+        combat = db.combats.get(request.combat_id)
+
     if combat is None:
-        raise JsonError("invalid combat id")
+        if request.create:
+            combat = Combat.create(name="New Combat")
+            combat.set_active()
+        else:
+            raise JsonError("invalid combat id")
+
     if not request.requester.is_gm:
         require(combat.active)
+
     return {
         "status": "success",
         "combat": {
             "id": combat.id,
             "name": combat.name,
-            "combatants": [combat.combatants]
+            "combatants": [
+                {
+                    "name": combatant.name,
+                    "character_id": combatant.character_id,
+                    "initiative": combatant.initiative
+                }
+                for combatant in combat.combatants
+            ]
         }
     }
 
+
+class AddCombatantRequest(GMRequest):
+    name: str
+    initiative: Optional[int]
+    character_id: Optional[str]
+    combat_id: Optional[str]
+
+
+@app.post("/api/combat/add-combatant")
+async def combat_add_combatant(request: AddCombatantRequest):
+    print("Active Entries", db.active_entries)
+
+    if request.combat_id is None:
+        combat = db.active_entries.get("Combat")
+    else:
+        combat = db.combats.get(request.combat_id)
+
+    if combat is None:
+        raise JsonError("invalid combat id")
+
+    combat.combatants.append(Combatant(request.name, request.character_id, request.initiative))
+    return {"status": "success"}
 
 
 @app.post("/api/combat/list")
@@ -495,7 +537,7 @@ def get_pool(request: Dict[str, Any]):
     pool_name = request.get("pool")
     if pool_name == "messages":
         pool = MESSAGE_POOL
-    elif pool_name == "combat-tracker":
+    elif pool_name == "combat":
         pool = COMBAT_TRACKER_POOL
     else:
         entry = db.entries.get(pool_name)

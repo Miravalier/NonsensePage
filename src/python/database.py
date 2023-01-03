@@ -235,9 +235,10 @@ class Database:
                 getattr(db, collection)[key] = entry
             # Re-add to active_entries mapping
             if entry.active:
-                entry.set_active()
-
-            print(entry.id, entry.__class__.__name__)
+                previous_active_entry = db.active_entries.get(entry.__class__.__name__)
+                if previous_active_entry is not None:
+                    previous_active_entry.active = False
+                db.active_entries[entry.__class__.__name__] = entry
         # Expand deferred attributes by looking up with IDs
         for entry in db.entries.values():
             for attribute_name, collection_name in entry.deferred_attributes.items():
@@ -400,14 +401,22 @@ class User(Entry):
         return {Language.COMMON}
 
 
-class Combatant(Entry):
-    character: Optional[Character] = None
-    initiative: int = 0
+@dataclass
+class Combatant:
+    name: str = "New Combatant"
+    character_id: Optional[str] = None
+    initiative: Optional[int] = None
 
-    def post_create(self):
-        super().post_create()
-        self.add_collection("combatants", self.id)
-        self.deferred_attributes['character'] = "characters"
+    @property
+    def character(self) -> Optional[Character]:
+        return db.characters.get(self.character_id)
+
+    @character.setter
+    def character(self, value: Optional[Character]):
+        if hasattr(value, "id"):
+            self.character_id = value.id
+        else:
+            self.character_id = None
 
 
 class Combat(Entry):
