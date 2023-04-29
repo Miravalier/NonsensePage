@@ -12,9 +12,16 @@ services:
         networks:
             - nonsense
         volumes:
-            - /var/nonsense:/data
+            - /var/nonsense/server:/data
             - /var/www/nonsense/files:/files
         ports:
             - "${HTTP_PORT}:80"
         environment:
-            - ADMIN_TOKEN=${ADMIN_TOKEN}
+            - "ADMIN_TOKEN=${ADMIN_TOKEN}"
+    db:
+        image: mongo:6
+        container_name: nonsense_db
+        networks:
+            - nonsense
+        volumes:
+            - /var/nonsense/db:/data/db
