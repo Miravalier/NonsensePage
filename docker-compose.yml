@@ -12,7 +12,7 @@ services:
         networks:
             - nonsense
         volumes:
-            - /var/nonsense:/data
+            - /var/nonsense/server:/data
             - /var/www/nonsense/files:/files
         ports:
             - "${HTTP_PORT}:80"
