@@ -2,6 +2,39 @@ import { PcgEngine } from "./pcg-random.js";
 import { Vector2 } from "./vector.js";
 
 
+/**
+ * @param {HTMLElement} element
+ */
+export function AddDragListener(element, data) {
+    element.draggable = true;
+    element.addEventListener("dragstart", (ev) => {
+        ev.dataTransfer.setData("application/nonsense", JSON.stringify(data));
+        if (data.img) {
+            const image = new Image();
+            image.src = data.img;
+            ev.dataTransfer.setDragImage(image, 16, 16);
+        }
+    });
+}
+
+
+/**
+ * @param {HTMLElement} element
+ */
+export function AddDropListener(element, fn) {
+    element.addEventListener("dragover", (ev) => {
+        ev.dataTransfer.dropEffect = "copy";
+        ev.preventDefault();
+    });
+    element.addEventListener("drop", async (ev) => {
+        const dragData = JSON.parse(ev.dataTransfer.getData("application/nonsense"));
+        if (dragData) {
+            fn(dragData);
+        }
+    });
+}
+
+
 export function ParseHtml(str) {
     const html = new DOMParser().parseFromString(str, 'text/html');
     return document.importNode(html.body.firstChild, true);

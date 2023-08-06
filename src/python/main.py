@@ -1,23 +1,35 @@
 from __future__ import annotations
 
+import hashlib
 import html
+import os
 import secrets
-from fastapi import FastAPI, Request, WebSocket
+import shutil
+from fastapi import FastAPI, Request, WebSocket, Form, UploadFile, File
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from hmac import compare_digest
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
 from typing import Dict, List, Optional, Any, Tuple, Union
 
 import files
-from database import Character, Item, db, User, Connection, Pool
+import ws_handlers
+from database import (
+    Character, Item, db, User,
+    Connection, Pool, Combat, Combatant
+)
 from enums import Alignment, Language, ListDirection, Permissions
 from errors import AuthError, JsonError
 from messages import messages
 from security import check_password, hash_password
 
 
+ADMIN_HASH = hashlib.sha256(os.environ.get("ADMIN_TOKEN", "").encode()).digest()
+
+
 MESSAGE_POOL = Pool()
+COMBAT_TRACKER_POOL = Pool()
 FILES_ROOT = Path("/files")
 
 
@@ -43,6 +55,7 @@ async def json_error_handler(request: Request, exc: JsonError):
 def require(expr: bool, message: str = "insufficient permission"):
     if not expr:
         raise AuthError(message)
+    return expr
 
 
 def get_character(id: str) -> Character:
@@ -57,6 +70,30 @@ def get_item(id: str) -> Item:
     if item is None:
         raise JsonError("invalid item id")
     return item
+
+
+class AdminConsoleRequest(BaseModel):
+    admin_token: str
+
+    @validator('admin_token')
+    def resolve_admin_token(cls, value: str):
+        request_hash = hashlib.sha256(value.encode()).digest()
+        if not compare_digest(ADMIN_HASH, request_hash):
+            raise JsonError("invalid admin key")
+        return value
+
+
+class CreateAdminRequest(AdminConsoleRequest):
+    username: str
+    password: str
+
+
+@app.post("/admin/create")
+async def admin_create_request(request: CreateAdminRequest):
+    if request.username in db.users_by_name:
+        raise JsonError("username taken")
+    user = User.create(name=request.username, hashed_password=hash_password(request.password), is_gm=True)
+    return {"status": "success", "id": user.id}
 
 
 class LoginRequest(BaseModel):
@@ -112,6 +149,8 @@ class UserCreateRequest(GMRequest):
 
 @app.post("/api/user/create")
 async def user_create(request: UserCreateRequest):
+    if request.username in db.users_by_name:
+        raise JsonError("username taken")
     user = User.create(name=request.username, hashed_password=hash_password(request.password))
     return {"status": "success", "id": user.id}
 
@@ -170,6 +209,7 @@ class CharacterUpdateRequest(AuthRequest):
     id: str
     sheet_type: Optional[str]
     name: Optional[str]
+    image: Optional[str]
     alignment: Optional[Alignment]
     description: Optional[str]
     hp: Optional[int]
@@ -193,6 +233,8 @@ async def character_update(request: CharacterUpdateRequest):
         character.sheet_type = request.sheet_type
     if request.name is not None:
         character.name = request.name
+    if request.image is not None:
+        character.image = request.image
     if request.alignment is not None:
         character.alignment = request.alignment
     if request.description is not None:
@@ -239,9 +281,18 @@ class CharacterGetRequest(AuthRequest):
 @app.post("/api/character/get")
 async def character_get(request: CharacterGetRequest):
     character = get_character(request.id)
-    if not request.requester.is_gm:
-        require(character.has_permission(request.requester.id, "*", Permissions.READ))
-    return {"status": "success", "character": character.dict()}
+    permission = request.requester.is_gm or character.has_permission(request.requester.id, "*", Permissions.READ)
+    if permission:
+        return {"status": "success", "character": character.dict()}
+    else:
+        return {
+            "status": "partial",
+            "character": {
+                "name": character.name,
+                "image": character.image,
+                "sheet_type": character.sheet_type,
+            },
+        }
 
 
 @app.post("/api/character/list")
@@ -255,6 +306,105 @@ async def character_list(request: AuthRequest):
             if character.has_permission(request.requester.id, level=Permissions.READ):
                 characters.append((character.id, character.name))
     return {"status": "success", "characters": characters}
+
+
+class NewCombatRequest(GMRequest):
+    name: str
+
+
+@app.post("/api/combat/new")
+async def combat_new(request: NewCombatRequest):
+    combat = Combat.create(name=request.name)
+    combat.set_active()
+    return {"status": "success"}
+
+
+class GetCombatRequest(AuthRequest):
+    combat_id: Optional[str]
+    create: Optional[bool]
+
+
+@app.post("/api/combat/get")
+async def combat_get(request: GetCombatRequest):
+    print("Active Entries", db.active_entries)
+
+    if request.combat_id is None:
+        combat = db.active_entries.get("Combat")
+    else:
+        combat = db.combats.get(request.combat_id)
+
+    if combat is None:
+        if request.create:
+            combat = Combat.create(name="New Combat")
+            combat.set_active()
+        else:
+            raise JsonError("invalid combat id")
+
+    if not request.requester.is_gm:
+        require(combat.active)
+
+    return {
+        "status": "success",
+        "combat": {
+            "id": combat.id,
+            "name": combat.name,
+            "combatants": [
+                {
+                    "name": combatant.name,
+                    "character_id": combatant.character_id,
+                    "initiative": combatant.initiative
+                }
+                for combatant in combat.combatants
+            ]
+        }
+    }
+
+
+class AddCombatantRequest(GMRequest):
+    name: str
+    initiative: Optional[int]
+    character_id: Optional[str]
+    combat_id: Optional[str]
+
+
+@app.post("/api/combat/add-combatant")
+async def combat_add_combatant(request: AddCombatantRequest):
+    print("Active Entries", db.active_entries)
+
+    if request.combat_id is None:
+        combat = db.active_entries.get("Combat")
+    else:
+        combat = db.combats.get(request.combat_id)
+
+    if combat is None:
+        raise JsonError("invalid combat id")
+
+    combat.combatants.append(Combatant(request.name, request.character_id, request.initiative))
+    return {"status": "success"}
+
+
+@app.post("/api/combat/list")
+async def combat_list(request: AuthRequest):
+    return {
+        "status": "success",
+        "combats": {
+            combat.id: {"name": combat.name, "active": combat.active}
+            for combat in db.combats.values()
+        },
+    }
+
+
+class SetActiveCombatRequest(GMRequest):
+    combat_id: str
+
+
+@app.post("/api/combat/set-active")
+async def combat_set_active(request: SetActiveCombatRequest):
+    combat = db.combats.get(request.combat_id)
+    if combat is None:
+        raise JsonError("invalid combat id")
+    combat.set_active()
+    return {"status": "success"}
 
 
 class RollRequest(AuthRequest):
@@ -382,6 +532,21 @@ async def delete_message(request: DeleteMessageRequest):
     return {"status": "success"}
 
 
+def get_pool(request: Dict[str, Any]):
+    # Get the pool to operate on
+    pool_name = request.get("pool")
+    if pool_name == "messages":
+        pool = MESSAGE_POOL
+    elif pool_name == "combat":
+        pool = COMBAT_TRACKER_POOL
+    else:
+        entry = db.entries.get(pool_name)
+        if entry is None:
+            raise JsonError("invalid pool name")
+        pool = entry.pool
+    return pool
+
+
 async def handle_ws_request(connection: Connection, request: Dict[str, Any]):
     if not isinstance(request, dict):
         raise JsonError("invalid json request")
@@ -389,24 +554,20 @@ async def handle_ws_request(connection: Connection, request: Dict[str, Any]):
     message_type = request.get("type")
     if message_type == "heartbeat":
         return
-    # Get the pool to operate on
-    pool_name = request.get("pool")
-    if pool_name == "messages":
-        pool = MESSAGE_POOL
-    else:
-        entry = db.entries.get(pool_name)
-        if entry is None:
-            raise JsonError("invalid pool name")
-        pool = entry.pool
-    # Perform the operation
-    if message_type == "subscribe":
+    elif message_type == "subscribe":
+        pool = get_pool(request)
         pool.add(connection)
         connection.pools.add(pool)
     elif message_type == "unsubscribe":
+        pool = get_pool(request)
         pool.discard(connection)
         connection.pools.discard(pool)
     else:
-        raise JsonError("invalid request type")
+        handler = ws_handlers.registered_handlers.get(message_type)
+        if handler is None:
+            raise JsonError("invalid request type")
+        else:
+            handler(connection, request)
 
 
 @app.websocket("/api/live")
@@ -420,14 +581,15 @@ async def live_connection(websocket: WebSocket):
             break
     user = db.users_by_token.get(request["token"], None)
     if user is None:
-        raise AuthError("invalid token")
+        await websocket.close()
+        return
     print("/api/live - Handshake -", user.name)
     # Begin subscription loop
     connection = Connection(user, websocket)
     try:
         while True:
             await handle_ws_request(connection, await websocket.receive_json())
-    except:
+    finally:
         for pool in connection.pools:
             pool.discard(connection)
 
@@ -437,32 +599,111 @@ async def status(request: AuthRequest):
     return {"status": "success", "username": request.requester.name, "gm": request.requester.is_gm}
 
 
+def validate_path(requester: User, path: str) -> Path:
+    # Make sure path is absolute
+    path: Path = Path(path)
+    if not path.is_absolute():
+        raise JsonError("not an absolute path")
+    # Resolve '..' and symlinks in path
+    path = path.resolve(strict=False)
+    # Make path relative to user root
+    if requester.is_gm:
+        user_root = FILES_ROOT
+    else:
+        user_root = FILES_ROOT / requester.name
+    path = user_root / Path(str(path)[1:])
+    # Check that path is a directory that exists
+    if not path.exists():
+        raise JsonError("path does not exist")
+    return path
+
+
+def validate_directory(requester: User, path: str) -> Path:
+    # Make sure path is absolute
+    path: Path = Path(path)
+    if not path.is_absolute():
+        raise JsonError("not an absolute path")
+    # Resolve '..' and symlinks in path
+    path = path.resolve(strict=False)
+    # Make path relative to user root
+    if requester.is_gm:
+        user_root = FILES_ROOT
+    else:
+        user_root = FILES_ROOT / requester.name
+    path = user_root / Path(str(path)[1:])
+    # Check that path is a directory that exists
+    if not path.is_dir():
+        raise JsonError("not a directory")
+    return path
+
+
+class CreateFolderRequest(AuthRequest):
+    path: str
+    name: str
+
+
+@app.post("/api/files/mkdir")
+async def files_mkdir(request: CreateFolderRequest):
+    path = validate_directory(request.requester, request.path)
+    new_path = path / request.name
+    new_path.mkdir()
+    return {"status": "success"}
+
+
+def recursive_delete(path: Path):
+    if path.is_dir():
+        for sub_path in list(path.iterdir()):
+            recursive_delete(sub_path)
+        path.rmdir()
+    else:
+        path.unlink(path)
+
+
+class DeleteFileRequest(AuthRequest):
+    path: str
+
+
+@app.post("/api/files/delete")
+async def delete_file(request: DeleteFileRequest):
+    path = validate_path(request.requester, request.path)
+    recursive_delete(path)
+    return {"status": "success"}
+
+
+@app.post("/api/files/upload")
+async def upload_file(token: str = Form(...), path: str = Form(...), file: UploadFile = File(...)):
+    requester = db.users_by_token.get(token, None)
+    if requester is None:
+        raise AuthError("invalid token")
+
+    path = validate_directory(requester, path)
+
+    # Copy file to permanent location
+    with open(path / file.filename, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    return {"status": "success"}
+
+
 class ListFilesRequest(AuthRequest):
     path: str
 
 
 @app.post("/api/files/list")
 async def list_files(request: ListFilesRequest):
-    # Make sure path is absolute
-    path = Path(request.path)
-    if not path.is_absolute():
-        return {"status": "error", "reason": "not an absolute path"}
-    # Resolve '..' and symlinks in path
-    path = path.resolve(strict=False)
+    # Validate path
+    path = validate_directory(request.requester, request.path)
     # Make path relative to user root
     if request.requester.is_gm:
         user_root = FILES_ROOT
     else:
         user_root = FILES_ROOT / request.requester.name
-    path = user_root / Path(str(path)[1:])
-    # Check that path is a directory that exists
-    if not path.is_dir():
-        return {"status": "error", "reason": "not a directory"}
     # Get list of files
     if path == user_root:
         returned_path = "/"
     else:
         returned_path = "/" + str(path.relative_to(user_root))
+
     return {
         "status": "success",
         "path": returned_path,

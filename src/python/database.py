@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import pickle
 from dataclasses import dataclass, field
+from collections import deque
 from fastapi import WebSocket
 from fastapi.encoders import jsonable_encoder
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import Optional, Set, List, Dict, Union, Iterator, Any
+from typing import Any, Dict, Deque, Iterator, List, Optional, TypeVar, Union, Set
 
 from enums import Alignment, Language, Permissions
 from utils import random_id
+
+T = TypeVar('T')
 
 
 @dataclass
@@ -62,12 +65,17 @@ class Stat:
 
 class Entry(BaseModel):
     id: str = Field(default_factory=random_id)
+    deferred_attributes: Dict[str, str] = Field(default_factory=dict)
     collections: Dict[str, str] = Field(default_factory=dict)
     permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
+    active: bool = False
+
+    def raw_setattr(self, name, value):
+        super().__setattr__(name, value)
 
     def __setattr__(self, name, value):
         db.persist_queue.add(self)
-        return super().__setattr__(name, value)
+        super().__setattr__(name, value)
 
     def __hash__(self):
         return hash(self.id)
@@ -92,7 +100,7 @@ class Entry(BaseModel):
         }))
 
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls: T, **kwargs) -> T:
         obj = cls.parse_obj(kwargs)
         obj.post_create()
         return obj
@@ -103,8 +111,30 @@ class Entry(BaseModel):
             del getattr(db, collection)[key]
         # Make sure this object isn't re-persisted after delete
         db.persist_queue.discard(self)
+        # Remove active reference
+        if db.active_entries[self.__class__.__name__] is self:
+            db.active_entries.pop(self.__class__.__name__, None)
         # Delete actual file
         (DATABASE_ROOT / self.id).unlink(missing_ok=True)
+
+    def __getstate__(self) -> Dict:
+        state = super().__getstate__()
+        attributes: Dict = state.get('__dict__')
+        if attributes is None:
+            return state
+        for name in self.deferred_attributes:
+            attribute: Entry = attributes.pop(name, None)
+            if attribute is None:
+                continue
+            attributes[name] = attribute.id
+        return state
+
+    def set_active(self):
+        previous_active_entry = db.active_entries.get(self.__class__.__name__, None)
+        if previous_active_entry is not None:
+            previous_active_entry.active = False
+        self.active = True
+        db.active_entries[self.__class__.__name__] = self
 
     def add_collection(self, collection: str, key: str):
         """
@@ -156,6 +186,7 @@ class Entry(BaseModel):
 class Database:
     # Attributes
     persist_queue: Set[Entry] = field(default_factory=set)
+    active_entries: Dict[str, Entry] = field(default_factory=dict)
     # Collections
     entries: Dict[str, Entry] = field(default_factory=dict)
     users: Dict[str, User] = field(default_factory=dict)
@@ -165,6 +196,8 @@ class Database:
     items: Dict[str, Item] = field(default_factory=dict)
     containers: Dict[str, Container] = field(default_factory=dict)
     entities: Dict[str, Entity] = field(default_factory=dict)
+    combatants: Dict[str, Combatant] = field(default_factory=dict)
+    combats: Dict[str, Combat] = field(default_factory=dict)
 
     def save(self):
         DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -177,11 +210,42 @@ class Database:
     def load(cls):
         DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
         db = cls()
+
+        # Unpickle all entries and restore collections and active mark
         for path in DATABASE_ROOT.iterdir():
-            with open(path, "rb") as pickle_file:
-                entry: Entry = pickle.load(pickle_file)
+            # Load entry
+            try:
+                with open(path, "rb") as pickle_file:
+                    entry: Entry = pickle.load(pickle_file)
+            except:
+                print("Failed to load", path)
+                continue
+            # Ensure any newly added fields are initialized
+            for field in entry.__fields__.values():
+                if not hasattr(entry, field.name):
+                    if field.default_factory is not None:
+                        default_value = field.default_factory()
+                    else:
+                        default_value = field.default
+                    entry.raw_setattr(field.name, default_value)
+                    print(f"Adding missing field '{field.name}' to entry <{entry}>")
+                    db.persist_queue.add(entry)
+            # Re-add to collections
             for collection, key in entry.collections.items():
                 getattr(db, collection)[key] = entry
+            # Re-add to active_entries mapping
+            if entry.active:
+                previous_active_entry = db.active_entries.get(entry.__class__.__name__)
+                if previous_active_entry is not None:
+                    previous_active_entry.active = False
+                db.active_entries[entry.__class__.__name__] = entry
+        # Expand deferred attributes by looking up with IDs
+        for entry in db.entries.values():
+            for attribute_name, collection_name in entry.deferred_attributes.items():
+                attribute_id: str = getattr(entry, attribute_name)
+                collection: Dict[str, Entry] = getattr(db, collection_name)
+                entry.raw_setattr(attribute_name, collection.get(attribute_id, None))
+
         return db
 
 
@@ -302,7 +366,7 @@ class Item(Entity, Container):
 class Character(Entity, Container):
     name: str
     description: str = ""
-    token_url: str = ""
+    image: str = ""
     alignment: Alignment = Alignment.NEUTRAL
     languages: Set[Language] = Field(default_factory=set)
     hp: int = 0
@@ -335,6 +399,33 @@ class User(Entry):
             if character is not None:
                 return character.languages
         return {Language.COMMON}
+
+
+@dataclass
+class Combatant:
+    name: str = "New Combatant"
+    character_id: Optional[str] = None
+    initiative: Optional[int] = None
+
+    @property
+    def character(self) -> Optional[Character]:
+        return db.characters.get(self.character_id)
+
+    @character.setter
+    def character(self, value: Optional[Character]):
+        if hasattr(value, "id"):
+            self.character_id = value.id
+        else:
+            self.character_id = None
+
+
+class Combat(Entry):
+    name: str = "New Combat"
+    combatants: Deque[Combatant] = Field(default_factory=deque)
+
+    def post_create(self):
+        super().post_create()
+        self.add_collection("combats", self.id)
 
 
 db = Database.load()

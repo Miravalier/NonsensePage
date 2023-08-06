@@ -63,6 +63,11 @@
     margin: 2px;
 }
 
+.window .titleBar .group .button:hover svg,
+.window .titleBar .group .button:hover i {
+    color: #114e94;
+}
+
 .window .content {
     margin: 2px;
 }
@@ -128,11 +133,23 @@
 }
 
 .files .item {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+    align-items: center;
     cursor: pointer;
     border-radius: 2px;
 }
 
-.files .item:hover {
+.files .item .name {
+    flex: 1;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: start;
+}
+
+.files .item .name:hover {
     background-color: #95c7ff;
 }
 
@@ -140,14 +157,36 @@
 .files .item i {
     width: 16px;
     height: 16px;
-    margin: 0 4px;
+    margin: 2px;
 }
 
-.button svg:hover,
-.button i:hover {
+svg.button:hover,
+i.button:hover,
+button:hover svg,
+button:hover i {
     cursor: pointer;
-    color: #95c7ff;
-    filter: drop-shadow(0 0 4px #57a6ff);
+    color: #154f92;
+    filter: drop-shadow(0 0 4px #5695dd);
+}
+
+.dialog .row {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: center;
+    margin: 2px;
+}
+
+.dialog .column {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    justify-content: center;
+    margin: 2px;
+}
+
+.dialog button {
+    margin: 4px;
 }
 
 .contextMenu {

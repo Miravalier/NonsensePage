@@ -1,4 +1,5 @@
 import { Vector2 } from "./vector.js";
+import { CombatTrackerWindow } from "./combat_tracker_window.js";
 import { ChatWindow } from "./chat_window.js";
 import { FileWindow } from "./file_window.js";
 import { ContextMenu } from "./contextmenu.js";
@@ -7,7 +8,13 @@ import { CharacterListWindow } from "./character_list_window.js";
 import { CheckUpdates } from "./pending_updates.js";
 
 
-$(async () => {
+window.addEventListener("load", async () => {
+    await OnLoad();
+    await Main();
+});
+
+
+async function OnLoad() {
     window.Session = Session;
     window.ApiRequest = ApiRequest;
 
@@ -34,9 +41,7 @@ $(async () => {
 
     Session.gm = response.gm;
     Session.username = response.username;
-
-    Main();
-});
+}
 
 
 async function Main() {
@@ -63,19 +68,26 @@ async function Main() {
             position: new Vector2(ev.clientX, ev.clientY),
             title: "Create Window",
             choices: {
-                "Chat": async () => {
-                    const chatWindow = new ChatWindow({
-                        title: "Char",
-                        position: new Vector2(ev.clientX, ev.clientY),
-                    });
-                    await chatWindow.loadMessages();
-                },
                 "Characters": async () => {
                     const characterListWindow = new CharacterListWindow({
                         title: "Characters",
                         position: new Vector2(ev.clientX, ev.clientY),
                     });
                     await characterListWindow.load();
+                },
+                "Chat": async () => {
+                    const chatWindow = new ChatWindow({
+                        title: "Chat",
+                        position: new Vector2(ev.clientX, ev.clientY),
+                    });
+                    await chatWindow.loadMessages();
+                },
+                "Combat Tracker": async () => {
+                    const combatTrackerWindow = new CombatTrackerWindow({
+                        title: "Combat Tracker",
+                        position: new Vector2(ev.clientX, ev.clientY),
+                    });
+                    await combatTrackerWindow.load();
                 },
                 "Files": async () => {
                     const fileWindow = new FileWindow({

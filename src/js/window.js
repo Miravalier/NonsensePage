@@ -1,4 +1,4 @@
-import { Button } from "./button.js";
+import { Button } from "./elements.js";
 import { Vector2 } from "./vector.js";
 import { Canvas } from "./canvas.js";
 import {
@@ -20,6 +20,9 @@ export class BaseWindow {
         const backgroundColor = Parameter(options.backgroundColor, "#FFFFFF");
         const classList = Parameter(options.classList, []);
         classList.push("window");
+        const resizable = Parameter(options.resizable, true);
+
+        this.on_close = [];
 
         this.minimized = false;
         this.fullscreen = false;
@@ -69,57 +72,63 @@ export class BaseWindow {
         const rightGroup = titleBar.appendChild(document.createElement("div"));
         rightGroup.className = "group";
 
-        this.minimizeButton = rightGroup.appendChild(Button("fa-window-minimize"));
-        this.minimizeButton.addEventListener("click", () => {
-            this.toggleMinimize();
-        })
+        if (resizable) {
+            this.minimizeButton = rightGroup.appendChild(Button("window-minimize"));
+            this.minimizeButton.addEventListener("click", () => {
+                this.toggleMinimize();
+            })
 
-        this.fullscreenButton = rightGroup.appendChild(Button("fa-expand-alt"));
-        this.fullscreenButton.addEventListener("click", () => {
-            this.toggleFullscreen();
-        });
+            this.fullscreenButton = rightGroup.appendChild(Button("expand-alt"));
+            this.fullscreenButton.addEventListener("click", () => {
+                this.toggleFullscreen();
+            });
+        }
 
-        this.closeButton = rightGroup.appendChild(Button("fa-window-close"));
+        this.closeButton = rightGroup.appendChild(Button("window-close"));
         this.closeButton.addEventListener("click", () => {
             this.close();
         });
 
         this.viewPort = this.container.appendChild(document.createElement("div"));
         this.viewPort.className = "viewPort";
-        this.viewPort.style.width = size.x;
-        this.viewPort.style.height = size.y;
+        if (resizable) {
+            this.viewPort.style.width = size.x;
+            this.viewPort.style.height = size.y;
+        }
 
-        const resizeHandle = this.container.appendChild(document.createElement("div"));
-        resizeHandle.className = "resizeHandle";
+        if (resizable) {
+            const resizeHandle = this.container.appendChild(document.createElement("div"));
+            resizeHandle.className = "resizeHandle";
 
-        resizeHandle.addEventListener("mousedown", ev => {
-            const xMax = window.innerWidth - (this.container.offsetLeft + this.viewPort.offsetLeft + 1);
-            const yMax = window.innerHeight - (this.container.offsetTop + this.viewPort.offsetTop + 1);
+            resizeHandle.addEventListener("mousedown", ev => {
+                const xMax = window.innerWidth - (this.container.offsetLeft + this.viewPort.offsetLeft + 1);
+                const yMax = window.innerHeight - (this.container.offsetTop + this.viewPort.offsetTop + 1);
 
-            const onDrag = ev => {
-                const xOffset = ev.clientX - this.container.offsetLeft;
-                const yOffset = ev.clientY - this.container.offsetTop;
-                const width = Bound(0, xOffset, xMax);
-                const height = Bound(0, yOffset, yMax);
-                this.viewPort.style.width = width;
-                this.viewPort.style.height = height;
-                if (this.canvas) {
-                    this.canvas.view.style.display = "none";
+                const onDrag = ev => {
+                    const xOffset = ev.clientX - this.container.offsetLeft;
+                    const yOffset = ev.clientY - this.container.offsetTop;
+                    const width = Bound(0, xOffset, xMax);
+                    const height = Bound(0, yOffset, yMax);
+                    this.viewPort.style.width = width;
+                    this.viewPort.style.height = height;
+                    if (this.canvas) {
+                        this.canvas.view.style.display = "none";
+                    }
                 }
-            }
 
-            const onDragEnd = ev => {
-                document.removeEventListener("mousemove", onDrag);
-                if (this.canvas) {
-                    this.canvas.view.width = this.viewPort.offsetWidth;
-                    this.canvas.view.height = this.viewPort.offsetHeight;
-                    this.canvas.view.style.display = null;
+                const onDragEnd = ev => {
+                    document.removeEventListener("mousemove", onDrag);
+                    if (this.canvas) {
+                        this.canvas.view.width = this.viewPort.offsetWidth;
+                        this.canvas.view.height = this.viewPort.offsetHeight;
+                        this.canvas.view.style.display = null;
+                    }
                 }
-            }
 
-            document.addEventListener("mousemove", onDrag);
-            document.addEventListener("mouseup", onDragEnd, { once: true });
-        });
+                document.addEventListener("mousemove", onDrag);
+                document.addEventListener("mouseup", onDragEnd, { once: true });
+            });
+        }
 
         const windows = document.querySelector("#windows");
         windows.appendChild(this.container);
@@ -179,6 +188,9 @@ export class BaseWindow {
 
     close() {
         this.container.remove();
+        for (let callback of this.on_close) {
+            callback()
+        }
     }
 }
 
@@ -198,4 +210,117 @@ export class ContentWindow extends BaseWindow {
         this.content = this.viewPort.appendChild(document.createElement("div"));
         this.content.className = "content";
     }
+}
+
+
+export class Dialog extends ContentWindow {
+    constructor(options) {
+        // Default resizable to false instead of true
+        options.resizable = Parameter(options.resizable, false);
+        options.title = Parameter(options.title, "New Dialog");
+        super(options);
+        this.content.classList.add("dialog");
+
+        // Add description
+        const description = Parameter(options.description, "");
+        this.description = this.content.appendChild(document.createElement("div"));
+        this.description.className = "description";
+        this.description.appendChild(document.createTextNode(description));
+
+        // Add sub elements
+        const elements = Parameter(options.elements, []);
+        this.elements = this.content.appendChild(document.createElement("div"));
+        this.elements.classList = "elements column";
+        for (let element of elements) {
+            this.addElement(this.elements, element);
+        }
+    }
+
+    /**
+     * @param {HTMLDivElement} container
+     * @param {(HTMLElement|HTMLElement[])} element
+     */
+    addElement(container, element) {
+        if (Array.isArray(element)) {
+            const subcontainer = document.createElement("div");
+            if (container.classList.contains("column")) {
+                subcontainer.className = "row";
+            }
+            else {
+                subcontainer.className = "column";
+            }
+            for (let subelement of element) {
+                this.addElement(subcontainer, subelement);
+            }
+            container.appendChild(subcontainer);
+        }
+        else {
+            container.appendChild(element);
+        }
+    }
+}
+
+
+export function ConfirmDialog(prompt) {
+    const confirmButton = Button("check");
+    confirmButton.appendChild(document.createTextNode("Confirm"));
+    const cancelButton = Button("ban");
+    cancelButton.appendChild(document.createTextNode("Cancel"));
+
+    const dialog = new Dialog({
+        title: "Confirm",
+        description: prompt,
+        elements: [
+            [confirmButton, cancelButton],
+        ],
+    });
+
+    return new Promise((resolve) => {
+        let result = false;
+        confirmButton.addEventListener("click", () => {
+            result = true;
+            dialog.close();
+        });
+        cancelButton.addEventListener("click", () => {
+            result = false;
+            dialog.close();
+        });
+        dialog.on_close.push(() => {
+            resolve(result);
+        });
+    });
+}
+
+export function ImageSelectDialog(prompt, previous) {
+    const confirmButton = Button("check");
+    confirmButton.appendChild(document.createTextNode("Confirm"));
+    const cancelButton = Button("ban");
+    cancelButton.appendChild(document.createTextNode("Cancel"));
+
+    const filePicker = document.createElement("input");
+    filePicker.type = "file";
+
+    const dialog = new Dialog({
+        title: "Confirm",
+        description: prompt,
+        elements: [
+            filePicker,
+            [confirmButton, cancelButton],
+        ],
+    });
+
+    return new Promise((resolve) => {
+        let result = false;
+        confirmButton.addEventListener("click", () => {
+            result = filePicker.files[0].name;
+            dialog.close();
+        });
+        cancelButton.addEventListener("click", () => {
+            result = false;
+            dialog.close();
+        });
+        dialog.on_close.push(() => {
+            resolve(result);
+        });
+    });
 }

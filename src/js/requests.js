@@ -1,3 +1,6 @@
+import { ErrorToast } from "./notifications.js";
+
+
 export class Session {
     static token = null;
     static gm = false;
@@ -92,6 +95,7 @@ export async function ApiRequest(endpoint, data) {
     if (Session.token !== null) {
         data.token = Session.token;
     }
+    console.log("[API REQUEST]", endpoint, data);
     const response = await fetch(`/api${endpoint}`, {
         method: 'POST',
         cache: 'no-cache',
@@ -100,13 +104,32 @@ export async function ApiRequest(endpoint, data) {
         },
         body: JSON.stringify(data),
     });
+
+    // 5XX Response, Server Error
+    if (response.status >= 500 && response.status < 600) {
+        ErrorToast("Encountered an error making an API request.");
+        throw `[API ERROR] ${response.status} ${response.statusText}`;
+    }
+
     const replyData = await response.json();
     if (response.status == 422) {
         for (let item of replyData.detail) {
             console.error(`${item.msg}: ${item.loc.slice(1).join(", ")}`);
         }
     }
-    console.log("[API REQUEST]", endpoint, data);
+
     console.log("[API REPLY]", replyData);
     return replyData;
+}
+
+
+export async function FileUpload(file, path) {
+    const formData = new FormData();
+    formData.append('token', Session.token);
+    formData.append('path', path)
+    formData.append('file', file, file.name)
+    await fetch("/api/files/upload", {
+        method: 'POST',
+        body: formData,
+    });
 }
