@@ -96,6 +96,11 @@ async def admin_create_request(request: CreateAdminRequest):
     return {"status": "success", "id": user.id}
 
 
+@app.post("/admin/list-users")
+async def admin_create_request(request: AdminConsoleRequest):
+    return {"status": "success", "users": [user.name for user in db.users_by_name.values()]}
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
