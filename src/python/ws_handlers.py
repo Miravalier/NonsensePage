@@ -1,5 +1,5 @@
 import functools
-from database import Connection
+from models import Connection
 from typing import Dict, Any
 
 

@@ -5,7 +5,18 @@ networks:
         external: false
 
 services:
-    server:
+    nonsense_db:
+        image: mongo
+        container_name: nonsense_db
+        networks:
+            - nonsense
+        restart: unless-stopped
+        ports:
+            - 27017:27017
+        volumes:
+            - /var/nonsense/db:/data/db
+
+    nonsense_server:
         build: .
         image: nonsense_server
         container_name: nonsense_server

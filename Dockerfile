@@ -1,6 +1,6 @@
 FROM python:3.10
 ENV PYTHONUNBUFFERED=1
-RUN pip install fastapi[all] uvicorn aiohttp lxml aiofiles pydantic
+RUN pip install fastapi[all] uvicorn aiohttp lxml aiofiles pydantic pymongo
 
 COPY ./src/python /app
 WORKDIR /app

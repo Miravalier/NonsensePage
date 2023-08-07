@@ -5,6 +5,7 @@ import html
 import os
 import secrets
 import shutil
+from datetime import datetime
 from fastapi import FastAPI, Request, WebSocket, Form, UploadFile, File
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -13,11 +14,13 @@ from pathlib import Path
 from pydantic import BaseModel, Field, validator
 from typing import Dict, List, Optional, Any, Tuple, Union
 
+import database
 import files
 import ws_handlers
-from database import (
-    Character, Item, db, User,
-    Connection, Pool, Combat, Combatant
+from models import (
+    Character, Item, User, Session,
+    Connection, Pool, Combat, Combatant,
+    get_pool
 )
 from enums import Alignment, Language, ListDirection, Permissions
 from errors import AuthError, JsonError
@@ -26,10 +29,6 @@ from security import check_password, hash_password
 
 
 ADMIN_HASH = hashlib.sha256(os.environ.get("ADMIN_TOKEN", "").encode()).digest()
-
-
-MESSAGE_POOL = Pool()
-COMBAT_TRACKER_POOL = Pool()
 FILES_ROOT = Path("/files")
 
 
@@ -52,24 +51,24 @@ async def json_error_handler(request: Request, exc: JsonError):
     })
 
 
-def require(expr: bool, message: str = "insufficient permission"):
+def auth_require(expr: bool, message: str = "insufficient permission"):
     if not expr:
         raise AuthError(message)
     return expr
 
 
+def require(expr, message: str = "unknown error"):
+    if not expr:
+        raise JsonError(message)
+    return expr
+
+
 def get_character(id: str) -> Character:
-    character = db.characters.get(id)
-    if character is None:
-        raise JsonError("invalid character id")
-    return character
+    return require(database.characters.get(id), "invalid character id")
 
 
 def get_item(id: str) -> Item:
-    item = db.items.get(id)
-    if item is None:
-        raise JsonError("invalid item id")
-    return item
+    return require(database.items.get(id), "invalid item id")
 
 
 class AdminConsoleRequest(BaseModel):
@@ -90,15 +89,15 @@ class CreateAdminRequest(AdminConsoleRequest):
 
 @app.post("/admin/create")
 async def admin_create_request(request: CreateAdminRequest):
-    if request.username in db.users_by_name:
+    if database.users.get({"name": request.username}):
         raise JsonError("username taken")
-    user = User.create(name=request.username, hashed_password=hash_password(request.password), is_gm=True)
+    user: User = database.users.create({"name": request.username, "hashed_password": hash_password(request.password), "is_gm": True})
     return {"status": "success", "id": user.id}
 
 
 @app.post("/admin/list-users")
 async def admin_create_request(request: AdminConsoleRequest):
-    return {"status": "success", "users": [user.name for user in db.users_by_name.values()]}
+    return {"status": "success", "users": [user.name for user in database.users.find()]}
 
 
 class LoginRequest(BaseModel):
@@ -109,7 +108,7 @@ class LoginRequest(BaseModel):
 @app.post("/api/login")
 async def login(request: LoginRequest):
     # Find the requested user by username
-    user = db.users_by_name.get(request.username, None)
+    user: User = database.users.get({"name": request.username})
     if user is None:
         raise AuthError("invalid username or password")
 
@@ -118,9 +117,13 @@ async def login(request: LoginRequest):
         raise AuthError("invalid username or password")
 
     # Generate a token and create a session
-    token = secrets.token_hex(16)
-    user.add_collection("users_by_token", token)
-    return {"status": "success", "token": token, "gm": user.is_gm}
+    auth_token = secrets.token_hex(16)
+    database.sessions.create({
+        "auth_token": auth_token,
+        "user_id": user.id,
+        "last_auth_date": datetime.utcnow(),
+    })
+    return {"status": "success", "token": auth_token, "gm": user.is_gm}
 
 
 class AuthRequest(BaseModel):
@@ -128,9 +131,14 @@ class AuthRequest(BaseModel):
 
     @validator('requester', pre=True)
     def resolve_requester(cls, value):
-        user = db.users_by_token.get(value, None)
-        if user is None:
+        session: Session = database.sessions.get({"auth_token": value})
+        if session is None:
             raise AuthError("invalid token")
+
+        user: User = database.users.get(session.user_id)
+        if user is None:
+            raise AuthError("valid token for deleted user")
+
         return user
 
 
@@ -139,11 +147,13 @@ class GMRequest(BaseModel):
 
     @validator('requester', pre=True)
     def resolve_requester(cls, value):
-        user = db.users_by_token.get(value, None)
-        if user is None:
-            raise AuthError("invalid token")
-        if not user.is_gm:
-            raise AuthError("insufficient permission")
+        session: Session = database.sessions.get({"auth_token": value})
+        auth_require(session is not None, "invalid token")
+
+        user: User = database.users.get(session.user_id)
+        auth_require(user is not None, "valid token for deleted user")
+        auth_require(user.is_gm, "insufficient permission, requires GM")
+
         return user
 
 
@@ -154,9 +164,9 @@ class UserCreateRequest(GMRequest):
 
 @app.post("/api/user/create")
 async def user_create(request: UserCreateRequest):
-    if request.username in db.users_by_name:
+    if database.users.get({"name": request.username}):
         raise JsonError("username taken")
-    user = User.create(name=request.username, hashed_password=hash_password(request.password))
+    user: User = database.users.create({"name": request.username, "hashed_password": hash_password(request.password)})
     return {"status": "success", "id": user.id}
 
 
@@ -166,10 +176,10 @@ class ItemDeleteRequest(AuthRequest):
 
 @app.post("/api/item/delete")
 async def item_delete(request: ItemDeleteRequest):
-    item = get_item(request.id)
+    item: Item = database.items.get(request.id)
     if not request.requester.is_gm:
-        require(item.has_permission(request.requester.id, "*", Permissions.OWNER))
-    item.delete()
+        auth_require(item.has_permission(request.requester.id, "*", Permissions.OWNER))
+    database.items.delete(item.id)
     return {"status": "success"}
 
 
@@ -205,7 +215,7 @@ class CharacterDeleteRequest(AuthRequest):
 async def character_delete(request: CharacterDeleteRequest):
     character = get_character(request.id)
     if not request.requester.is_gm:
-        require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
+        auth_require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
     character.delete()
     return {"status": "success"}
 
@@ -233,7 +243,7 @@ class CharacterUpdateRequest(AuthRequest):
 async def character_update(request: CharacterUpdateRequest):
     character = get_character(request.id)
     if not request.requester.is_gm:
-        require(character.has_permission(request.requester.id, "*", Permissions.WRITE))
+        auth_require(character.has_permission(request.requester.id, "*", Permissions.WRITE))
     if request.sheet_type is not None:
         character.sheet_type = request.sheet_type
     if request.name is not None:
@@ -304,10 +314,10 @@ async def character_get(request: CharacterGetRequest):
 async def character_list(request: AuthRequest):
     characters = []
     if request.requester.is_gm:
-        for character in db.characters.values():
+        for character in database.characters.find():
             characters.append((character.id, character.name))
     else:
-        for character in db.characters.values():
+        for character in database.characters.find():
             if character.has_permission(request.requester.id, level=Permissions.READ):
                 characters.append((character.id, character.name))
     return {"status": "success", "characters": characters}
@@ -325,28 +335,15 @@ async def combat_new(request: NewCombatRequest):
 
 
 class GetCombatRequest(AuthRequest):
-    combat_id: Optional[str]
-    create: Optional[bool]
+    combat_id: str
 
 
 @app.post("/api/combat/get")
 async def combat_get(request: GetCombatRequest):
-    print("Active Entries", db.active_entries)
-
-    if request.combat_id is None:
-        combat = db.active_entries.get("Combat")
-    else:
-        combat = db.combats.get(request.combat_id)
+    combat = database.combats.get(request.combat_id)
 
     if combat is None:
-        if request.create:
-            combat = Combat.create(name="New Combat")
-            combat.set_active()
-        else:
-            raise JsonError("invalid combat id")
-
-    if not request.requester.is_gm:
-        require(combat.active)
+        raise JsonError("invalid combat id")
 
     return {
         "status": "success",
@@ -365,51 +362,15 @@ async def combat_get(request: GetCombatRequest):
     }
 
 
-class AddCombatantRequest(GMRequest):
-    name: str
-    initiative: Optional[int]
-    character_id: Optional[str]
-    combat_id: Optional[str]
-
-
-@app.post("/api/combat/add-combatant")
-async def combat_add_combatant(request: AddCombatantRequest):
-    print("Active Entries", db.active_entries)
-
-    if request.combat_id is None:
-        combat = db.active_entries.get("Combat")
-    else:
-        combat = db.combats.get(request.combat_id)
-
-    if combat is None:
-        raise JsonError("invalid combat id")
-
-    combat.combatants.append(Combatant(request.name, request.character_id, request.initiative))
-    return {"status": "success"}
-
-
 @app.post("/api/combat/list")
 async def combat_list(request: AuthRequest):
     return {
         "status": "success",
         "combats": {
-            combat.id: {"name": combat.name, "active": combat.active}
-            for combat in db.combats.values()
+            combat.id: {"name": combat.name}
+            for combat in database.combats.find()
         },
     }
-
-
-class SetActiveCombatRequest(GMRequest):
-    combat_id: str
-
-
-@app.post("/api/combat/set-active")
-async def combat_set_active(request: SetActiveCombatRequest):
-    combat = db.combats.get(request.combat_id)
-    if combat is None:
-        raise JsonError("invalid combat id")
-    combat.set_active()
-    return {"status": "success"}
 
 
 class RollRequest(AuthRequest):
@@ -422,8 +383,8 @@ class RollRequest(AuthRequest):
 async def send_roll(request: RollRequest):
     # Permissions checks
     if not request.requester.is_gm and request.character_id is not None:
-        character = db.characters[request.character_id]
-        require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
+        character = require(database.characters.get(request.character_id), "character does not exist")
+        auth_require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
     # Create message
     message = messages.create(
         speaker=request.speaker,
@@ -434,7 +395,7 @@ async def send_roll(request: RollRequest):
     broadcast = jsonable_encoder(message.dict())
     broadcast["type"] = "send"
     broadcast["pool"] = "messages"
-    await MESSAGE_POOL.broadcast(broadcast)
+    await get_pool("messages").broadcast(broadcast)
     return {"status": "success", "id": message.id}
 
 
@@ -454,13 +415,13 @@ async def send_message(request: SendMessageRequest):
     # Permissions checks
     if not request.requester.is_gm:
         if request.character_id is not None:
-            character = db.characters[request.character_id]
-            require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
-            require(request.speaker == character.name)
-            require(request.language in character.languages)
+            character = require(database.characters.get(request.character_id), "character does not exist")
+            auth_require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
+            auth_require(request.speaker == character.name)
+            auth_require(request.language in character.languages)
         else:
-            require(request.speaker == request.requester.name)
-            require(request.language == Language.COMMON)
+            auth_require(request.speaker == request.requester.name)
+            auth_require(request.language == Language.COMMON)
     # Create message
     message = messages.create(
         speaker=request.speaker,
@@ -475,7 +436,7 @@ async def send_message(request: SendMessageRequest):
     foreign_broadcast = jsonable_encoder(message.foreign_dict())
     foreign_broadcast["type"] = "send"
     foreign_broadcast["pool"] = "messages"
-    for connection in MESSAGE_POOL:
+    for connection in get_pool("messages"):
         if request.language in connection.user.languages:
             await connection.send(full_broadcast)
         else:
@@ -512,11 +473,11 @@ class EditMessageRequest(AuthRequest):
 
 @app.post("/api/messages/edit")
 async def edit_message(request: EditMessageRequest):
-    require(request.requester.is_gm)
+    auth_require(request.requester.is_gm)
     message = messages.get(request.page, request.index)
     message.edit(request.content)
     broadcast = {"pool": "messages", "type": "edit", "id": message.id, "content": message.content}
-    for connection in MESSAGE_POOL:
+    for connection in get_pool("messages"):
         if message.language in connection.user.languages:
             await connection.send(broadcast)
     return {"status": "success"}
@@ -529,27 +490,12 @@ class DeleteMessageRequest(AuthRequest):
 
 @app.post("/api/messages/delete")
 async def delete_message(request: DeleteMessageRequest):
-    require(request.requester.is_gm)
+    auth_require(request.requester.is_gm)
     message = messages.get(request.page, request.index)
     message.delete()
     broadcast = {"pool": "messages", "type": "delete", "id": message.id}
-    await MESSAGE_POOL.broadcast(broadcast)
+    await get_pool("messages").broadcast(broadcast)
     return {"status": "success"}
-
-
-def get_pool(request: Dict[str, Any]):
-    # Get the pool to operate on
-    pool_name = request.get("pool")
-    if pool_name == "messages":
-        pool = MESSAGE_POOL
-    elif pool_name == "combat":
-        pool = COMBAT_TRACKER_POOL
-    else:
-        entry = db.entries.get(pool_name)
-        if entry is None:
-            raise JsonError("invalid pool name")
-        pool = entry.pool
-    return pool
 
 
 async def handle_ws_request(connection: Connection, request: Dict[str, Any]):
@@ -584,10 +530,17 @@ async def live_connection(websocket: WebSocket):
         request: dict = await websocket.receive_json()
         if request.get("token"):
             break
-    user = db.users_by_token.get(request["token"], None)
+
+    session: Session = database.sessions.get({"auth_token": request["token"]})
+    if session is None:
+        await websocket.close()
+        return
+
+    user: User = database.users.get(session.user_id)
     if user is None:
         await websocket.close()
         return
+
     print("/api/live - Handshake -", user.name)
     # Begin subscription loop
     connection = Connection(user, websocket)
@@ -677,9 +630,13 @@ async def delete_file(request: DeleteFileRequest):
 
 @app.post("/api/files/upload")
 async def upload_file(token: str = Form(...), path: str = Form(...), file: UploadFile = File(...)):
-    requester = db.users_by_token.get(token, None)
-    if requester is None:
+    session: Session = database.sessions.get({"auth_token": token})
+    if session is None:
         raise AuthError("invalid token")
+
+    requester: User = database.users.get(session.user_id)
+    if requester is None:
+        raise AuthError("valid token for deleted user")
 
     path = validate_directory(requester, path)
 
@@ -720,9 +677,3 @@ async def list_files(request: ListFilesRequest):
             for subpath in path.iterdir()
         ]
     }
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    print("Saving database ...")
-    db.save()

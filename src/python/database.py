@@ -1,431 +1,95 @@
-from __future__ import annotations
+import pymongo
+from bson import ObjectId
+from pydantic import BaseModel
+from pymongo.collection import Collection
+from typing import List, Union
 
-import pickle
-from dataclasses import dataclass, field
-from collections import deque
-from fastapi import WebSocket
-from fastapi.encoders import jsonable_encoder
-from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import Any, Dict, Deque, Iterator, List, Optional, TypeVar, Union, Set
-
-from enums import Alignment, Language, Permissions
-from utils import random_id
-
-T = TypeVar('T')
+import models
 
 
-@dataclass
-class Connection:
-    user: User
-    websocket: WebSocket
-    pools: Set[Pool] = field(default_factory=set)
-
-    async def send(self, jsonable):
-        await self.websocket.send_json(jsonable)
-
-    def __hash__(self):
-        return hash(id(self))
-
-
-class Pool:
-    def __init__(self):
-        self.connections: Set[Connection] = set()
-
-    def add(self, connection: Connection):
-        self.connections.add(connection)
-
-    def discard(self, connection: Connection):
-        self.connections.discard(connection)
-
-    async def broadcast(self, obj: Dict[str, Any]):
-        for connection in self.connections:
-            await connection.send(obj)
-
-    def __iter__(self) -> Iterator[Connection]:
-        return iter(self.connections)
-
-    def __hash__(self):
-        return hash(id(self))
-
-
-DATABASE_ROOT = Path("/data/db/")
-ENTRY_POOLS: Dict[str, Pool] = {}
-
-
-def new_permissions():
-    return {"*": {"*": Permissions.NONE}}
-
-
-@dataclass
-class Stat:
-    name: str
-    value: Union[int,str]
-
-
-class Entry(BaseModel):
-    id: str = Field(default_factory=random_id)
-    deferred_attributes: Dict[str, str] = Field(default_factory=dict)
-    collections: Dict[str, str] = Field(default_factory=dict)
-    permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
-    active: bool = False
-
-    def raw_setattr(self, name, value):
-        super().__setattr__(name, value)
-
-    def __setattr__(self, name, value):
-        db.persist_queue.add(self)
-        super().__setattr__(name, value)
-
-    def __hash__(self):
-        return hash(self.id)
-
-    def post_create(self):
-        self.add_collection("entries", self.id)
-        db.persist_queue.add(self)
-
-    @property
-    def pool(self):
-        pool = ENTRY_POOLS.get(self.id)
-        if pool is None:
-            pool = Pool()
-            ENTRY_POOLS[self.id] = pool
-        return pool
-
-    async def broadcast_update(self):
-        await self.pool.broadcast(jsonable_encoder({
-            "pool": self.id,
-            "type": "update",
-            "entry": self.dict()
-        }))
-
-    @classmethod
-    def create(cls: T, **kwargs) -> T:
-        obj = cls.parse_obj(kwargs)
-        obj.post_create()
+def _jsonify_oid(obj: Union[dict, ObjectId, None]):
+    if obj is None:
+        return None
+    elif isinstance(obj, ObjectId):
+        return obj.binary.hex()
+    else:
+        obj["id"] = obj.pop("_id").binary.hex()
         return obj
 
-    def delete(self):
-        # Remove self from any relevant collections
-        for collection, key in self.collections.items():
-            del getattr(db, collection)[key]
-        # Make sure this object isn't re-persisted after delete
-        db.persist_queue.discard(self)
-        # Remove active reference
-        if db.active_entries[self.__class__.__name__] is self:
-            db.active_entries.pop(self.__class__.__name__, None)
-        # Delete actual file
-        (DATABASE_ROOT / self.id).unlink(missing_ok=True)
 
-    def __getstate__(self) -> Dict:
-        state = super().__getstate__()
-        attributes: Dict = state.get('__dict__')
-        if attributes is None:
-            return state
-        for name in self.deferred_attributes:
-            attribute: Entry = attributes.pop(name, None)
-            if attribute is None:
-                continue
-            attributes[name] = attribute.id
-        return state
+def _prepare_filter(obj: Union[dict, str, None]):
+    if obj is None:
+        return {}
 
-    def set_active(self):
-        previous_active_entry = db.active_entries.get(self.__class__.__name__, None)
-        if previous_active_entry is not None:
-            previous_active_entry.active = False
-        self.active = True
-        db.active_entries[self.__class__.__name__] = self
+    elif isinstance(obj, str):
+        return ObjectId(obj)
 
-    def add_collection(self, collection: str, key: str):
-        """
-        Add this entry to the database in a particular collection.
-        """
-        db.persist_queue.add(self)
-        self.collections[collection] = key
-        getattr(db, collection)[key] = self
-
-    def get_permission(self, id: str = "*", field: str = "*") -> Permissions:
-        """
-        Get the permissions enum for the given ID accessing the given field
-        on this entry.
-        """
-        # Get the permissions associated with the requesting entity
-        entity_permissions = self.permissions.get(id, None)
-        if entity_permissions is None:
-            entity_permissions = self.permissions.get("*", {"*": Permissions.NONE})
-        # Get the permission associated with the exact field
-        field_permission = entity_permissions.get(field, None)
-        if field_permission is None:
-            field_permission = entity_permissions.get("*", Permissions.NONE)
-        # Resolve inherited permissions for specific IDs
-        if id != "*" and field_permission == Permissions.INHERIT:
-            return self.get_permission("*", field)
-        return field_permission
-
-    def set_permission(self, id: str = "*", field: str = "*", level: Permissions = Permissions.READ):
-        if id not in self.permissions:
-            self.permissions[id] = {"*": Permissions.INHERIT}
-        self.permissions[id][field] = level
-
-    def has_permission(self, id: str = "*", field: str = "*", level: Permissions = Permissions.READ) -> bool:
-        permission = self.get_permission(id, field)
-        return permission >= level
-
-    def add_permission(self, id: str = "*", field: str = "*", level: Permissions = Permissions.READ):
-        if not self.has_permission(id, field, level):
-            self.set_permission(id, field, level)
-
-    def clear_permissions(self, id: str = "*"):
-        if id == "*":
-            self.permissions[id] = {"*": Permissions.NONE}
-        else:
-            self.permissions.pop(id, None)
+    else:
+        id = obj.pop("id", None)
+        if id is not None:
+            obj["_id"] = ObjectId(id)
+        return obj
 
 
-@dataclass
-class Database:
-    # Attributes
-    persist_queue: Set[Entry] = field(default_factory=set)
-    active_entries: Dict[str, Entry] = field(default_factory=dict)
-    # Collections
-    entries: Dict[str, Entry] = field(default_factory=dict)
-    users: Dict[str, User] = field(default_factory=dict)
-    users_by_token: Dict[str, User] = field(default_factory=dict)
-    users_by_name: Dict[str, User] = field(default_factory=dict)
-    characters: Dict[str, Character] = field(default_factory=dict)
-    items: Dict[str, Item] = field(default_factory=dict)
-    containers: Dict[str, Container] = field(default_factory=dict)
-    entities: Dict[str, Entity] = field(default_factory=dict)
-    combatants: Dict[str, Combatant] = field(default_factory=dict)
-    combats: Dict[str, Combat] = field(default_factory=dict)
+class DocumentCollection:
+    def __init__(self, collection: Collection, model: BaseModel):
+        self.collection = collection
+        self.model = model
+        self.name = collection.name
+        self.collection.create_index("name")
 
-    def save(self):
-        DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
-        for entry in self.persist_queue:
-            with open(DATABASE_ROOT / entry.id, "wb") as pickle_file:
-                pickle.dump(entry, pickle_file)
-        self.persist_queue = set()
+    def create(self, obj):
+        obj["id"] = self.insert(obj)
+        return self.model.parse_obj(obj)
 
-    @classmethod
-    def load(cls):
-        DATABASE_ROOT.mkdir(parents=True, exist_ok=True)
-        db = cls()
+    def pre_process_filter(self, filter: dict):
+        return _prepare_filter(filter)
 
-        # Unpickle all entries and restore collections and active mark
-        for path in DATABASE_ROOT.iterdir():
-            # Load entry
-            try:
-                with open(path, "rb") as pickle_file:
-                    entry: Entry = pickle.load(pickle_file)
-            except:
-                print("Failed to load", path)
-                continue
-            # Ensure any newly added fields are initialized
-            for field in entry.__fields__.values():
-                if not hasattr(entry, field.name):
-                    if field.default_factory is not None:
-                        default_value = field.default_factory()
-                    else:
-                        default_value = field.default
-                    entry.raw_setattr(field.name, default_value)
-                    print(f"Adding missing field '{field.name}' to entry <{entry}>")
-                    db.persist_queue.add(entry)
-            # Re-add to collections
-            for collection, key in entry.collections.items():
-                getattr(db, collection)[key] = entry
-            # Re-add to active_entries mapping
-            if entry.active:
-                previous_active_entry = db.active_entries.get(entry.__class__.__name__)
-                if previous_active_entry is not None:
-                    previous_active_entry.active = False
-                db.active_entries[entry.__class__.__name__] = entry
-        # Expand deferred attributes by looking up with IDs
-        for entry in db.entries.values():
-            for attribute_name, collection_name in entry.deferred_attributes.items():
-                attribute_id: str = getattr(entry, attribute_name)
-                collection: Dict[str, Entry] = getattr(db, collection_name)
-                entry.raw_setattr(attribute_name, collection.get(attribute_id, None))
+    def post_process_result(self, document: dict):
+        return self.model.parse_obj(_jsonify_oid(document))
 
-        return db
+    def create_index(self, *args, **kwargs):
+        self.collection.create_index(*args, **kwargs)
+
+    def get(self, filter: Union[dict, str]) -> BaseModel:
+        return self.post_process_result(self.collection.find_one(self.pre_process_filter(filter)))
+
+    def find(self, filter: dict = None, *args, **kwargs) -> List[BaseModel]:
+        return [self.post_process_result(document) for document in self.collection.find(self.pre_process_filter(filter), *args, **kwargs)]
+
+    def delete(self, filter: dict = None, *args, **kwargs):
+        return self.collection.delete_one(self.pre_process_filter(filter), *args, **kwargs).deleted_count != 0
+
+    def multiple_delete(self, filter: dict = None, *args, **kwargs):
+        return self.collection.delete_many(self.pre_process_filter(filter), *args, **kwargs).deleted_count
+
+    def update(self, filter: dict, update: dict, *args, **kwargs):
+        self.collection.update_one(self.pre_process_filter(filter), update, *args, **kwargs)
+
+    def multiple_update(self, filter: dict, update: dict, *args, **kwargs):
+        self.collection.update_many(self.pre_process_filter(filter), update, *args, **kwargs)
+
+    def upsert(self, filter: dict, update: dict, *args, **kwargs):
+        return _jsonify_oid(self.collection.update_one(self.pre_process_filter(filter), update, *args, **kwargs, upsert=True).upserted_id)
+
+    def insert(self, *args, **kwargs) -> str:
+        return _jsonify_oid(self.collection.insert_one(*args, **kwargs).inserted_id)
+
+    def multiple_insert(self, *args, **kwargs) -> List[str]:
+        return [_jsonify_oid(id) for id in self.collection.insert_many(*args, **kwargs).inserted_ids]
 
 
-class Entity(Entry):
-    stat_map: Dict[str, Stat] = Field(default_factory=dict)
-    stat_order: List[str] = Field(default_factory=list)
+# Mongo Client
+client = pymongo.MongoClient("mongodb://nonsense_db:27017")
+db = client.nonsense_db
 
-    def post_create(self):
-        super().post_create()
-        self.add_collection("entities", self.id)
+# Collections
+characters = DocumentCollection(db.characters, models.Character)
+items = DocumentCollection(db.items, models.Item)
+users = DocumentCollection(db.users, models.User)
+combats = DocumentCollection(db.combats, models.Combat)
 
-    def set_stat(self, name: str, value: Union[str, int, None]):
-        if value is None:
-            if name in self.stat_map:
-                self.stat_order.remove(name)
-                self.stat_map.pop(name)
-        else:
-            stat = self.stat_map.get(name)
-            if stat is None:
-                self.stat_order.append(name)
-                self.stat_map[name] = Stat()
-            else:
-                stat.value = value
-        db.persist_queue.add(self)
+sessions = DocumentCollection(db.sessions, models.Session)
+sessions.create_index("auth_token")
+sessions.create_index("last_auth_date", expireAfterSeconds=86400)
 
-    def move_stat_up(self, id: str):
-        index = self.stat_order.index(id)
-        if len(self.stat_order) <= 1:
-            return
-        if index == 0:
-            return
-        previous = self.stat_order[index - 1]
-        self.stat_order[index - 1] = self.stat_order[index]
-        self.stat_order[index] = previous
-        db.persist_queue.add(self)
-
-    def move_stat_down(self, id: str):
-        index = self.stat_order.index(id)
-        if len(self.stat_order) <= 1:
-            return
-        if index == len(self.stat_order) - 1:
-            return
-        next = self.stat_order[index + 1]
-        self.stat_order[index + 1] = self.stat_order[index]
-        self.stat_order[index] = next
-        db.persist_queue.add(self)
-
-
-class Container(Entry):
-    item_order: List[str] = Field(default_factory=list)
-
-    def post_create(self):
-        super().post_create()
-        self.add_collection("containers", self.id)
-
-    def delete(self):
-        for item in self.items:
-            item.container_id = None
-            item.delete()
-        super().delete()
-
-    @property
-    def stats(self):
-        for stat in self.stat_order:
-            yield self.stat_map[stat]
-
-    @property
-    def items(self):
-        for id in self.item_order:
-            yield db.items[id]
-
-    def create_item(self, name: str = "New Item", description: str = "") -> Item:
-        item = Item.create(name=name, description=description, container_id=self.id)
-        self.item_order.append(item.id)
-        db.persist_queue.add(self)
-        return item
-
-    def move_item_up(self, id: str):
-        index = self.item_order.index(id)
-        if len(self.item_order) <= 1:
-            return
-        if index == 0:
-            return
-        previous = self.item_order[index - 1]
-        self.item_order[index - 1] = self.item_order[index]
-        self.item_order[index] = previous
-        db.persist_queue.add(self)
-
-    def move_item_down(self, id: str):
-        index = self.item_order.index(id)
-        if len(self.item_order) <= 1:
-            return
-        if index == len(self.item_order) - 1:
-            return
-        next = self.item_order[index + 1]
-        self.item_order[index + 1] = self.item_order[index]
-        self.item_order[index] = next
-        db.persist_queue.add(self)
-
-
-class Item(Entity, Container):
-    name: str
-    description: str = ""
-    container_id: Optional[str] = None
-
-    def post_create(self):
-        super().post_create()
-        self.add_collection("items", self.id)
-
-    def delete(self):
-        container = db.containers.get(self.container_id, None)
-        if container is not None:
-            container.item_order.remove(self.id)
-            db.persist_queue.add(container)
-        super().delete()
-
-
-class Character(Entity, Container):
-    name: str
-    description: str = ""
-    image: str = ""
-    alignment: Alignment = Alignment.NEUTRAL
-    languages: Set[Language] = Field(default_factory=set)
-    hp: int = 0
-    max_hp: int = 0
-    size: int = 1
-    scale: float = 1.0
-    sheet_type: str = "Generic"
-
-    def post_create(self):
-        super().post_create()
-        self.add_collection("characters", self.id)
-        self.languages.add(Language.COMMON)
-
-
-class User(Entry):
-    name: str
-    hashed_password: bytes
-    is_gm: bool = False
-    character_id: Optional[str] = None
-
-    def post_create(self):
-        super().post_create()
-        self.add_collection("users", self.id)
-        self.add_collection("users_by_name", self.name)
-
-    @property
-    def languages(self):
-        if self.character_id is not None:
-            character = db.characters.get(self.character_id, None)
-            if character is not None:
-                return character.languages
-        return {Language.COMMON}
-
-
-@dataclass
-class Combatant:
-    name: str = "New Combatant"
-    character_id: Optional[str] = None
-    initiative: Optional[int] = None
-
-    @property
-    def character(self) -> Optional[Character]:
-        return db.characters.get(self.character_id)
-
-    @character.setter
-    def character(self, value: Optional[Character]):
-        if hasattr(value, "id"):
-            self.character_id = value.id
-        else:
-            self.character_id = None
-
-
-class Combat(Entry):
-    name: str = "New Combat"
-    combatants: Deque[Combatant] = Field(default_factory=deque)
-
-    def post_create(self):
-        super().post_create()
-        self.add_collection("combats", self.id)
-
-
-db = Database.load()

@@ -105,3 +105,6 @@ class PcgEngine:
         engine.state = self.state
         engine.inc = self.inc
         return engine
+
+
+engine = PcgEngine()

@@ -1,0 +1,171 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from collections import deque
+from fastapi import WebSocket
+from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel, Field
+from typing import Any, Dict, Iterator, List, Optional, Union, Set
+
+from enums import Alignment, Language, Permissions
+
+
+@dataclass
+class Connection:
+    user: User
+    websocket: WebSocket
+    pools: Set[Pool] = field(default_factory=set)
+
+    async def send(self, jsonable):
+        await self.websocket.send_json(jsonable)
+
+    def __hash__(self):
+        return hash(id(self))
+
+
+class Pool:
+    def __init__(self):
+        self.connections: Set[Connection] = set()
+
+    def add(self, connection: Connection):
+        self.connections.add(connection)
+
+    def discard(self, connection: Connection):
+        self.connections.discard(connection)
+
+    async def broadcast(self, obj: Dict[str, Any]):
+        for connection in self.connections:
+            await connection.send(obj)
+
+    def __iter__(self) -> Iterator[Connection]:
+        return iter(self.connections)
+
+    def __hash__(self):
+        return hash(id(self))
+
+
+MESSAGE_POOL = Pool()
+COMBAT_TRACKER_POOL = Pool()
+EVENT_POOLS: Dict[str, Pool] = {}
+
+
+def get_pool(request: Dict[str, Any]):
+    # Get the pool to operate on
+    pool_name = request.get("pool")
+    pool = EVENT_POOLS.get(pool_name)
+    if pool is None:
+        pool = Pool()
+        EVENT_POOLS[pool_name] = pool
+    return pool
+
+
+def new_permissions():
+    return {"*": {"*": Permissions.NONE}}
+
+
+class Stat(BaseModel):
+    value: Union[int, float, str, bool]
+    min: Optional[int] = None
+    max: Optional[int] = None
+
+
+class Session(BaseModel):
+    id: str
+    auth_token: str
+    user_id: str
+    last_auth_date: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Entry(BaseModel):
+    id: str
+    name: Optional[str] = None
+    permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
+    collection: Optional[Any] = None
+
+    def __hash__(self):
+        return hash(self.id)
+
+    @property
+    def pool(self):
+        return get_pool(self.id)
+
+    async def broadcast_update(self):
+        await self.pool.broadcast(jsonable_encoder({
+            "pool": self.id,
+            "type": "update",
+            "entry": self.dict()
+        }))
+
+    def get_permission(self, id: str = "*", field: str = "*") -> Permissions:
+        """
+        Get the permissions enum for the given ID accessing the given field
+        on this entry.
+        """
+        # Get the permissions associated with the requesting entity
+        entity_permissions = self.permissions.get(id, None)
+        if entity_permissions is None:
+            entity_permissions = self.permissions.get("*", {"*": Permissions.INHERIT})
+        # Get the permission associated with the exact field
+        field_permission = entity_permissions.get(field, None)
+        if field_permission is None:
+            field_permission = entity_permissions.get("*", Permissions.INHERIT)
+        # Resolve inherited permissions for specific IDs
+        if id != "*" and field_permission == Permissions.INHERIT:
+            return self.get_permission("*", field)
+        return field_permission
+
+    def has_permission(self, id: str = "*", field: str = "*", level: Permissions = Permissions.READ) -> bool:
+        return self.get_permission(id, field) >= level
+
+
+class Entity(Entry):
+    stat_map: Dict[str, Stat] = Field(default_factory=dict)
+    stat_order: List[str] = Field(default_factory=list)
+
+    @property
+    def stats(self):
+        for stat_name in self.stat_order:
+            yield self.stat_map[stat_name]
+
+
+class Container(Entry):
+    item_map: Dict[str, Item] = Field(default_factory=dict)
+    item_order: List[str] = Field(default_factory=list)
+
+    @property
+    def items(self):
+        for item_name in self.item_order:
+            yield self.item_map[item_name]
+
+
+class Item(Entity, Container):
+    description: str = ""
+
+
+class Character(Entity, Container):
+    description: str = ""
+    image: str = ""
+    alignment: Alignment = Alignment.NEUTRAL
+    languages: List[Language] = Field(default_factory=list)
+    hp: int = 0
+    max_hp: int = 0
+    size: int = 1
+    scale: float = 1.0
+    sheet_type: str = "Generic"
+
+
+class User(Entry):
+    hashed_password: bytes
+    is_gm: bool = False
+    character_id: Optional[str] = None
+    auth_tokens: List[str] = Field(default_factory=list)
+
+
+class Combatant(Entry):
+    character_id: Optional[str] = None
+    initiative: Optional[int] = None
+
+
+class Combat(Entry):
+    combatants: List[Combatant] = Field(default_factory=list)
