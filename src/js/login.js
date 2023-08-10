@@ -9,11 +9,12 @@ window.addEventListener("load", async () => {
     Session.token = localStorage.getItem("token");
     if (Session.token) {
         const response = await ApiRequest("/status");
-        console.log("Auth Status", response);
-
         if (response.status === "success") {
             console.log("Auth successful, redirecting to main application")
             window.location.href = "/";
+        }
+        else {
+            localStorage.removeItem("token");
         }
     }
 

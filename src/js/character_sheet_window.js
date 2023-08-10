@@ -36,12 +36,10 @@ export class CharacterSheetWindow extends ContentWindow {
         const sheet = new sheetClass(characterData.id, this);
         sheet.addListeners();
         sheet.update(characterData);
-        Object.assign(sheet.cachedData, characterData);
 
         // Set up update watcher
         this.subscription = await Subscribe(id, async updateData => {
-            sheet.update(updateData.entry);
-            Object.assign(sheet.cachedData, updateData.entry);
+            sheet.update(updateData.changes);
         });
     }
 }

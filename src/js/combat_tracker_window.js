@@ -21,17 +21,31 @@ export class CombatTrackerWindow extends ContentWindow {
     async load() {
         this.titleNode.textContent = "Combat Tracker";
 
-        const response = await ApiRequest("/combat/get", { "create": true });
-
+        let response = await ApiRequest("/combat/list");
         if (response.status != "success") {
             ErrorToast(`Combat tracker failed to load.`);
             this.close();
             return;
         }
 
+        let combats;
+        if (response.combats.length > 0) {
+            combats = response.combats;
+        }
+        else {
+            response = await ApiRequest("/combat/create", { name: "New Combat" });
+            if (response.status != "success") {
+                ErrorToast(`Combat tracker failed to create.`);
+                this.close();
+                return;
+            }
+            combats = [response.combat];
+        }
+
         // Use response
-        for (const combatant of response.combat.combatants) {
-            combatant.character_id;
+        const combat = combats[0];
+        for (const combatant of combat.combatants) {
+            console.log("Combatant", combatant);
         }
 
         // Set up update watcher

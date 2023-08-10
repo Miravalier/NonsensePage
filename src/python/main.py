@@ -5,6 +5,7 @@ import html
 import os
 import secrets
 import shutil
+import starlette.websockets
 from datetime import datetime
 from fastapi import FastAPI, Request, WebSocket, Form, UploadFile, File
 from fastapi.encoders import jsonable_encoder
@@ -12,17 +13,16 @@ from fastapi.responses import JSONResponse
 from hmac import compare_digest
 from pathlib import Path
 from pydantic import BaseModel, Field, validator
-from typing import Dict, List, Optional, Any, Tuple, Union
+from typing import Dict, Optional, Any
 
 import database
 import files
 import ws_handlers
 from models import (
     Character, Item, User, Session,
-    Connection, Pool, Combat, Combatant,
-    get_pool
+    Connection, Combat, get_pool
 )
-from enums import Alignment, Language, ListDirection, Permissions
+from enums import Alignment, Language, Permissions
 from errors import AuthError, JsonError
 from messages import messages
 from security import check_password, hash_password
@@ -185,7 +185,7 @@ async def item_delete(request: ItemDeleteRequest):
 
 class CharacterCreateRequest(AuthRequest):
     name: str
-    alignment: Optional[Alignment]
+    alignment: Optional[Alignment] = None
 
 
 @app.post("/api/character/create")
@@ -199,7 +199,7 @@ async def character_create(request: CharacterCreateRequest):
             main_character = True
         else:
             request.alignment = Alignment.ALLY
-    character = Character.create(name=request.name, alignment=request.alignment)
+    character = database.characters.create({"name": request.name, "alignment": request.alignment})
     if not request.requester.is_gm:
         character.set_permission(request.requester.id, "*", Permissions.OWNER)
         if main_character:
@@ -216,27 +216,13 @@ async def character_delete(request: CharacterDeleteRequest):
     character = get_character(request.id)
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
-    character.delete()
+    database.characters.delete(character.id)
     return {"status": "success"}
 
 
 class CharacterUpdateRequest(AuthRequest):
     id: str
-    sheet_type: Optional[str]
-    name: Optional[str]
-    image: Optional[str]
-    alignment: Optional[Alignment]
-    description: Optional[str]
-    hp: Optional[int]
-    max_hp: Optional[int]
-    size: Optional[int]
-    scale: Optional[float]
-    add_languages: Optional[List[Language]]
-    remove_languages: Optional[List[Language]]
-    set_stats: Optional[Dict[str, Union[str, int, None]]]
-    move_stat: Optional[Tuple[str, ListDirection]]
-    create_item: Optional[str]
-    move_item: Optional[Tuple[str, ListDirection]]
+    changes: Dict
 
 
 @app.post("/api/character/update")
@@ -244,48 +230,10 @@ async def character_update(request: CharacterUpdateRequest):
     character = get_character(request.id)
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.WRITE))
-    if request.sheet_type is not None:
-        character.sheet_type = request.sheet_type
-    if request.name is not None:
-        character.name = request.name
-    if request.image is not None:
-        character.image = request.image
-    if request.alignment is not None:
-        character.alignment = request.alignment
-    if request.description is not None:
-        character.description = request.description
-    if request.hp is not None:
-        character.hp = request.hp
-    if request.max_hp is not None:
-        character.max_hp = request.max_hp
-    if request.size is not None:
-        character.size = request.size
-    if request.scale is not None:
-        character.scale = request.scale
-    if request.add_languages is not None:
-        for language in request.add_languages:
-            character.languages.add(language)
-    if request.remove_languages is not None:
-        for language in request.remove_languages:
-            character.languages.discard(language)
-    if request.set_stats is not None:
-        for name, value in request.set_stats.items():
-            character.set_stat(name, value)
-    if request.move_stat is not None:
-        stat_id, direction = request.move_stat
-        if direction == ListDirection.UP:
-            character.move_stat_up(stat_id)
-        else:
-            character.move_stat_down(stat_id)
-    if request.create_item is not None:
-        character.create_item(request.create_item)
-    if request.move_item is not None:
-        item_id, direction = request.move_item
-        if direction == ListDirection.UP:
-            character.move_item_up(item_id)
-        else:
-            character.move_item_down(item_id)
-    await character.broadcast_update()
+
+    database.characters.update(request.id, {"$set": request.changes})
+
+    await character.broadcast_update(request.changes)
     return {"status": "success"}
 
 
@@ -327,11 +275,13 @@ class NewCombatRequest(GMRequest):
     name: str
 
 
-@app.post("/api/combat/new")
+@app.post("/api/combat/create")
 async def combat_new(request: NewCombatRequest):
-    combat = Combat.create(name=request.name)
-    combat.set_active()
-    return {"status": "success"}
+    combat: Combat = database.combats.create({"name": request.name})
+    return {
+        "status": "success",
+        "combat": combat.dict()
+    }
 
 
 class GetCombatRequest(AuthRequest):
@@ -366,10 +316,10 @@ async def combat_get(request: GetCombatRequest):
 async def combat_list(request: AuthRequest):
     return {
         "status": "success",
-        "combats": {
-            combat.id: {"name": combat.name}
+        "combats": [
+            combat.dict()
             for combat in database.combats.find()
-        },
+        ],
     }
 
 
@@ -383,7 +333,7 @@ class RollRequest(AuthRequest):
 async def send_roll(request: RollRequest):
     # Permissions checks
     if not request.requester.is_gm and request.character_id is not None:
-        character = require(database.characters.get(request.character_id), "character does not exist")
+        character: Character = require(database.characters.get(request.character_id), "character does not exist")
         auth_require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
     # Create message
     message = messages.create(
@@ -402,7 +352,7 @@ async def send_roll(request: RollRequest):
 class SendMessageRequest(AuthRequest):
     speaker: str
     content: str
-    character_id: Optional[str]
+    character_id: Optional[str] = None
     language: Language = Language.COMMON
 
     @validator('content')
@@ -452,7 +402,7 @@ async def recent_messages(request: AuthRequest):
         "messages": [
             (
                 message.dict()
-                if message.language in languages else
+                if message.language == Language.COMMON or message.language in languages else
                 message.foreign_dict()
             )
             for message in messages.recent
@@ -501,11 +451,13 @@ async def delete_message(request: DeleteMessageRequest):
 async def handle_ws_request(connection: Connection, request: Dict[str, Any]):
     if not isinstance(request, dict):
         raise JsonError("invalid json request")
-    print("/api/live - Request -", request)
     message_type = request.get("type")
     if message_type == "heartbeat":
         return
-    elif message_type == "subscribe":
+
+    print("/api/live - Request -", request)
+
+    if message_type == "subscribe":
         pool = get_pool(request)
         pool.add(connection)
         connection.pools.add(pool)
@@ -547,6 +499,8 @@ async def live_connection(websocket: WebSocket):
     try:
         while True:
             await handle_ws_request(connection, await websocket.receive_json())
+    except starlette.websockets.WebSocketDisconnect:
+        pass
     finally:
         for pool in connection.pools:
             pool.discard(connection)

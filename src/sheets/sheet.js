@@ -6,9 +6,8 @@ export class Sheet {
     constructor(id, window) {
         this.id = id;
         this.window = window;
-        this.cachedData = {};
-        this.inputs = [];
-        this.images = [];
+        this.inputs = {};
+        this.images = {};
     }
 
     registerBatchedInput(selector, key) {
@@ -19,11 +18,9 @@ export class Sheet {
             return null;
         }
         element.addEventListener("input", async () => {
-            const update = { id: this.id };
-            update[key] = element.value;
-            AddCharacterUpdate(update);
+            AddCharacterUpdate(this.id, { [key]: element.value });
         });
-        this.inputs.push([key, element]);
+        this.inputs[key] = element;
         return element;
     }
 
@@ -35,11 +32,15 @@ export class Sheet {
             return null;
         }
         element.addEventListener("input", async () => {
-            const update = { id: this.id };
-            update[key] = element.value;
+            const update = {
+                id: this.id,
+                changes: {
+                    [key]: element.value,
+                }
+            };
             await ApiRequest("/character/update", update);
         });
-        this.inputs.push([key, element]);
+        this.inputs[key] = element;
         return element;
     }
 
@@ -54,29 +55,31 @@ export class Sheet {
             if (data.type != "file") {
                 return;
             }
-            const update = { id: this.id };
-            update[key] = data.path;
+            const update = {
+                id: this.id,
+                changes: {
+                    [key]: data.path,
+                }
+            };
             await ApiRequest("/character/update", update);
         });
-        this.images.push([key, element]);
+        this.images[key] = element;
         return element;
     }
 
     addListeners() {
     }
 
-    update(data) {
-        if (data.name !== this.cachedData.name) {
-            this.window.titleNode.textContent = data.name;
+    update(changes) {
+        if (changes.name) {
+            this.window.titleNode.textContent = changes.name;
         }
-        for (const [key, element] of this.inputs) {
-            if (data[key] !== this.cachedData[key]) {
-                element.value = data[key];
+        for (const [key, value] of Object.entries(changes)) {
+            if (this.inputs[key]) {
+                this.inputs[key].value = value;
             }
-        }
-        for (const [key, element] of this.images) {
-            if (data[key] !== this.cachedData[key]) {
-                element.src = data[key];
+            else if (this.images[key]) {
+                this.images[key].src = value;
             }
         }
     }

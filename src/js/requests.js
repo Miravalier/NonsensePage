@@ -114,7 +114,7 @@ export async function ApiRequest(endpoint, data) {
     const replyData = await response.json();
     if (response.status == 422) {
         for (let item of replyData.detail) {
-            console.error(`${item.msg}: ${item.loc.slice(1).join(", ")}`);
+            console.error(`Error 422: ${item.msg}: ${item.loc.slice(1).join(", ")}`);
         }
     }
 

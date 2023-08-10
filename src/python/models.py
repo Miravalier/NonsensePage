@@ -50,9 +50,12 @@ COMBAT_TRACKER_POOL = Pool()
 EVENT_POOLS: Dict[str, Pool] = {}
 
 
-def get_pool(request: Dict[str, Any]):
+def get_pool(request: Union[str, Dict[str, Any]]):
     # Get the pool to operate on
-    pool_name = request.get("pool")
+    if isinstance(request, str):
+        pool_name = request
+    else:
+        pool_name = request.get("pool")
     pool = EVENT_POOLS.get(pool_name)
     if pool is None:
         pool = Pool()
@@ -82,6 +85,7 @@ class Entry(BaseModel):
     name: Optional[str] = None
     permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
     collection: Optional[Any] = None
+    data: Dict = Field(default_factory=dict)
 
     def __hash__(self):
         return hash(self.id)
@@ -90,11 +94,11 @@ class Entry(BaseModel):
     def pool(self):
         return get_pool(self.id)
 
-    async def broadcast_update(self):
+    async def broadcast_update(self, changes: Dict):
         await self.pool.broadcast(jsonable_encoder({
             "pool": self.id,
             "type": "update",
-            "entry": self.dict()
+            "changes": changes,
         }))
 
     def get_permission(self, id: str = "*", field: str = "*") -> Permissions:
@@ -160,6 +164,7 @@ class User(Entry):
     is_gm: bool = False
     character_id: Optional[str] = None
     auth_tokens: List[str] = Field(default_factory=list)
+    languages: List[Language] = Field(default_factory=list)
 
 
 class Combatant(Entry):

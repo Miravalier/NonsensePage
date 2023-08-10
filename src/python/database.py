@@ -22,7 +22,7 @@ def _prepare_filter(obj: Union[dict, str, None]):
         return {}
 
     elif isinstance(obj, str):
-        return ObjectId(obj)
+        return {"_id": ObjectId(obj)}
 
     else:
         id = obj.pop("id", None)
@@ -46,6 +46,8 @@ class DocumentCollection:
         return _prepare_filter(filter)
 
     def post_process_result(self, document: dict):
+        if document is None:
+            return None
         return self.model.parse_obj(_jsonify_oid(document))
 
     def create_index(self, *args, **kwargs):

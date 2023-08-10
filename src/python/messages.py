@@ -7,11 +7,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel, Field
+from secrets import token_hex
 from typing import Any, Deque, Dict, List, Optional
 
 from enums import Language
 from errors import JsonError
-from utils import ctx_open, random_id
+from utils import ctx_open
 
 
 MSG_VERSION = 1
@@ -144,7 +145,7 @@ class Messages:
 
 
 class Message(BaseModel):
-    id: str = Field(default_factory=random_id)
+    id: str = Field(default_factory=token_hex)
     character_id: Optional[str]
     timestamp: datetime = Field(default_factory=datetime.now)
     flags: int = Field(default=0, exclude=True)

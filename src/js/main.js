@@ -32,8 +32,6 @@ async function OnLoad() {
     }
 
     const response = await ApiRequest("/status");
-    console.log("Auth Status", response);
-
     if (response.status !== "success") {
         console.error(response.reason);
         window.location.href = "/login";
