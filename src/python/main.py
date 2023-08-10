@@ -63,12 +63,18 @@ def require(expr, message: str = "unknown error"):
     return expr
 
 
-def get_character(id: str) -> Character:
-    return require(database.characters.get(id), "invalid character id")
-
-
-def get_item(id: str) -> Item:
-    return require(database.items.get(id), "invalid item id")
+def assert_no_mongo_operators(obj):
+    objects_to_scan = [obj]
+    while objects_to_scan:
+        current_object = objects_to_scan.pop()
+        if isinstance(current_object, dict):
+            for key, value in current_object.items():
+                if key.startswith("$"):
+                    raise JsonError("Invalid changes - contains $ operator")
+                objects_to_scan.append(value)
+        elif isinstance(current_object, list):
+            objects_to_scan.extend(current_object)
+    return obj
 
 
 class AdminConsoleRequest(BaseModel):
@@ -213,7 +219,7 @@ class CharacterDeleteRequest(AuthRequest):
 
 @app.post("/api/character/delete")
 async def character_delete(request: CharacterDeleteRequest):
-    character = get_character(request.id)
+    character = require(database.characters.get(request.id), "invalid character id")
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
     database.characters.delete(character.id)
@@ -227,7 +233,7 @@ class CharacterUpdateRequest(AuthRequest):
 
 @app.post("/api/character/update")
 async def character_update(request: CharacterUpdateRequest):
-    character = get_character(request.id)
+    character = require(database.characters.get(request.id), "invalid character id")
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.WRITE))
 
@@ -243,7 +249,7 @@ class CharacterGetRequest(AuthRequest):
 
 @app.post("/api/character/get")
 async def character_get(request: CharacterGetRequest):
-    character = get_character(request.id)
+    character = require(database.characters.get(request.id), "invalid character id")
     permission = request.requester.is_gm or character.has_permission(request.requester.id, "*", Permissions.READ)
     if permission:
         return {"status": "success", "character": character.dict()}
