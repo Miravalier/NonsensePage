@@ -64,6 +64,12 @@ export class BaseWindow {
             document.addEventListener("mouseup", onDragEnd, { once: true });
         });
 
+        if (resizable) {
+            titleBar.addEventListener("dblclick", ev => {
+                this.toggleMinimize();
+            });
+        }
+
         const leftGroup = titleBar.appendChild(document.createElement("div"));
         leftGroup.className = "group";
         leftGroup.appendChild(document.createTextNode(title));
@@ -179,12 +185,14 @@ export class BaseWindow {
         // Undo minimize
         if (this.minimized) {
             this.viewPort.style.display = null;
-            this.minimizeButton.innerHTML = `<i class="fas fa-window-minimize"></i>`;
+            this.minimizeButton.innerHTML = `<i class="fa-solid fa-window-minimize button"></i>`;
+            this.resizeHandle.style.display = null;
         }
         // Become minimized
         else {
             this.viewPort.style.display = "none";
-            this.minimizeButton.innerHTML = `<i class="fas fa-window-maximize"></i>`;
+            this.minimizeButton.innerHTML = `<i class="fa-solid fa-window-maximize button"></i>`;
+            this.resizeHandle.style.display = "none";
         }
         this.minimized = !this.minimized;
     }

@@ -1,8 +1,10 @@
-import { ContentWindow } from "./window.js";
+import * as ContextMenu from "./contextmenu.js";
+import { ContentWindow, Dialog } from "./window.js";
 import { ApiRequest, Session } from "./requests.js";
 import { ErrorToast } from "./notifications.js";
 import { CharacterSheetWindow } from "./character_sheet_window.js";
 import { AddDragListener } from "./utils.js";
+import { Html } from "./elements.js";
 
 
 export class CharacterListWindow extends ContentWindow {
@@ -21,6 +23,8 @@ export class CharacterListWindow extends ContentWindow {
     }
 
     async load() {
+        this.characters.innerHTML = "";
+
         const response = await ApiRequest("/character/list");
         if (response.status != "success") {
             ErrorToast("Failed to load character list.");
@@ -28,7 +32,7 @@ export class CharacterListWindow extends ContentWindow {
             return;
         }
 
-        for (const [id, name] of response.characters) {
+        for (let [id, name] of response.characters) {
             const element = this.characters.appendChild(document.createElement("div"));
             element.className = "character";
             element.appendChild(document.createTextNode(name));
@@ -38,7 +42,41 @@ export class CharacterListWindow extends ContentWindow {
                 });
                 await characterSheetWindow.load(id);
             });
-            AddDragListener(element, {type: "character", id, name});
+            AddDragListener(element, { type: "character", id, name });
+            ContextMenu.set(element, {
+                [`Edit ${name}`]: {
+                    "Rename": async (ev) => {
+                        const nameInput = Html(`<input type="text">`);
+                        const renameButton = Html(`<button type="button">Rename</button>`);
+                        const cancelButton = Html(`<button type="button">Cancel</button>`);
+                        const dialog = new Dialog({
+                            title: `Rename Character: ${name}`,
+                            elements: [
+                                nameInput,
+                                [renameButton, cancelButton]
+                            ]
+                        });
+                        renameButton.addEventListener("click", async () => {
+                            await ApiRequest("/character/update", {
+                                id,
+                                changes: {
+                                    name: nameInput.value,
+                                }
+                            });
+                            element.textContent = nameInput.value;
+                            name = nameInput.value;
+                            dialog.close();
+                        });
+                        cancelButton.addEventListener("click", () => {
+                            dialog.close();
+                        });
+                    },
+                    "Delete": async (ev) => {
+                        await ApiRequest("/character/delete", { id });
+                        element.remove();
+                    },
+                },
+            });
         }
     }
 }

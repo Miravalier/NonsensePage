@@ -1,38 +1,74 @@
-import { Require } from "./utils.js";
+import { Html } from "./elements.js";
+
+// Globals
+let contextMenuElement = null;
+let contextMenuResolve = null;
 
 
-export function ContextMenu(options) {
-    options = Require(options);
-    const position = Require(options.position);
-    const title = Require(options.title);
-    const choices = Require(options.choices);
+export function init() {
+    document.addEventListener("click", () => {
+        if (contextMenuElement !== null) {
+            contextMenuElement.remove();
+            contextMenuElement = null;
+            contextMenuResolve([null, null]);
+        }
+    });
+}
 
-    const container = document.createElement("div");
-    container.className = "contextMenu";
+/**
+ * @param {HTMLDivElement} element
+ * @param {string[]} options
+ * @param {(ev: MouseEvent, choice: string) => void} callback
+ */
+export function set(element, options) {
+    element.addEventListener("contextmenu", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
 
-    const titleElement = container.appendChild(document.createElement("div"));
-    titleElement.className = "title";
-    titleElement.appendChild(document.createTextNode(title));
+        if (contextMenuElement !== null) {
+            contextMenuElement.remove();
+            contextMenuElement = null;
+            contextMenuResolve([null, null]);
+        }
 
-    const choiceContainer = container.appendChild(document.createElement("div"));
-    choiceContainer.className = "choices";
+        const callbacks = {};
+        const categoryDivs = [];
+        for (const [category, suboptions] of Object.entries(options)) {
+            const optionDivs = [];
+            for (const [choice, callback] of Object.entries(suboptions)) {
+                optionDivs.push(`<div class="choice" data-choice="${category}.${choice}">${choice}</div>`);
+                callbacks[`${category}.${choice}`] = callback;
+            }
+            categoryDivs.push(`
+                <div class="title">${category}</div>
+                <div class="choices">
+                    ${optionDivs.join("")}
+                </div>
+            `);
+        }
 
-    for (let choice of Object.keys(choices)) {
-        const choiceElement = choiceContainer.appendChild(document.createElement("div"));
-        choiceElement.className = "choice";
-        choiceElement.appendChild(document.createTextNode(choice));
-        choiceElement.addEventListener("click", ev => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            const callback = choices[choice];
-            callback();
-            container.remove();
+        contextMenuElement = Html(`
+            <div class="contextMenu" style="left: ${ev.clientX}; top: ${ev.clientY};">
+                ${categoryDivs.join("")}
+            </div>
+        `);
+        document.body.appendChild(contextMenuElement);
+
+        for (let choiceElement of contextMenuElement.querySelectorAll(".choice")) {
+            choiceElement.addEventListener("click", ev => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                contextMenuElement.remove();
+                contextMenuElement = null;
+                contextMenuResolve([ev, choiceElement.dataset.choice]);
+            });
+        }
+
+        const [resolvingEvent, selectedOption] = await new Promise((resolve) => {
+            contextMenuResolve = resolve;
         });
-    }
-
-    container.style.left = position.x;
-    container.style.top = position.y;
-
-    document.body.appendChild(container);
-    return container;
+        if (selectedOption) {
+            callbacks[selectedOption](resolvingEvent);
+        }
+    });
 }

@@ -1,3 +1,14 @@
+/**
+ * @param {string} html
+ * @returns Element
+ */
+export function Html(html) {
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    return div.children.item(0);
+}
+
+
 export function Button(name, style) {
     const button = document.createElement("button");
     button.type = "button";

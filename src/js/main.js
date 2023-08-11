@@ -1,11 +1,12 @@
+import * as ContextMenu from "./contextmenu.js";
 import { Vector2 } from "./vector.js";
 import { CombatTrackerWindow } from "./combat_tracker_window.js";
 import { ChatWindow } from "./chat_window.js";
 import { FileWindow } from "./file_window.js";
-import { ContextMenu } from "./contextmenu.js";
 import { ApiRequest, Session, WsConnect } from "./requests.js";
 import { CharacterListWindow } from "./character_list_window.js";
 import { CheckUpdates } from "./pending_updates.js";
+import { Html } from "./elements.js";
 
 
 window.addEventListener("load", async () => {
@@ -17,6 +18,7 @@ window.addEventListener("load", async () => {
 async function OnLoad() {
     window.Session = Session;
     window.ApiRequest = ApiRequest;
+    window.Html = Html;
 
     window.LogOut = () => {
         localStorage.removeItem("token");
@@ -49,52 +51,38 @@ async function Main() {
     }, 5000);
     setInterval(CheckUpdates, 1000);
 
-    let contextMenu = null;
-    document.addEventListener("click", () => {
-        if (contextMenu !== null) {
-            contextMenu.remove();
-        }
-    });
-    document.addEventListener("contextmenu", ev => {
-        ev.preventDefault();
+    ContextMenu.init();
 
-        if (contextMenu !== null) {
-            contextMenu.remove();
-        }
-
-        contextMenu = new ContextMenu({
-            position: new Vector2(ev.clientX, ev.clientY),
-            title: "Create Window",
-            choices: {
-                "Characters": async () => {
-                    const characterListWindow = new CharacterListWindow({
-                        title: "Characters",
-                        position: new Vector2(ev.clientX, ev.clientY),
-                    });
-                    await characterListWindow.load();
-                },
-                "Chat": async () => {
-                    const chatWindow = new ChatWindow({
-                        title: "Chat",
-                        position: new Vector2(ev.clientX, ev.clientY),
-                    });
-                    await chatWindow.loadMessages();
-                },
-                "Combat Tracker": async () => {
-                    const combatTrackerWindow = new CombatTrackerWindow({
-                        title: "Combat Tracker",
-                        position: new Vector2(ev.clientX, ev.clientY),
-                    });
-                    await combatTrackerWindow.load();
-                },
-                "Files": async () => {
-                    const fileWindow = new FileWindow({
-                        title: "Files",
-                        position: new Vector2(ev.clientX, ev.clientY),
-                    });
-                    await fileWindow.load("/");
-                },
+    ContextMenu.set(document, {
+        "Create Window": {
+            "Characters": async (ev) => {
+                const characterListWindow = new CharacterListWindow({
+                    title: "Characters",
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await characterListWindow.load();
             },
-        });
+            "Chat": async (ev) => {
+                const chatWindow = new ChatWindow({
+                    title: "Chat",
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await chatWindow.loadMessages();
+            },
+            "Combat Tracker": async (ev) => {
+                const combatTrackerWindow = new CombatTrackerWindow({
+                    title: "Combat Tracker",
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await combatTrackerWindow.load();
+            },
+            "Files": async (ev) => {
+                const fileWindow = new FileWindow({
+                    title: "Files",
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await fileWindow.load("/");
+            },
+        },
     });
 }
