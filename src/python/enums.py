@@ -18,8 +18,3 @@ class Alignment(IntEnum):
 
 class Language(IntEnum):
     COMMON = 0
-
-
-class ListDirection(IntEnum):
-    UP = 0
-    DOWN = 1

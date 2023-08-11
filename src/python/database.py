@@ -97,4 +97,3 @@ combats = DocumentCollection(db.combats, models.Combat)
 sessions = DocumentCollection(db.sessions, models.Session)
 sessions.create_index("auth_token")
 sessions.create_index("last_auth_date", expireAfterSeconds=86400)
-

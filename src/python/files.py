@@ -166,7 +166,6 @@ def generate_thumbnail(image_path: Path, force: bool = False):
             thumbnail.save(filename=thumbnail_path)
 
 
-
 def delete_thumbnail(image_path: Path):
     thumbnail_path = THUMBNAILS_DIR / (hashlib.sha256(bytes(image_path)).hexdigest() + ".png")
     thumbnail_path.unlink(missing_ok=True)
