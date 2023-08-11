@@ -153,6 +153,15 @@
     background-color: #95c7ff;
 }
 
+.files .item .thumbnail {
+    margin: 2px;
+}
+
+.files .item .tiny.thumbnail {
+    width: 16px;
+    height: 16px;
+}
+
 .files .item svg,
 .files .item i {
     width: 16px;

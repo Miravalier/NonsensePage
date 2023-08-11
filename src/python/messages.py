@@ -4,7 +4,6 @@ import os
 from collections import deque
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from pydantic import BaseModel, Field
 from secrets import token_hex
@@ -12,7 +11,7 @@ from typing import Any, Deque, Dict, List, Optional
 
 from enums import Language
 from errors import JsonError
-from utils import ctx_open
+from utils import ctx_open, current_timestamp
 
 
 MSG_VERSION = 1
@@ -147,7 +146,7 @@ class Messages:
 class Message(BaseModel):
     id: str = Field(default_factory=token_hex)
     character_id: Optional[str]
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: int = Field(default_factory=current_timestamp)
     flags: int = Field(default=0, exclude=True)
     language: Language = Language.COMMON
     speaker: str = ""
@@ -215,9 +214,7 @@ class Message(BaseModel):
 
         return cls.parse_obj({
             "id": message_id.decode('ascii'),
-            "timestamp": datetime.fromtimestamp(
-                int.from_bytes(timestamp, 'big', signed=False)
-            ),
+            "timestamp": int.from_bytes(timestamp, 'big', signed=False),
             "flags": int.from_bytes(flags, 'big', signed=False),
             "language": Language(int.from_bytes(language, 'big', signed=False)),
             "character_id": character_id,
@@ -253,7 +250,7 @@ class Message(BaseModel):
         result[0:16] = self.id.encode('ascii')
         if self.character_id:
             result[16:32] = self.character_id.encode('ascii')
-        result[32:36] = int(self.timestamp.timestamp()).to_bytes(4, 'big', signed=False)
+        result[32:36] = self.timestamp.to_bytes(4, 'big', signed=False)
         result[36:40] = speaker_offset.to_bytes(4, 'big', signed=False)
         result[40:44] = content_offset.to_bytes(4, 'big', signed=False)
         result[44:46] = len(speaker).to_bytes(2, 'big', signed=False)

@@ -1,5 +1,10 @@
+import hashlib
 import os
 from pathlib import Path
+from wand.image import Image
+
+
+THUMBNAILS_DIR = Path("/thumbnails")
 
 
 file_extensions = {
@@ -131,13 +136,14 @@ def sniff(path: Path):
         if isinstance(signature, bytes):
             if data.startswith(signature):
                 return result
-            else:
-                continue
         else:
+            match = True
             for offset, part in signature:
                 if part != data[offset : offset + len(part)]:
-                    continue
-            return result
+                    match = False
+                    break
+            if match:
+                return result
     # Check if the sample contains non-utf-8 characters
     try:
         text = data.decode("utf-8")
@@ -148,3 +154,19 @@ def sniff(path: Path):
         return "text/unknown"
     else:
         return "binary"
+
+
+def generate_thumbnail(image_path: Path, force: bool = False):
+    thumbnail_path = THUMBNAILS_DIR / (hashlib.sha256(bytes(image_path)).hexdigest() + ".png")
+    if not force and thumbnail_path.exists():
+        return
+    with Image(filename=image_path) as image:
+        with image.clone() as thumbnail:
+            thumbnail.thumbnail(128, 128)
+            thumbnail.save(filename=thumbnail_path)
+
+
+
+def delete_thumbnail(image_path: Path):
+    thumbnail_path = THUMBNAILS_DIR / (hashlib.sha256(bytes(image_path)).hexdigest() + ".png")
+    thumbnail_path.unlink(missing_ok=True)

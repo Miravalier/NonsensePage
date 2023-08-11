@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from collections import deque
 from fastapi import WebSocket
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
@@ -84,7 +83,6 @@ class Entry(BaseModel):
     id: str
     name: Optional[str] = None
     permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
-    collection: Optional[Any] = None
     data: Dict = Field(default_factory=dict)
 
     def __hash__(self):
@@ -151,7 +149,6 @@ class Character(Entity, Container):
     description: str = ""
     image: str = ""
     alignment: Alignment = Alignment.NEUTRAL
-    languages: List[Language] = Field(default_factory=list)
     hp: int = 0
     max_hp: int = 0
     size: int = 1

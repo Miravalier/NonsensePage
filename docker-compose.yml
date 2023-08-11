@@ -24,6 +24,7 @@ services:
             - nonsense
         volumes:
             - /var/nonsense/server:/data
+            - /var/www/nonsense/thumbnails:/thumbnails
             - /var/www/nonsense/files:/files
         ports:
             - "${HTTP_PORT}:80"

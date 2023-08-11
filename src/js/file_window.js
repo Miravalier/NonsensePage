@@ -38,34 +38,21 @@ export class FileWindow extends ContentWindow {
         this.uploadFileButton.className = "upload-file";
         this.uploadFileButton.appendChild(document.createTextNode("Upload File"));
         this.uploadFileButton.addEventListener("click", () => {
-            const filePicker = document.createElement("input");
-            filePicker.type = "file";
+            if (this.filePicker) {
+                this.filePicker.remove();
+            }
+            this.filePicker = document.createElement("input");
+            this.filePicker.type = "file";
+            this.filePicker.style.display = "none";
+            this.content.appendChild(this.filePicker);
 
-            const uploadButton = document.createElement("button");
-            uploadButton.appendChild(document.createTextNode("Upload"));
-
-            const cancelButton = document.createElement("button");
-            cancelButton.appendChild(document.createTextNode("Cancel"));
-
-            const dialog = new Dialog({
-                name: "Upload File",
-                elements: [
-                    filePicker,
-                    [uploadButton, cancelButton]
-                ]
-            });
-
-            uploadButton.addEventListener("click", async () => {
-                for (let file of filePicker.files) {
+            this.filePicker.addEventListener("change", async () => {
+                for (let file of this.filePicker.files) {
                     await FileUpload(file, this.path);
                 }
                 await this.load(this.path);
-                dialog.close();
             });
-
-            cancelButton.addEventListener("click", () => {
-                dialog.close();
-            });
+            this.filePicker.click();
         });
 
         this.createFolderButton = this.buttons.appendChild(document.createElement("button"));
@@ -83,7 +70,7 @@ export class FileWindow extends ContentWindow {
             cancelButton.appendChild(document.createTextNode("Cancel"));
 
             const dialog = new Dialog({
-                name: "Create Folder",
+                title: "Create Folder",
                 elements: [
                     folderName,
                     [createButton, cancelButton]
@@ -163,9 +150,31 @@ export class FileWindow extends ContentWindow {
         });
     }
 
-    addFile(filetype, img, name, path) {
-        const icon = document.createElement("i");
-        icon.classList = `fa-solid fa-${img}`;
+    async addFile(filetype, img, name, path) {
+        let url_path = null;
+        if (Session.gm) {
+            url_path = `/files${path}`;
+        }
+        else {
+            url_path = `/files/${Session.username}${path}`;
+        }
+
+        let icon;
+        if (filetype.startsWith("image/")) {
+            const encoder = new TextEncoder();
+            let thumbnail = "/thumbnails/";
+            for (let byte of new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(url_path)))) {
+                thumbnail += byte.toString(16).padStart(2, '0');
+            }
+            thumbnail += ".png";
+            icon = document.createElement("img");
+            icon.classList = "tiny thumbnail";
+            icon.src = thumbnail;
+        }
+        else {
+            icon = document.createElement("i");
+            icon.classList = `fa-solid fa-${img}`;
+        }
 
         const item = this.files.appendChild(document.createElement("div"));
         item.className = "item file";
@@ -175,14 +184,7 @@ export class FileWindow extends ContentWindow {
         nameElement.appendChild(icon);
         nameElement.appendChild(document.createTextNode(name));
 
-        let url_path = null;
-        if (Session.gm) {
-            url_path = `/files${path}`;
-        }
-        else {
-            url_path = `/files/${Session.username}${path}`;
-        }
-        AddDragListener(nameElement, {type: "file", filetype, path: url_path});
+        AddDragListener(nameElement, { type: "file", filetype, path: url_path });
 
         const deleteButton = item.appendChild(Button("trash"));
         deleteButton.addEventListener("click", async () => {
@@ -194,12 +196,7 @@ export class FileWindow extends ContentWindow {
         });
 
         nameElement.addEventListener("click", () => {
-            if (Session.gm) {
-                window.open(`/files${path}`, path);
-            }
-            else {
-                window.open(`/files/${Session.username}${path}`, path);
-            }
+            window.open(url_path, path);
         });
     }
 }

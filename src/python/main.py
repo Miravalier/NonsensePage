@@ -374,10 +374,9 @@ async def send_message(request: SendMessageRequest):
             character = require(database.characters.get(request.character_id), "character does not exist")
             auth_require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
             auth_require(request.speaker == character.name)
-            auth_require(request.language in character.languages)
         else:
             auth_require(request.speaker == request.requester.name)
-            auth_require(request.language == Language.COMMON)
+        auth_require(request.language == Language.COMMON or request.language in request.requester.languages)
     # Create message
     message = messages.create(
         speaker=request.speaker,
@@ -393,7 +392,7 @@ async def send_message(request: SendMessageRequest):
     foreign_broadcast["type"] = "send"
     foreign_broadcast["pool"] = "messages"
     for connection in get_pool("messages"):
-        if request.language in connection.user.languages:
+        if request.language == Language.COMMON or request.language in connection.user.languages:
             await connection.send(full_broadcast)
         else:
             await connection.send(foreign_broadcast)
@@ -574,7 +573,8 @@ def recursive_delete(path: Path):
             recursive_delete(sub_path)
         path.rmdir()
     else:
-        path.unlink(path)
+        path.unlink()
+        files.delete_thumbnail(path)
 
 
 class DeleteFileRequest(AuthRequest):
@@ -626,14 +626,20 @@ async def list_files(request: ListFilesRequest):
     else:
         returned_path = "/" + str(path.relative_to(user_root))
 
+    results = [
+        (
+            files.sniff(subpath),
+            "/" + str(subpath.relative_to(user_root))
+        )
+        for subpath in path.iterdir()
+    ]
+
+    for file_type, file_path in results:
+        if file_type.startswith("image/"):
+            files.generate_thumbnail(user_root / file_path.lstrip("/"))
+
     return {
         "status": "success",
         "path": returned_path,
-        "files": [
-            (
-                files.sniff(subpath),
-                "/" + str(subpath.relative_to(user_root))
-            )
-            for subpath in path.iterdir()
-        ]
+        "files": results
     }

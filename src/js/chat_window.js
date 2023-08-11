@@ -90,9 +90,10 @@ export class ChatWindow extends ContentWindow {
         speaker.className = "speaker";
         speaker.appendChild(document.createTextNode(message.speaker));
 
+        const messageDate = new Date(message.timestamp * 1000);
         const timestamp = header.appendChild(document.createElement("div"));
         timestamp.className = "timestamp";
-        timestamp.appendChild(document.createTextNode(message.timestamp));
+        timestamp.appendChild(document.createTextNode(messageDate.toLocaleString()));
 
         const content = element.appendChild(document.createElement("div"));
         if (message.content) {
