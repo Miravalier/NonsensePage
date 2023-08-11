@@ -98,6 +98,7 @@ export class BaseWindow {
 
         if (resizable) {
             const resizeHandle = this.container.appendChild(document.createElement("div"));
+            this.resizeHandle = resizeHandle;
             resizeHandle.className = "resizeHandle";
 
             resizeHandle.addEventListener("mousedown", ev => {
@@ -140,7 +141,7 @@ export class BaseWindow {
         }
         // Undo fullscreen
         if (this.fullscreen) {
-            this.fullscreenButton.innerHTML = `<i class="fas fa-expand-alt"></i>`;
+            this.fullscreenButton.innerHTML = `<i class="fa-solid fa-expand-alt button"></i>`;
             this.container.style.position = null;
             this.container.style.width = null;
             this.container.style.height = null;
@@ -150,12 +151,13 @@ export class BaseWindow {
                 this.canvas.view.width = this.viewPort.offsetWidth;
                 this.canvas.view.height = this.viewPort.offsetHeight;
             }
+            this.resizeHandle.style.display = null;
         }
         // Become fullscreen
         else {
             this.storedWidth = this.viewPort.offsetWidth;
             this.storedHeight = this.viewPort.offsetHeight;
-            this.fullscreenButton.innerHTML = `<i class="fas fa-compress-alt"></i>`;
+            this.fullscreenButton.innerHTML = `<i class="fa-solid fa-compress-alt button"></i>`;
             this.container.style.position = "unset";
             this.container.style.width = "100%";
             this.container.style.height = "100%";
@@ -165,6 +167,7 @@ export class BaseWindow {
                 this.canvas.view.width = this.viewPort.offsetWidth;
                 this.canvas.view.height = this.viewPort.offsetHeight;
             }
+            this.resizeHandle.style.display = "none";
         }
         this.fullscreen = !this.fullscreen;
     }
