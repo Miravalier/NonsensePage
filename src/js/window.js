@@ -17,7 +17,7 @@ export class BaseWindow {
         const title = Parameter(options.title, "New Window");
         const size = Parameter(options.size, new Vector2(600, 400));
         const position = Parameter(options.position, PageCenter().subtract(size).divide(2));
-        const backgroundColor = Parameter(options.backgroundColor, "#FFFFFF");
+        const backgroundColor = Parameter(options.backgroundColor, "#324051");
         const classList = Parameter(options.classList, []);
         classList.push("window");
         const resizable = Parameter(options.resizable, true);

@@ -4,12 +4,12 @@
 
 ::-webkit-scrollbar-thumb {
     cursor: pointer;
-    background: #407abd;
+    background: #407abdb0;
     border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #4989d1;
+    background: #4989d1bd;
 }
 
 * {
@@ -17,6 +17,7 @@
     margin: 0;
     padding: 0;
     user-select: none;
+    color: #d5dde2;
 }
 
 html,
@@ -27,7 +28,7 @@ body {
 }
 
 body {
-    background-color: #222222;
+    background-color: #172027;
     display: flex;
     justify-content: center;
     align-items: center;

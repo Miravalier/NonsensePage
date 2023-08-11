@@ -10,7 +10,7 @@
     flex-flow: column nowrap;
     justify-content: flex-start;
     align-items: center;
-    border-radius: 2px;
+    border-radius: 4px;
     box-shadow: 0 0 12px #00000080;
 }
 
@@ -46,7 +46,8 @@
     flex-flow: row nowrap;
     justify-content: space-between;
     align-items: center;
-    background-color: #244e7e;
+    background-color: #4d6681a8;
+    border-radius: 4px;
 }
 
 .window .titleBar .group {
@@ -93,7 +94,7 @@
 .chat.window .message {
     display: flex;
     flex-flow: column nowrap;
-    background: #0080FF20;
+    background: #00000036;
     margin: 4px;
     padding: 0px 4px;
     border-radius: 4px;
@@ -124,7 +125,7 @@
 }
 
 .character-list .characters .character:hover {
-    background-color: #95c7ff;
+    background-color: #ffffff4f;
 }
 
 .character.window .character.sheet {
@@ -150,7 +151,7 @@
 }
 
 .files .item .name:hover {
-    background-color: #95c7ff;
+    background-color: #ffffff4f;
 }
 
 .files .item .thumbnail {
@@ -169,13 +170,35 @@
     margin: 2px;
 }
 
+input,
+textarea,
+select {
+    background: #42484d64;
+    color: #d5dde2;
+    border: solid 1px #5b6e7978;
+}
+
+button {
+    background-color: #17202780;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 2px;
+    margin: 1px;
+    border: 1px solid #8393a15c;
+}
+
+button:hover {
+    color: #ddeeff;
+    text-shadow: 0 0 10px #c6def8;
+}
+
 svg.button:hover,
 i.button:hover,
 button:hover svg,
 button:hover i {
     cursor: pointer;
-    color: #154f92;
-    filter: drop-shadow(0 0 4px #5695dd);
+    color: #ddeeff;
+    filter: drop-shadow(0 0 4px #c6def8);
 }
 
 .dialog .row {
@@ -202,7 +225,7 @@ button:hover i {
     position: absolute;
     display: flex;
     flex-flow: column nowrap;
-    background-color: white;
+    background-color: #324051;
     border-radius: 2px;
     box-shadow: 0 0 12px #00000080;
     z-index: 1;
@@ -211,7 +234,7 @@ button:hover i {
 .contextMenu .title {
     color: white;
     font-family: "Prompt", sans-serif;
-    background-color: #244e7e;
+    background-color: #4d6681a8;
     padding: 0 2px;
 }
 
@@ -220,5 +243,5 @@ button:hover i {
 }
 
 .contextMenu .choice:hover {
-    background-color: #95c7ff;
+    background-color: #ffffff4f;
 }
