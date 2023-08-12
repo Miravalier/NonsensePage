@@ -1,12 +1,15 @@
 import { ContentWindow } from "./window.js";
-import { ApiRequest, Subscribe } from "./requests.js";
+import { Vector2 } from "./vector.js";
+import { ApiRequest } from "./requests.js";
 import { Templates } from "./templates.js";
 import { ErrorToast } from "./notifications.js";
+import { Parameter } from "./utils.js";
 
 
 export class CharacterSheetWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["character"];
+        options.size = Parameter(options.size, new Vector2(540, 600));
         super(options);
     }
 

@@ -1,6 +1,7 @@
+import { Vector2 } from "./vector.js";
 import { ContentWindow } from "./window.js";
-import { ApiRequest, Subscribe, Session } from "./requests.js";
-import { DerivePcgEngine, RandomText, ParseHtml } from "./utils.js";
+import { ApiRequest, Session } from "./requests.js";
+import { Parameter, DerivePcgEngine, RandomText, ParseHtml } from "./utils.js";
 
 
 const LANGUAGES = [
@@ -11,6 +12,7 @@ const LANGUAGES = [
 export class ChatWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["chat"];
+        options.size = Parameter(options.size, new Vector2(400, 600));
         super(options);
         this.messages = {};
         this.messageContainer = this.content.appendChild(document.createElement("div"));

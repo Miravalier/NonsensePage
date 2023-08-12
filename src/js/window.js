@@ -32,8 +32,8 @@ export class BaseWindow {
 
         this.container = document.createElement("div");
         this.container.classList = classList.join(" ");
-        this.container.style.left = position.x;
-        this.container.style.top = position.y;
+        this.container.style.left = `${position.x}px`;
+        this.container.style.top = `${position.y}px`;
         this.container.style.zIndex = ++nextZIndex;
         if (this.backgroundColor !== null) {
             this.container.style.backgroundColor = backgroundColor;
@@ -55,8 +55,8 @@ export class BaseWindow {
             const yMax = window.innerHeight - (Math.ceil(this.container.offsetHeight) + 1);
 
             const onDrag = ev => {
-                this.container.style.left = Bound(0, ev.clientX - xOffset, xMax);
-                this.container.style.top = Bound(0, ev.clientY - yOffset, yMax);
+                this.container.style.left = `${Bound(0, ev.clientX - xOffset, xMax)}px`;
+                this.container.style.top = `${Bound(0, ev.clientY - yOffset, yMax)}px`;
             }
 
             const onDragEnd = ev => {
@@ -108,8 +108,8 @@ export class BaseWindow {
         this.viewPort = this.container.appendChild(document.createElement("div"));
         this.viewPort.className = "viewPort";
         if (resizable) {
-            this.viewPort.style.width = size.x;
-            this.viewPort.style.height = size.y;
+            this.viewPort.style.width = `${size.x}px`;
+            this.viewPort.style.height = `${size.y}px`;
         }
 
         if (resizable) {
@@ -126,8 +126,8 @@ export class BaseWindow {
                     const yOffset = ev.clientY - this.container.offsetTop;
                     const width = Bound(0, xOffset, xMax);
                     const height = Bound(0, yOffset, yMax);
-                    this.viewPort.style.width = width;
-                    this.viewPort.style.height = height;
+                    this.viewPort.style.width = `${width}px`;
+                    this.viewPort.style.height = `${height}px`;
                     if (this.canvas) {
                         this.canvas.view.style.display = "none";
                     }
@@ -136,8 +136,8 @@ export class BaseWindow {
                 const onDragEnd = ev => {
                     document.removeEventListener("mousemove", onDrag);
                     if (this.canvas) {
-                        this.canvas.view.width = this.viewPort.offsetWidth;
-                        this.canvas.view.height = this.viewPort.offsetHeight;
+                        this.canvas.view.width = `${this.viewPort.offsetWidth}px`;
+                        this.canvas.view.height = `${this.viewPort.offsetHeight}px`;
                         this.canvas.view.style.display = null;
                     }
                 }

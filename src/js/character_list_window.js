@@ -1,6 +1,7 @@
 import * as ContextMenu from "./contextmenu.js";
+import { Vector2 } from "./vector.js";
 import { ContentWindow, Dialog } from "./window.js";
-import { ApiRequest, Session, Subscribe } from "./requests.js";
+import { ApiRequest, Session } from "./requests.js";
 import { ErrorToast } from "./notifications.js";
 import { CharacterSheetWindow } from "./character_sheet_window.js";
 import { Parameter, AddDragListener } from "./utils.js";
@@ -11,6 +12,7 @@ export class CharacterListWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["character-list"];
         options.refreshable = Parameter(options.refreshable, true);
+        options.size = Parameter(options.size, new Vector2(300, 400));
         super(options);
         this.characters = this.content.appendChild(document.createElement("div"));
         this.characters.className = "characters";

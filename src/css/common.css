@@ -4,12 +4,12 @@
 
 ::-webkit-scrollbar-thumb {
     cursor: pointer;
-    background: #407abdb0;
+    background: #52606970;
     border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #4989d1bd;
+    background: #4989d170;
 }
 
 * {

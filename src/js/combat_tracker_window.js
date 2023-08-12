@@ -1,6 +1,7 @@
+import { Vector2 } from "./vector.js";
 import { ContentWindow } from "./window.js";
-import { ApiRequest, Subscribe } from "./requests.js";
-import { AddDropListener } from "./utils.js";
+import { ApiRequest } from "./requests.js";
+import { Parameter, AddDropListener } from "./utils.js";
 import { ErrorToast } from "./notifications.js";
 import { Html } from "./elements.js";
 
@@ -8,6 +9,7 @@ import { Html } from "./elements.js";
 export class CombatTrackerWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["combat-tracker"];
+        options.size = Parameter(options.size, new Vector2(380, 520));
         super(options);
     }
 

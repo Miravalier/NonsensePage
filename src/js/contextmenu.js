@@ -48,7 +48,7 @@ export function set(element, options) {
         }
 
         contextMenuElement = Html(`
-            <div class="contextMenu" style="left: ${ev.clientX}; top: ${ev.clientY};">
+            <div class="contextMenu" style="left: ${ev.clientX}px; top: ${ev.clientY}px;">
                 ${categoryDivs.join("")}
             </div>
         `);
