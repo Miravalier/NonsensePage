@@ -21,14 +21,6 @@ export class CharacterListWindow extends ContentWindow {
         this.createCharacterButton.addEventListener("click", async () => {
             await ApiRequest("/character/create", { name: `${Session.username}'s Character` });
         });
-        this.subscription = null;
-    }
-
-    close() {
-        if (this.subscription) {
-            this.subscription.cancel();
-        }
-        super.close();
     }
 
     async addCharacter(id, name) {
@@ -81,6 +73,7 @@ export class CharacterListWindow extends ContentWindow {
     }
 
     async load() {
+        await super.load();
         this.characters.innerHTML = "";
 
         const response = await ApiRequest("/character/list");
@@ -94,7 +87,7 @@ export class CharacterListWindow extends ContentWindow {
             await this.addCharacter(id, name);
         }
 
-        this.subscription = await Subscribe("characters", async updateData => {
+        await this.subscribe("characters", async updateData => {
             if (updateData.type == "delete") {
                 const characterDiv = this.characters.querySelector(`[data-character="${updateData.id}"]`);
                 if (characterDiv) {

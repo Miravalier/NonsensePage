@@ -302,30 +302,19 @@ async def combat_new(request: NewCombatRequest):
 
 
 class GetCombatRequest(AuthRequest):
-    combat_id: str
+    id: str
 
 
 @app.post("/api/combat/get")
 async def combat_get(request: GetCombatRequest):
-    combat = database.combats.get(request.combat_id)
+    combat = database.combats.get(request.id)
 
     if combat is None:
         raise JsonError("invalid combat id")
 
     return {
         "status": "success",
-        "combat": {
-            "id": combat.id,
-            "name": combat.name,
-            "combatants": [
-                {
-                    "name": combatant.name,
-                    "character_id": combatant.character_id,
-                    "initiative": combatant.initiative
-                }
-                for combatant in combat.combatants
-            ]
-        }
+        "combat": combat.dict(),
     }
 
 
@@ -338,6 +327,24 @@ async def combat_list(request: AuthRequest):
             for combat in database.combats.find()
         ],
     }
+
+
+class AddCombatantRequest(AuthRequest):
+    combat_id: str
+    character_id: str
+
+
+@app.post("/api/combat/add-combatant")
+async def add_combatant(request: AddCombatantRequest):
+    combat = require(database.combats.get(request.combat_id), "invalid combat id")
+    character = require(database.characters.get(request.character_id), "invalid character id")
+    combatant_id = secrets.token_hex(12)
+    database.combats.update(combat.id, {"$push": {"combatants": {
+        "id": combatant_id,
+        "character_id": character.id,
+        "name": character.name,
+    }}})
+    return {"status": "success", "id": combatant_id}
 
 
 class RollRequest(AuthRequest):

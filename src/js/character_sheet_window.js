@@ -8,17 +8,10 @@ export class CharacterSheetWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["character"];
         super(options);
-        this.subscription = null;
-    }
-
-    close() {
-        if (this.subscription) {
-            this.subscription.cancel();
-        }
-        super.close();
     }
 
     async load(id) {
+        await super.load();
         this.content.innerHTML = "";
 
         // Get character data
@@ -41,7 +34,7 @@ export class CharacterSheetWindow extends ContentWindow {
         sheet.update(characterData);
 
         // Set up update watcher
-        this.subscription = await Subscribe(id, async updateData => {
+        await this.subscribe(id, async updateData => {
             sheet.update(updateData.changes);
         });
     }

@@ -12,7 +12,6 @@ export class ChatWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["chat"];
         super(options);
-        this.subscription = null;
         this.messages = {};
         this.messageContainer = this.content.appendChild(document.createElement("div"));
         this.messageContainer.className = "messages";
@@ -30,15 +29,10 @@ export class ChatWindow extends ContentWindow {
         })
     }
 
-    close() {
-        if (this.subscription) {
-            this.subscription.cancel();
-        }
-        super.close();
-    }
+    async load() {
+        await super.load();
 
-    async loadMessages() {
-        this.subscription = await Subscribe("messages", async data => {
+        await this.subscribe("messages", async data => {
             if (data.type == "send") {
                 this.addMessage(data);
             }

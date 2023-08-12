@@ -69,7 +69,7 @@ async function Main() {
                     title: "Chat",
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
-                await chatWindow.loadMessages();
+                await chatWindow.load();
             },
             "Combat Tracker": async (ev) => {
                 const combatTrackerWindow = new CombatTrackerWindow({

@@ -1,6 +1,7 @@
 import { Button } from "./elements.js";
 import { Vector2 } from "./vector.js";
 import { Canvas } from "./canvas.js";
+import { Subscribe } from "./requests.js";
 import {
     PageCenter,
     Parameter,
@@ -24,6 +25,7 @@ export class BaseWindow {
         const refreshable = Parameter(options.refreshable, false);
 
         this.on_close = [];
+        this.subscriptions = [];
 
         this.minimized = false;
         this.fullscreen = false;
@@ -149,6 +151,19 @@ export class BaseWindow {
         windows.appendChild(this.container);
     }
 
+    async subscribe(id, callback) {
+        const subscription = await Subscribe(id, callback);
+        this.subscriptions.push(subscription);
+        return subscription;
+    }
+
+    async load() {
+        for (let subscription of this.subscriptions) {
+            subscription.cancel();
+        }
+        this.subscriptions = [];
+    }
+
     refresh() {
         console.log("Refresh");
         this.load();
@@ -212,6 +227,9 @@ export class BaseWindow {
 
     close() {
         this.container.remove();
+        for (let subscription of this.subscriptions) {
+            subscription.cancel();
+        }
         for (let callback of this.on_close) {
             callback()
         }

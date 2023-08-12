@@ -1,5 +1,6 @@
 import { GenerateId } from "./utils.js";
 import { Sheet } from "./sheet.js";
+import { Html } from "./elements.js";
 
 
 export default class GenericSheet extends Sheet {
@@ -11,12 +12,20 @@ export default class GenericSheet extends Sheet {
 
         for (const statId of data.stat_order) {
             const stat = data.stat_map[statId];
-            console.log("Stat", stat);
+            this.statContainer.appendChild(Html(`
+                <div class="stat" data-id="${stat.id}">
+                    <span class="name">${stat.name}</span>
+                </div>
+            `));
         }
 
         for (const itemId of data.item_order) {
             const item = data.item_map[itemId];
-            console.log("Item", item);
+            this.itemContainer.appendChild(Html(`
+                <div class="item" data-id="${item.id}">
+                    <span class="name">${item.name}</span>
+                </div>
+            `));
         }
     }
 
