@@ -79,7 +79,12 @@ export class Sheet {
                 this.inputs[key].value = value;
             }
             else if (this.images[key]) {
-                this.images[key].src = value;
+                if (value) {
+                    this.images[key].src = value;
+                }
+                else {
+                    this.images[key].src = "/unknown.png";
+                }
             }
         }
     }

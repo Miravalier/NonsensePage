@@ -210,6 +210,12 @@ async def character_create(request: CharacterCreateRequest):
         character.set_permission(request.requester.id, "*", Permissions.OWNER)
         if main_character:
             request.requester.character_id = character.id
+    await get_pool("characters").broadcast({
+        "pool": "characters",
+        "type": "create",
+        "id": character.id,
+        "name": character.name,
+    })
     return {"status": "success", "id": character.id}
 
 
@@ -223,6 +229,11 @@ async def character_delete(request: CharacterDeleteRequest):
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
     database.characters.delete(character.id)
+    await get_pool("characters").broadcast({
+        "pool": "characters",
+        "type": "delete",
+        "id": character.id,
+    })
     return {"status": "success"}
 
 

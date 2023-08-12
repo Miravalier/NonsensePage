@@ -54,6 +54,7 @@
     font-family: "Prompt", sans-serif;
     color: white;
     margin: 2px;
+    margin-left: 4px;
     display: flex;
     flex-flow: row nowrap;
     justify-content: flex-start;
