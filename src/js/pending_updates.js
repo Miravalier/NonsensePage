@@ -12,7 +12,7 @@ export async function CheckUpdates() {
     for (const [id, update] of Object.entries(CHARACTER_UPDATES)) {
         if (now > update.expiration) {
             delete CHARACTER_UPDATES[id];
-            await ApiRequest("/character/update", { id: id, changes: update.changes });
+            await ApiRequest("/character/update", { id: id, changes: { "$set": update.changes } });
         }
     }
 }

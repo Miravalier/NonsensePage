@@ -19,6 +19,8 @@ export class CharacterSheetWindow extends ContentWindow {
     }
 
     async load(id) {
+        this.content.innerHTML = "";
+
         // Get character data
         const response = await ApiRequest("/character/get", { id });
         if (response.status != "success") {
@@ -34,6 +36,7 @@ export class CharacterSheetWindow extends ContentWindow {
         await Templates.loadCss(`${sheetType}-sheet.css`);
         this.content.appendChild(await Templates.loadHtml(`${sheetType}-sheet.html`));
         const sheet = new sheetClass(characterData.id, this);
+        sheet.onLoad(characterData);
         sheet.addListeners();
         sheet.update(characterData);
 

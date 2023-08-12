@@ -3,13 +3,14 @@ import { ContentWindow, Dialog } from "./window.js";
 import { ApiRequest, Session, Subscribe } from "./requests.js";
 import { ErrorToast } from "./notifications.js";
 import { CharacterSheetWindow } from "./character_sheet_window.js";
-import { AddDragListener } from "./utils.js";
+import { Parameter, AddDragListener } from "./utils.js";
 import { Html } from "./elements.js";
 
 
 export class CharacterListWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["character-list"];
+        options.refreshable = Parameter(options.refreshable, true);
         super(options);
         this.characters = this.content.appendChild(document.createElement("div"));
         this.characters.className = "characters";
@@ -59,8 +60,10 @@ export class CharacterListWindow extends ContentWindow {
                         await ApiRequest("/character/update", {
                             id,
                             changes: {
-                                name: nameInput.value,
-                            }
+                                "$set": {
+                                    name: nameInput.value,
+                                },
+                            },
                         });
                         element.textContent = nameInput.value;
                         dialog.close();

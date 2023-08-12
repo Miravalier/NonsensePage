@@ -2,6 +2,66 @@ import { PcgEngine } from "./pcg-random.js";
 import { Vector2 } from "./vector.js";
 
 
+export function GenerateId() {
+    const values = new Uint8Array(12);
+    crypto.getRandomValues(values);
+    let result = "";
+    for (const byte of values) {
+        result += byte.toString(16).padStart(2, '0');
+    }
+    return result;
+}
+
+
+export function ResolvePath(object, path) {
+    if (!object || !path) {
+        return undefined;
+    }
+
+    let result = object;
+    for (let component of path.split(".")) {
+        if (!result) {
+            return undefined;
+        }
+        if (typeof result != "object") {
+            return undefined;
+        }
+        result = result[component];
+    }
+    return result;
+}
+
+
+export function ContainsOperators(data) {
+    if (!data) {
+        return false;
+    }
+
+    if (Array.isArray(data)) {
+        for (let value of data) {
+            if (ContainsOperators(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (typeof data == "object") {
+        for (let [key, value] of Object.entries(data)) {
+            if (key.startsWith("$")) {
+                return true;
+            }
+            else if (ContainsOperators(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    return false;
+}
+
+
 /**
  * @param {HTMLElement} element
  */

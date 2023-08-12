@@ -248,7 +248,7 @@ async def character_update(request: CharacterUpdateRequest):
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.WRITE))
 
-    database.characters.update(request.id, {"$set": request.changes})
+    database.characters.update(request.id, request.changes)
 
     await character.broadcast_update(request.changes)
     return {"status": "success"}

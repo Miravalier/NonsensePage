@@ -21,6 +21,7 @@ export class BaseWindow {
         const classList = Parameter(options.classList, []);
         classList.push("window");
         const resizable = Parameter(options.resizable, true);
+        const refreshable = Parameter(options.refreshable, false);
 
         this.on_close = [];
 
@@ -77,6 +78,13 @@ export class BaseWindow {
 
         const rightGroup = titleBar.appendChild(document.createElement("div"));
         rightGroup.className = "group";
+
+        if (refreshable) {
+            this.refreshButton = rightGroup.appendChild(Button("refresh"));
+            this.refreshButton.addEventListener("click", () => {
+                this.refresh();
+            });
+        }
 
         if (resizable) {
             this.minimizeButton = rightGroup.appendChild(Button("window-minimize"));
@@ -139,6 +147,11 @@ export class BaseWindow {
 
         const windows = document.querySelector("#windows");
         windows.appendChild(this.container);
+    }
+
+    refresh() {
+        console.log("Refresh");
+        this.load();
     }
 
     toggleFullscreen() {

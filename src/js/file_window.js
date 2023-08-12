@@ -25,6 +25,7 @@ export class FileWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["file"];
         options.size = Parameter(options.size, new Vector2(400, 400));
+        options.refreshable = Parameter(options.refreshable, true);
         super(options);
 
         this.files = this.content.appendChild(document.createElement("div"));
@@ -92,6 +93,10 @@ export class FileWindow extends ContentWindow {
         });
 
         this.path = "/";
+    }
+
+    refresh() {
+        this.load(this.path);
     }
 
     async load(path) {

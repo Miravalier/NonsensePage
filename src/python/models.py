@@ -67,6 +67,8 @@ def new_permissions():
 
 
 class Stat(BaseModel):
+    id: str
+    name: str
     value: Union[int, float, str, bool]
     min: Optional[int] = None
     max: Optional[int] = None
@@ -127,8 +129,8 @@ class Entity(Entry):
 
     @property
     def stats(self):
-        for stat_name in self.stat_order:
-            yield self.stat_map[stat_name]
+        for stat_id in self.stat_order:
+            yield self.stat_map[stat_id]
 
 
 class Container(Entry):
@@ -137,8 +139,8 @@ class Container(Entry):
 
     @property
     def items(self):
-        for item_name in self.item_order:
-            yield self.item_map[item_name]
+        for item_id in self.item_order:
+            yield self.item_map[item_id]
 
 
 class Item(Entity, Container):

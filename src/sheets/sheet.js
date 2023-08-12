@@ -1,6 +1,6 @@
 import { AddCharacterUpdate } from "./pending_updates.js";
 import { ApiRequest } from "./requests.js";
-import { AddDropListener } from "./utils.js";
+import { AddDropListener, ContainsOperators, ResolvePath } from "./utils.js";
 
 export class Sheet {
     constructor(id, window) {
@@ -32,13 +32,14 @@ export class Sheet {
             return null;
         }
         element.addEventListener("input", async () => {
-            const update = {
+            await ApiRequest("/character/update", {
                 id: this.id,
                 changes: {
-                    [key]: element.value,
+                    "$set": {
+                        [key]: element.value,
+                    }
                 }
-            };
-            await ApiRequest("/character/update", update);
+            });
         });
         this.inputs[key] = element;
         return element;
@@ -55,13 +56,14 @@ export class Sheet {
             if (data.type != "file") {
                 return;
             }
-            const update = {
+            await ApiRequest("/character/update", {
                 id: this.id,
                 changes: {
-                    [key]: data.path,
+                    "$set": {
+                        [key]: data.path,
+                    }
                 }
-            };
-            await ApiRequest("/character/update", update);
+            });
         });
         this.images[key] = element;
         return element;
@@ -70,21 +72,38 @@ export class Sheet {
     addListeners() {
     }
 
+    onLoad(data) {
+    }
+
     update(changes) {
+        if (Object.keys(changes).length == 1 && changes["$set"]) {
+            changes = changes["$set"];
+        }
+        if (ContainsOperators(changes)) {
+            this.window.load(this.id);
+            return;
+        }
+
         if (changes.name) {
             this.window.titleNode.textContent = changes.name;
         }
-        for (const [key, value] of Object.entries(changes)) {
-            if (this.inputs[key]) {
-                this.inputs[key].value = value;
-            }
-            else if (this.images[key]) {
+
+        for (const [key, element] of Object.entries(this.images)) {
+            const value = ResolvePath(changes, key);
+            if (value !== undefined) {
                 if (value) {
-                    this.images[key].src = value;
+                    element.src = value;
                 }
                 else {
-                    this.images[key].src = "/unknown.png";
+                    element.src = "/unknown.png";
                 }
+            }
+        }
+
+        for (const [key, element] of Object.entries(this.inputs)) {
+            const value = ResolvePath(changes, key);
+            if (value !== undefined) {
+                element.value = value;
             }
         }
     }

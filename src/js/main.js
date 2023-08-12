@@ -7,6 +7,7 @@ import { ApiRequest, Session, WsConnect } from "./requests.js";
 import { CharacterListWindow } from "./character_list_window.js";
 import { CheckUpdates } from "./pending_updates.js";
 import { Html } from "./elements.js";
+import { GenerateId } from "./utils.js";
 
 
 window.addEventListener("load", async () => {
@@ -19,6 +20,7 @@ async function OnLoad() {
     window.Session = Session;
     window.ApiRequest = ApiRequest;
     window.Html = Html;
+    window.GenerateId = GenerateId;
 
     window.LogOut = () => {
         localStorage.removeItem("token");
