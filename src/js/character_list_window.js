@@ -44,22 +44,24 @@ export class CharacterListWindow extends ContentWindow {
                     const renameButton = Html(`<button type="button">Rename</button>`);
                     const cancelButton = Html(`<button type="button">Cancel</button>`);
                     const dialog = new Dialog({
-                        title: `Rename Character: ${name}`,
+                        title: `Rename Character`,
                         elements: [
                             nameInput,
                             [renameButton, cancelButton]
                         ]
                     });
                     renameButton.addEventListener("click", async () => {
-                        await ApiRequest("/character/update", {
-                            id,
-                            changes: {
-                                "$set": {
-                                    name: nameInput.value,
+                        if (nameInput.value) {
+                            await ApiRequest("/character/update", {
+                                id,
+                                changes: {
+                                    "$set": {
+                                        name: nameInput.value,
+                                    },
                                 },
-                            },
-                        });
-                        element.textContent = nameInput.value;
+                            });
+                            element.textContent = nameInput.value;
+                        }
                         dialog.close();
                     });
                     cancelButton.addEventListener("click", () => {

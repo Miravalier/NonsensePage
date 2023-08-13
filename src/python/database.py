@@ -93,6 +93,7 @@ characters = DocumentCollection(db.characters, models.Character)
 items = DocumentCollection(db.items, models.Item)
 users = DocumentCollection(db.users, models.User)
 combats = DocumentCollection(db.combats, models.Combat)
+maps = DocumentCollection(db.maps, models.Map)
 
 sessions = DocumentCollection(db.sessions, models.Session)
 sessions.create_index("auth_token")

@@ -18,3 +18,10 @@ class Alignment(IntEnum):
 
 class Language(IntEnum):
     COMMON = 0
+
+
+class Layer(IntEnum):
+    BACKGROUND = 0
+    DETAILS = 1
+    CHARACTERS = 2
+    EFFECTS = 3

@@ -268,9 +268,11 @@ async def character_get(request: CharacterGetRequest):
         return {
             "status": "partial",
             "character": {
+                "id": character.id,
                 "name": character.name,
                 "image": character.image,
                 "sheet_type": character.sheet_type,
+                "permissions": character.permissions,
             },
         }
 
@@ -286,6 +288,80 @@ async def character_list(request: AuthRequest):
             if character.has_permission(request.requester.id, level=Permissions.READ):
                 characters.append((character.id, character.name))
     return {"status": "success", "characters": characters}
+
+
+@app.post("/api/map/create")
+async def map_create(request: GMRequest):
+    map = database.maps.create({"name": "New Map"})
+    await get_pool("maps").broadcast({
+        "pool": "maps",
+        "type": "create",
+        "id": map.id,
+        "name": map.name,
+    })
+    return {"status": "success", "id": map.id}
+
+
+class MapGetRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/map/get")
+async def map_get(request: MapGetRequest):
+    map = require(database.maps.get(request.id), "invalid map id")
+    auth_require(request.requester.is_gm or map.has_permission(request.requester.id, "*", Permissions.READ))
+    return {
+        "status": "success",
+        "map": map.dict()
+    }
+
+
+class MapDeleteRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/map/delete")
+async def map_delete(request: MapDeleteRequest):
+    map = require(database.maps.get(request.id), "invalid map id")
+    if not request.requester.is_gm:
+        auth_require(map.has_permission(request.requester.id, "*", Permissions.OWNER))
+    database.maps.delete(map.id)
+    await get_pool("maps").broadcast({
+        "pool": "maps",
+        "type": "delete",
+        "id": map.id,
+    })
+    return {"status": "success"}
+
+
+class MapUpdateRequest(AuthRequest):
+    id: str
+    changes: Dict
+
+
+@app.post("/api/map/update")
+async def map_update(request: MapUpdateRequest):
+    map = require(database.maps.get(request.id), "invalid map id")
+    if not request.requester.is_gm:
+        auth_require(map.has_permission(request.requester.id, "*", Permissions.WRITE))
+
+    database.maps.update(request.id, request.changes)
+
+    await map.broadcast_update(request.changes)
+    return {"status": "success"}
+
+
+@app.post("/api/map/list")
+async def map_list(request: AuthRequest):
+    maps = []
+    if request.requester.is_gm:
+        for map in database.maps.find():
+            maps.append((map.id, map.name))
+    else:
+        for map in database.maps.find():
+            if map.has_permission(request.requester.id, level=Permissions.READ):
+                maps.append((map.id, map.name))
+    return {"status": "success", "maps": maps}
 
 
 class NewCombatRequest(GMRequest):

@@ -127,6 +127,7 @@
     justify-content: space-between;
     flex-flow: row nowrap;
     margin: 2px;
+    padding: 1px 2px;
 }
 
 .combat-tracker .combatants .combatant:hover {
@@ -136,9 +137,22 @@
 .character-list .characters .character {
     cursor: pointer;
     border-radius: 2px;
+    margin: 2px;
+    padding: 1px 2px;
 }
 
 .character-list .characters .character:hover {
+    background-color: #ffffff4f;
+}
+
+.map-list-window .maps .map {
+    cursor: pointer;
+    border-radius: 2px;
+    margin: 2px;
+    padding: 1px 2px;
+}
+
+.map-list-window .maps .map:hover {
     background-color: #ffffff4f;
 }
 
