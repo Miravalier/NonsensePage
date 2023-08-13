@@ -17,8 +17,7 @@ export function init() {
 
 /**
  * @param {HTMLDivElement} element
- * @param {string[]} options
- * @param {(ev: MouseEvent, choice: string) => void} callback
+ * @param {object} options
  */
 export function set(element, options) {
     element.addEventListener("contextmenu", async (ev) => {

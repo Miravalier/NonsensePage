@@ -318,6 +318,57 @@ async def combat_get(request: GetCombatRequest):
     }
 
 
+class CombatUpdateRequest(AuthRequest):
+    id: str
+    changes: Dict
+
+
+@app.post("/api/combat/update")
+async def combat_update(request: CombatUpdateRequest):
+    combat = require(database.combats.get(request.id), "invalid combat id")
+    if not request.requester.is_gm:
+        auth_require(combat.has_permission(request.requester.id, "*", Permissions.WRITE))
+
+    database.combats.update(request.id, request.changes)
+
+    await combat.broadcast_update(request.changes)
+    return {"status": "success"}
+
+
+class EndTurnRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/combat/end-turn")
+async def combat_update(request: EndTurnRequest):
+    combat = require(database.combats.get(request.id), "invalid combat id")
+    require(len(combat.combatants) > 0, "not enough combatants")
+    combatant = combat.combatants[0]
+    if not request.requester.is_gm:
+        character = require(database.characters.get(combatant.character_id), "invalid character id")
+        auth_require(
+            character.has_permission(request.requester.id, "*", Permissions.OWNER)
+            or
+            combat.has_permission(request.requester.id, "*", Permissions.WRITE)
+        )
+
+    database.combats.update(request.id, {
+        "$pull": {
+            "combatants": {
+                "id": combatant.id,
+            },
+        },
+    })
+    database.combats.update(request.id, {
+        "$push": {
+            "combatants": combatant.dict()
+        }
+    })
+
+    await combat.broadcast_update({"$rotate": combatant.id})
+    return {"status": "success"}
+
+
 @app.post("/api/combat/list")
 async def combat_list(request: AuthRequest):
     return {
@@ -338,12 +389,22 @@ class AddCombatantRequest(AuthRequest):
 async def add_combatant(request: AddCombatantRequest):
     combat = require(database.combats.get(request.combat_id), "invalid combat id")
     character = require(database.characters.get(request.character_id), "invalid character id")
+
+    if not request.requester.is_gm:
+        auth_require(
+            character.has_permission(request.requester.id, "*", Permissions.OWNER)
+            or
+            combat.has_permission(request.requester.id, "*", Permissions.WRITE)
+        )
+
     combatant_id = secrets.token_hex(12)
-    database.combats.update(combat.id, {"$push": {"combatants": {
+    update = {"$push": {"combatants": {
         "id": combatant_id,
         "character_id": character.id,
         "name": character.name,
-    }}})
+    }}}
+    database.combats.update(combat.id, update)
+    await combat.broadcast_update(update)
     return {"status": "success", "id": combatant_id}
 
 

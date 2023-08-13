@@ -5,7 +5,8 @@ import { Subscribe } from "./requests.js";
 import {
     PageCenter,
     Parameter,
-    Bound
+    Bound,
+    AddDropListener,
 } from "./utils.js";
 
 
@@ -26,6 +27,7 @@ export class BaseWindow {
 
         this.on_close = [];
         this.subscriptions = [];
+        this.abortControllers = [];
 
         this.minimized = false;
         this.fullscreen = false;
@@ -151,6 +153,10 @@ export class BaseWindow {
         windows.appendChild(this.container);
     }
 
+    addDropListener(element, fn) {
+        this.abortControllers.push(AddDropListener(element, fn));
+    }
+
     async subscribe(id, callback) {
         const subscription = await Subscribe(id, callback);
         this.subscriptions.push(subscription);
@@ -161,7 +167,11 @@ export class BaseWindow {
         for (let subscription of this.subscriptions) {
             subscription.cancel();
         }
+        for (let controller of this.abortControllers) {
+            controller.abort();
+        }
         this.subscriptions = [];
+        this.abortControllers = [];
     }
 
     refresh() {
@@ -179,11 +189,11 @@ export class BaseWindow {
             this.container.style.position = null;
             this.container.style.width = null;
             this.container.style.height = null;
-            this.viewPort.style.width = this.storedWidth;
-            this.viewPort.style.height = this.storedHeight;
+            this.viewPort.style.width = `${this.storedWidth}px`;
+            this.viewPort.style.height = `${this.storedHeight}px`;
             if (this.canvas) {
-                this.canvas.view.width = this.viewPort.offsetWidth;
-                this.canvas.view.height = this.viewPort.offsetHeight;
+                this.canvas.view.width = `${this.viewPort.offsetWidth}px`;
+                this.canvas.view.height = `${this.viewPort.offsetHeight}px`;
             }
             this.resizeHandle.style.display = null;
         }
@@ -198,8 +208,8 @@ export class BaseWindow {
             this.viewPort.style.width = "100%";
             this.viewPort.style.height = "100%";
             if (this.canvas) {
-                this.canvas.view.width = this.viewPort.offsetWidth;
-                this.canvas.view.height = this.viewPort.offsetHeight;
+                this.canvas.view.width = `${this.viewPort.offsetWidth}px`;
+                this.canvas.view.height = `${this.viewPort.offsetHeight}px`;
             }
             this.resizeHandle.style.display = "none";
         }
@@ -255,6 +265,30 @@ export class ContentWindow extends BaseWindow {
 }
 
 
+/**
+ * @param {HTMLDivElement} container
+ * @param {(HTMLElement|HTMLElement[])} element
+ */
+function AddElement(container, element) {
+    if (Array.isArray(element)) {
+        const subcontainer = document.createElement("div");
+        if (container.classList.contains("column")) {
+            subcontainer.className = "row";
+        }
+        else {
+            subcontainer.className = "column";
+        }
+        for (let subelement of element) {
+            AddElement(subcontainer, subelement);
+        }
+        container.appendChild(subcontainer);
+    }
+    else {
+        container.appendChild(element);
+    }
+}
+
+
 export class Dialog extends ContentWindow {
     constructor(options) {
         // Default resizable to false instead of true
@@ -274,30 +308,7 @@ export class Dialog extends ContentWindow {
         this.elements = this.content.appendChild(document.createElement("div"));
         this.elements.classList = "elements column";
         for (let element of elements) {
-            this.addElement(this.elements, element);
-        }
-    }
-
-    /**
-     * @param {HTMLDivElement} container
-     * @param {(HTMLElement|HTMLElement[])} element
-     */
-    addElement(container, element) {
-        if (Array.isArray(element)) {
-            const subcontainer = document.createElement("div");
-            if (container.classList.contains("column")) {
-                subcontainer.className = "row";
-            }
-            else {
-                subcontainer.className = "column";
-            }
-            for (let subelement of element) {
-                this.addElement(subcontainer, subelement);
-            }
-            container.appendChild(subcontainer);
-        }
-        else {
-            container.appendChild(element);
+            AddElement(this.elements, element);
         }
     }
 }
@@ -333,7 +344,7 @@ export function ConfirmDialog(prompt) {
     });
 }
 
-export function ImageSelectDialog(prompt, previous) {
+export function ImageSelectDialog(prompt) {
     const confirmButton = Button("check");
     confirmButton.appendChild(document.createTextNode("Confirm"));
     const cancelButton = Button("ban");
@@ -365,4 +376,28 @@ export function ImageSelectDialog(prompt, previous) {
             resolve(result);
         });
     });
+}
+
+
+export class Wizard extends ContentWindow {
+    constructor(options) {
+        // Default resizable to false instead of true
+        options.resizable = Parameter(options.resizable, false);
+        options.title = Parameter(options.title, "New Wizard");
+        super(options);
+        this.content.classList.add("wizard");
+
+        // Add sub elements
+        options.pages = Parameter(options.pages, {});
+        for (const { page, elements } of Object.entries(options.pages)) {
+            const pageContainer = this.content.appendChild(Html(`
+
+            `));
+            const elementContainer = page.appendChild(document.createElement("div"));
+            this.elements.classList = "elements column";
+            for (let element of elements) {
+                AddElement(this.elements, element);
+            }
+        }
+    }
 }

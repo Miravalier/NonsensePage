@@ -1,6 +1,6 @@
 /**
  * @param {string} html
- * @returns Element
+ * @returns {Element}
  */
 export function Html(html) {
     const div = document.createElement("div");

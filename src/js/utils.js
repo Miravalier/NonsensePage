@@ -80,18 +80,25 @@ export function AddDragListener(element, data) {
 
 /**
  * @param {HTMLElement} element
+ * @param {Function} fn
+ * @returns {AbortController}
  */
 export function AddDropListener(element, fn) {
+    const abortController = new AbortController();
+
     element.addEventListener("dragover", (ev) => {
         ev.dataTransfer.dropEffect = "copy";
         ev.preventDefault();
-    });
-    element.addEventListener("drop", async (ev) => {
+    }, { signal: abortController.signal });
+
+    element.addEventListener("drop", (ev) => {
         const dragData = JSON.parse(ev.dataTransfer.getData("application/nonsense"));
         if (dragData) {
             fn(dragData);
         }
-    });
+    }, { signal: abortController.signal });
+
+    return abortController;
 }
 
 

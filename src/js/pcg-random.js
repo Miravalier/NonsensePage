@@ -134,3 +134,5 @@ export class PcgEngine {
         }
     }
 }
+
+export const PCG = new PcgEngine();
