@@ -94,7 +94,7 @@ export function AddDropListener(element, fn) {
     element.addEventListener("drop", (ev) => {
         const dragData = JSON.parse(ev.dataTransfer.getData("application/nonsense"));
         if (dragData) {
-            fn(dragData);
+            fn(dragData, ev);
         }
     }, { signal: abortController.signal });
 

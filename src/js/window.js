@@ -138,9 +138,9 @@ export class BaseWindow {
                 const onDragEnd = ev => {
                     document.removeEventListener("mousemove", onDrag);
                     if (this.canvas) {
-                        this.canvas.view.width = `${this.viewPort.offsetWidth}px`;
-                        this.canvas.view.height = `${this.viewPort.offsetHeight}px`;
                         this.canvas.view.style.display = null;
+                        this.canvas.view.width = this.viewPort.offsetWidth;
+                        this.canvas.view.height = this.viewPort.offsetHeight;
                     }
                 }
 
@@ -192,8 +192,8 @@ export class BaseWindow {
             this.viewPort.style.width = `${this.storedWidth}px`;
             this.viewPort.style.height = `${this.storedHeight}px`;
             if (this.canvas) {
-                this.canvas.view.width = `${this.viewPort.offsetWidth}px`;
-                this.canvas.view.height = `${this.viewPort.offsetHeight}px`;
+                this.canvas.view.width = this.viewPort.offsetWidth;
+                this.canvas.view.height = this.viewPort.offsetHeight;
             }
             this.resizeHandle.style.display = null;
         }
@@ -208,8 +208,8 @@ export class BaseWindow {
             this.viewPort.style.width = "100%";
             this.viewPort.style.height = "100%";
             if (this.canvas) {
-                this.canvas.view.width = `${this.viewPort.offsetWidth}px`;
-                this.canvas.view.height = `${this.viewPort.offsetHeight}px`;
+                this.canvas.view.width = this.viewPort.offsetWidth;
+                this.canvas.view.height = this.viewPort.offsetHeight;
             }
             this.resizeHandle.style.display = "none";
         }
@@ -250,8 +250,10 @@ export class BaseWindow {
 export class CanvasWindow extends BaseWindow {
     constructor(options) {
         super(options);
+        const canvasClass = Parameter(options.canvasClass, Canvas);
         this.viewPort.className = "canvasViewPort";
-        this.canvas = new Canvas(this.viewPort);
+        options.container = this.viewPort;
+        this.canvas = new canvasClass(options);
     }
 }
 

@@ -5,15 +5,21 @@ let contextMenuElement = null;
 let contextMenuResolve = null;
 
 
+export function close() {
+    if (contextMenuElement !== null) {
+        contextMenuElement.remove();
+        contextMenuElement = null;
+        contextMenuResolve([null, null]);
+    }
+}
+
+
 export function init() {
     document.addEventListener("click", () => {
-        if (contextMenuElement !== null) {
-            contextMenuElement.remove();
-            contextMenuElement = null;
-            contextMenuResolve([null, null]);
-        }
+        close();
     });
 }
+
 
 /**
  * @param {HTMLDivElement} element
@@ -24,11 +30,7 @@ export function set(element, options) {
         ev.preventDefault();
         ev.stopPropagation();
 
-        if (contextMenuElement !== null) {
-            contextMenuElement.remove();
-            contextMenuElement = null;
-            contextMenuResolve([null, null]);
-        }
+        close();
 
         const callbacks = {};
         const categoryDivs = [];
