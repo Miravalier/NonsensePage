@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from typing import Any, Dict, Iterator, List, Optional, Union, Set
 
-from enums import Alignment, Language, Permissions
+from enums import Alignment, Language, Permissions, Layer
 
 
 @dataclass
@@ -173,3 +173,17 @@ class Combatant(Entry):
 
 class Combat(Entry):
     combatants: List[Combatant] = Field(default_factory=list)
+
+
+class Token(Entry):
+    layer: Layer = Layer.DETAILS
+    src: str = ""
+    x: float = 0.0
+    y: float = 0.0
+    width: float = 1.0
+    height: float = 1.0
+    scale: float = 1.0
+
+
+class Map(Entry):
+    tokens: Dict[str, Token] = Field(default_factory=dict)

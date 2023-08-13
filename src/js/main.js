@@ -7,6 +7,7 @@ import { ApiRequest, Session, WsConnect } from "./requests.js";
 import { CharacterListWindow } from "./character_list_window.js";
 import { CheckUpdates } from "./pending_updates.js";
 import { Roll } from "./dice.js";
+import { MapListWindow } from "./map_list_window.js";
 
 
 window.addEventListener("load", async () => {
@@ -82,6 +83,13 @@ async function Main() {
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await fileWindow.load("/");
+            },
+            "Maps": async (ev) => {
+                const mapListWindow = new MapListWindow({
+                    title: "Maps",
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await mapListWindow.load();
             },
         },
     });
