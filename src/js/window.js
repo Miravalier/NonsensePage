@@ -6,6 +6,7 @@ import {
     PageCenter,
     Parameter,
     Bound,
+    StringBound,
     AddDropListener,
 } from "./utils.js";
 
@@ -16,7 +17,7 @@ let nextZIndex = 0;
 export class BaseWindow {
     constructor(options) {
         options = Parameter(options, {});
-        const title = Parameter(options.title, "New Window");
+        const title = Parameter(options.title, "");
         const size = Parameter(options.size, new Vector2(600, 400));
         const position = Parameter(options.position, PageCenter().subtract(size).divide(2));
         const backgroundColor = Parameter(options.backgroundColor, "#324051");
@@ -48,6 +49,7 @@ export class BaseWindow {
         });
 
         const titleBar = this.container.appendChild(document.createElement("div"));
+        this.titleBar = titleBar;
         titleBar.className = "titleBar";
 
         titleBar.addEventListener("mousedown", ev => {
@@ -77,8 +79,9 @@ export class BaseWindow {
 
         const leftGroup = titleBar.appendChild(document.createElement("div"));
         leftGroup.className = "group";
-        leftGroup.appendChild(document.createTextNode(title));
+        leftGroup.appendChild(document.createTextNode(" "));
         this.titleNode = leftGroup.firstChild;
+        this.setTitle(title);
 
         const rightGroup = titleBar.appendChild(document.createElement("div"));
         rightGroup.className = "group";
@@ -126,8 +129,12 @@ export class BaseWindow {
                 const onDrag = ev => {
                     const xOffset = ev.clientX - this.container.offsetLeft;
                     const yOffset = ev.clientY - this.container.offsetTop;
-                    const width = Bound(0, xOffset, xMax);
-                    const height = Bound(0, yOffset, yMax);
+                    let minWidth = 10;
+                    for (const group of this.titleBar.children) {
+                        minWidth += group.clientWidth;
+                    }
+                    const width = Bound(minWidth, xOffset, xMax);
+                    const height = Bound(40, yOffset, yMax);
                     this.viewPort.style.width = `${width}px`;
                     this.viewPort.style.height = `${height}px`;
                     if (this.canvas) {
@@ -151,6 +158,10 @@ export class BaseWindow {
 
         const windows = document.querySelector("#windows");
         windows.appendChild(this.container);
+    }
+
+    setTitle(s) {
+        this.titleNode.textContent = StringBound(s, 40);
     }
 
     addDropListener(element, fn) {

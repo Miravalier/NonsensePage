@@ -85,7 +85,7 @@ export class Sheet {
         }
 
         if (changes.name) {
-            this.window.titleNode.textContent = changes.name;
+            this.window.setTitle(changes.name);
         }
 
         for (const [key, element] of Object.entries(this.images)) {

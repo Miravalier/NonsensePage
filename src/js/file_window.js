@@ -1,3 +1,4 @@
+import * as ContextMenu from "./contextmenu.js";
 import { ContentWindow, ConfirmDialog, Dialog } from "./window.js";
 import { ApiRequest, Session, FileUpload } from "./requests.js";
 import { Vector2 } from "./vector.js";
@@ -63,6 +64,7 @@ export class FileWindow extends ContentWindow {
         this.createFolderButton.addEventListener("click", () => {
             const folderName = document.createElement("input");
             folderName.type = "text";
+            folderName.maxLength = 128;
 
             const createButton = document.createElement("button");
             createButton.appendChild(document.createTextNode("Create"));
@@ -110,7 +112,7 @@ export class FileWindow extends ContentWindow {
         }
         this.path = response.path;
 
-        this.titleNode.textContent = `Files - ${response.path}`;
+        this.setTitle(`Files - ${response.path}`);
         if (response.path != "/") {
             this.addFolder("folder-arrow-up", "..", response.path + "/..");
         }
@@ -140,13 +142,12 @@ export class FileWindow extends ContentWindow {
         nameElement.appendChild(document.createTextNode(name));
 
         if (name != "..") {
-            const deleteButton = item.appendChild(Button("trash"));
-            deleteButton.addEventListener("click", async () => {
-                if (!(await ConfirmDialog(`Are you sure you want to delete ${path}?`))) {
-                    return;
+            ContextMenu.set(nameElement, {
+                "Edit Directory": {
+                    "Delete": async ev => {
+                        await ApiRequest("/files/delete", { path });
+                    }
                 }
-                await ApiRequest("/files/delete", { path });
-                this.load(this.path);
             });
         }
 
@@ -191,17 +192,16 @@ export class FileWindow extends ContentWindow {
 
         AddDragListener(nameElement, { type: "file", filetype, path: url_path });
 
-        const deleteButton = item.appendChild(Button("trash"));
-        deleteButton.addEventListener("click", async () => {
-            if (!(await ConfirmDialog(`Are you sure you want to delete ${name}?`))) {
-                return;
-            }
-            await ApiRequest("/files/delete", { path });
-            this.load(this.path);
-        });
-
         nameElement.addEventListener("click", () => {
             window.open(url_path, path);
+        });
+
+        ContextMenu.set(nameElement, {
+            "Edit File": {
+                "Delete": async ev => {
+                    await ApiRequest("/files/delete", { path });
+                }
+            }
         });
     }
 }

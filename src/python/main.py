@@ -684,6 +684,8 @@ def validate_path(requester: User, path: str) -> Path:
     else:
         user_root = FILES_ROOT / requester.name
     path = user_root / Path(str(path)[1:])
+    if path == user_root:
+        raise JsonError("cannot delete file root")
     # Check that path is a directory that exists
     if not path.exists():
         raise JsonError("path does not exist")

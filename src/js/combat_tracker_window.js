@@ -63,6 +63,7 @@ export class CombatTrackerWindow extends ContentWindow {
                 "Set Initiative": async (ev) => {
                     const initiativeInput = document.createElement("input");
                     initiativeInput.type = "number";
+                    initiativeInput.maxLength = 128;
 
                     const setButton = document.createElement("button");
                     setButton.appendChild(document.createTextNode("Set"));
@@ -113,7 +114,7 @@ export class CombatTrackerWindow extends ContentWindow {
     async load(id) {
         await super.load();
         this.content.innerHTML = "";
-        this.titleNode.textContent = "Combat Tracker";
+        this.setTitle("Combat Tracker");
 
         let combat;
         if (id) {

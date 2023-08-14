@@ -69,9 +69,9 @@ def new_permissions():
 class Stat(BaseModel):
     id: str
     name: str
-    value: Union[int, float, str, bool]
-    min: Optional[int] = None
-    max: Optional[int] = None
+    value: Union[float, str, bool]
+    min: Optional[float] = None
+    max: Optional[float] = None
 
 
 class Session(BaseModel):
@@ -151,9 +151,9 @@ class Character(Entity, Container):
     description: str = ""
     image: str = ""
     alignment: Alignment = Alignment.NEUTRAL
-    hp: int = 0
-    max_hp: int = 0
-    size: int = 1
+    hp: float = 0
+    max_hp: float = 0
+    size: float = 1
     scale: float = 1.0
     sheet_type: str = "Generic"
 
@@ -168,7 +168,7 @@ class User(Entry):
 
 class Combatant(Entry):
     character_id: Optional[str] = None
-    initiative: Optional[int] = None
+    initiative: Optional[float] = None
 
 
 class Combat(Entry):

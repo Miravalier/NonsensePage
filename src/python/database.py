@@ -43,7 +43,7 @@ class DocumentCollection(Generic[M]):
 
     def create(self, obj):
         obj["id"] = self.insert(obj)
-        return self.model.parse_obj(obj)
+        return self.model.validate(obj)
 
     def pre_process_filter(self, filter: dict):
         return _prepare_filter(filter)
@@ -51,7 +51,7 @@ class DocumentCollection(Generic[M]):
     def post_process_result(self, document: dict) -> M:
         if document is None:
             return None
-        return self.model.parse_obj(_jsonify_oid(document))
+        return self.model.validate(_jsonify_oid(document))
 
     def create_index(self, *args, **kwargs):
         self.collection.create_index(*args, **kwargs)

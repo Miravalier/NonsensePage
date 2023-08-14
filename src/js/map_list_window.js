@@ -37,7 +37,7 @@ export class MapListWindow extends ContentWindow {
         ContextMenu.set(element, {
             "Edit Map": {
                 "Rename": async (ev) => {
-                    const nameInput = Html(`<input type="text">`);
+                    const nameInput = Html(`<input type="text" maxlength="128">`);
                     const renameButton = Html(`<button type="button">Rename</button>`);
                     const cancelButton = Html(`<button type="button">Cancel</button>`);
                     const dialog = new Dialog({

@@ -3,7 +3,7 @@ import { Vector2 } from "./vector.js";
 import { ApiRequest } from "./requests.js";
 import { Templates } from "./templates.js";
 import { ErrorToast } from "./notifications.js";
-import { Parameter } from "./utils.js";
+import { GenerateId, Parameter } from "./utils.js";
 
 
 export class CharacterSheetWindow extends ContentWindow {
@@ -24,13 +24,14 @@ export class CharacterSheetWindow extends ContentWindow {
             return;
         }
         const characterData = response.character;
-        this.titleNode.textContent = characterData.name;
+        this.setTitle(characterData.name);
         const sheetType = characterData.sheet_type;
 
         // Load sheet content
-        const sheetClass = (await import(`./${sheetType}-sheet.js`)).default;
-        await Templates.loadCss(`${sheetType}-sheet.css`);
-        this.content.appendChild(await Templates.loadHtml(`${sheetType}-sheet.html`));
+        const version = "1";
+        const sheetClass = (await import(`./${sheetType}-sheet.js?v=${version}`)).default;
+        await Templates.loadCss(`${sheetType}-sheet.css?v=${version}`);
+        this.content.appendChild(await Templates.loadHtml(`${sheetType}-sheet.html?v=${version}`));
         const sheet = new sheetClass(characterData.id, this);
         sheet.onLoad(characterData);
         sheet.addListeners();

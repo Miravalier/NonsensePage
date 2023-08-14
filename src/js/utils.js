@@ -121,6 +121,19 @@ export function Bound(min, value, max) {
 }
 
 
+export function StringBound(s, maxLength) {
+    if (s.length <= maxLength) {
+        return s;
+    }
+    else if (maxLength < 10) {
+        return s.substring(0, maxLength);
+    }
+    else {
+        return s.substring(0, maxLength - 3) + "...";
+    }
+}
+
+
 export function IsDefined(value) {
     return typeof (value) !== "undefined";
 }

@@ -94,7 +94,7 @@ export class MapWindow extends CanvasWindow {
             return;
         }
 
-        this.titleNode.textContent = `Map: ${response.map.name}`;
+        this.setTitle(`Map: ${response.map.name}`);
         await this.canvas.render(response.map);
         this.applyTranslation();
         this.applyScale();

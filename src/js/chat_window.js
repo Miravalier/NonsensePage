@@ -20,15 +20,18 @@ export class ChatWindow extends ContentWindow {
         this.inputSection = this.content.appendChild(document.createElement("div"));
         this.inputSection.className = "input-section";
         this.textarea = this.inputSection.appendChild(document.createElement("textarea"));
+        this.textarea.maxLength = 10000;
 
         this.textarea.addEventListener("keypress", async ev => {
             if (ev.key == "Enter" && !ev.shiftKey) {
                 ev.preventDefault();
-                const content = this.textarea.value;
+                const content = this.textarea.value.trim();
                 this.textarea.value = "";
-                await ApiRequest("/messages/speak", { content: content, speaker: Session.username });
+                if (content) {
+                    await ApiRequest("/messages/speak", { content: content, speaker: Session.username });
+                }
             }
-        })
+        });
     }
 
     async load() {
@@ -65,7 +68,7 @@ export class ChatWindow extends ContentWindow {
             return;
         }
 
-        this.titleNode.textContent = `Chat`;
+        this.setTitle(`Chat`);
         for (const message of response.messages) {
             this.addMessage(message);
         }
