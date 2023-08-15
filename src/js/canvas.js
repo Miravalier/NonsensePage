@@ -22,14 +22,23 @@ export class CanvasContainer {
     async DrawSprite(options) {
         Require(options);
         const src = Require(options.src);
-        const width = Parameter(options.width, 1);
-        const height = Parameter(options.height, 1);
+        const width = Parameter(options.width, 256);
+        const height = Parameter(options.height, 256);
+        const scale = Parameter(options.scale, new Vector2(1, 1));
         const position = Parameter(options.position, new Vector2(0, 0));
 
-        const texture = await PIXI.Texture.fromURL(src);
+        let texture;
+        try {
+            texture = await PIXI.Texture.fromURL(src);
+        } catch (error) {
+            console.error(`Failed to load texture: ${src}`);
+            texture = await PIXI.Texture.fromURL("/unknown.png");
+        }
         const sprite = new PIXI.Sprite(texture);
-        sprite.scale.x = width;
-        sprite.scale.y = height;
+        sprite.width = width;
+        sprite.height = height
+        sprite.scale.x = scale.x;
+        sprite.scale.y = scale.y;
         sprite.x = position.x;
         sprite.y = position.y;
         this.node.addChild(sprite);

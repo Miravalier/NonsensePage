@@ -55,7 +55,7 @@ async function Main() {
     ContextMenu.init();
 
     ContextMenu.set(document, {
-        "Create Window": {
+        "Open": {
             "Characters": async (ev) => {
                 const characterListWindow = new CharacterListWindow({
                     title: "Characters",

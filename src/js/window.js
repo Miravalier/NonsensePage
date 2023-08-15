@@ -151,6 +151,7 @@ export class BaseWindow {
                         this.canvas.view.style.display = null;
                         this.canvas.view.width = this.viewPort.offsetWidth;
                         this.canvas.view.height = this.viewPort.offsetHeight;
+                        this.canvas.renderer.resize(this.viewPort.offsetWidth, this.viewPort.offsetHeight);
                     }
                 }
 
