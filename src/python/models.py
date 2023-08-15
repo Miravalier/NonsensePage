@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Any, Dict, Iterator, List, Optional, Union, Set
 
 from enums import Alignment, Language, Permissions, Layer
+from utils import current_timestamp
 
 
 @dataclass
@@ -24,8 +25,9 @@ class Connection:
 
 
 class Pool:
-    def __init__(self):
+    def __init__(self, name: str):
         self.connections: Set[Connection] = set()
+        self.name = name
 
     def add(self, connection: Connection):
         self.connections.add(connection)
@@ -34,6 +36,7 @@ class Pool:
         self.connections.discard(connection)
 
     async def broadcast(self, obj: Dict[str, Any]):
+        obj["pool"] = self.name
         for connection in self.connections:
             await connection.send(obj)
 
@@ -44,8 +47,7 @@ class Pool:
         return hash(id(self))
 
 
-MESSAGE_POOL = Pool()
-COMBAT_TRACKER_POOL = Pool()
+MESSAGE_POOL = Pool("messages")
 EVENT_POOLS: Dict[str, Pool] = {}
 
 
@@ -57,7 +59,7 @@ def get_pool(request: Union[str, Dict[str, Any]]):
         pool_name = request.get("pool")
     pool = EVENT_POOLS.get(pool_name)
     if pool is None:
-        pool = Pool()
+        pool = Pool(pool_name)
         EVENT_POOLS[pool_name] = pool
     return pool
 
@@ -94,10 +96,11 @@ class Entry(BaseModel):
     def pool(self):
         return get_pool(self.id)
 
-    async def broadcast_update(self, changes: Dict):
+    async def broadcast_update(self, changes: Dict = None, type: str = "update"):
+        if changes is None:
+            changes = {}
         await self.pool.broadcast(jsonable_encoder({
-            "pool": self.id,
-            "type": "update",
+            "type": type,
             "changes": changes,
         }))
 
@@ -187,3 +190,21 @@ class Token(Entry):
 
 class Map(Entry):
     tokens: Dict[str, Token] = Field(default_factory=dict)
+
+
+class Message(BaseModel):
+    id: str
+    sender_id: str
+    character_id: Optional[str]
+    timestamp: int = Field(default_factory=current_timestamp)
+    language: Language = Language.COMMON
+    speaker: str = ""
+    content: str = ""
+
+    def __hash__(self):
+        return hash(self.id)
+
+    def foreign_dict(self) -> Dict[str, Any]:
+        result = self.dict(exclude={"content": True})
+        result["length"] = len(self.content)
+        return result

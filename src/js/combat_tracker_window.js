@@ -1,8 +1,8 @@
 import * as ContextMenu from "./contextmenu.js";
 import { Vector2 } from "./vector.js";
 import { CharacterSheetWindow } from "./character_sheet_window.js";
-import { ContentWindow, Dialog } from "./window.js";
-import { ApiRequest } from "./requests.js";
+import { ConfirmDialog, ContentWindow, InputDialog } from "./window.js";
+import { ApiRequest, Session } from "./requests.js";
 import { Parameter } from "./utils.js";
 import { ErrorToast } from "./notifications.js";
 import { Html } from "./elements.js";
@@ -16,104 +16,144 @@ export class CombatTrackerWindow extends ContentWindow {
         super(options);
         this.id = null;
         this.dropListener = false;
-        this.combatants = [];
+        this.combatantContainer = this.content.appendChild(Html(`
+            <div class="combatants">
+            </div>
+        `));
+        this.combatantElements = {};
+        this.combatantIndexes = {};
+        const buttonContainer = this.content.appendChild(Html(`
+            <div class="buttons"></div>
+        `));
+
+        const endTurnButton = buttonContainer.appendChild(Html(`
+            <button type="button" class="end-turn">End Turn</button>
+        `));
+        endTurnButton.addEventListener("click", async (ev) => {
+            await ApiRequest("/combat/end-turn", {
+                id: this.id,
+            });
+        });
+
+        if (Session.gm) {
+            const sortButton = buttonContainer.appendChild(Html(`
+                <button type="button" class="sort">Sort</button>
+            `));
+            sortButton.addEventListener("click", async (ev) => {
+                await ApiRequest("/combat/sort", {
+                    id: this.id,
+                });
+            });
+
+            const clearButton = buttonContainer.appendChild(Html(`
+                <button type="button" class="clear">Clear</button>
+            `));
+            clearButton.addEventListener("click", async (ev) => {
+                if (!await ConfirmDialog("Clear the combat tracker?")) {
+                    return;
+                }
+                await ApiRequest("/combat/clear", {
+                    id: this.id,
+                });
+            });
+        }
     }
 
     AddCombatant(index, combatant) {
+        this.combatantIndexes[combatant.id] = index;
         let initiative = combatant.initiative;
         if (initiative === null || initiative === undefined) {
             initiative = "";
         }
-        const combatantElement = this.combatantContainer.appendChild(Html(`
-            <div class="combatant" data-id="${combatant.id}">
-                <span class="name">${combatant.name}</span>
-                <span class="initiative">${initiative}</span>
-            </div>
-        `));
-        combatantElement.addEventListener("click", async () => {
-            const characterSheetWindow = new CharacterSheetWindow({
-                title: "Character Sheet",
+        let combatantElement = this.combatantElements[combatant.id];
+        if (combatantElement) {
+            this.combatantContainer.appendChild(combatantElement);
+            combatantElement.querySelector(".name").textContent = combatant.name;
+            combatantElement.querySelector(".initiative").textContent = initiative;
+        }
+        else {
+            combatantElement = this.combatantContainer.appendChild(Html(`
+                <div class="combatant" data-id="${combatant.id}">
+                    <span class="name">${combatant.name}</span>
+                    <span class="initiative">${initiative}</span>
+                </div>
+            `));
+            combatantElement.addEventListener("click", async () => {
+                const characterSheetWindow = new CharacterSheetWindow({
+                    title: "Character Sheet",
+                });
+                await characterSheetWindow.load(combatant.character_id);
             });
-            await characterSheetWindow.load(combatant.character_id);
-        });
-        ContextMenu.set(combatantElement, {
-            "Edit Combatant": {
-                "Delete Combatant": async (ev) => {
-                    await ApiRequest("/combat/update", {
-                        id: this.id,
-                        changes: {
-                            "$pull": {
-                                combatants: {
-                                    id: combatant.id,
-                                },
-                            },
-                        },
-                    });
-                },
-                "Roll Initiative": async (ev) => {
-                    await ApiRequest("/combat/update", {
-                        id: this.id,
-                        changes: {
-                            "$set": {
-                                [`combatants.${index}.initiative`]: Roll("2d6").total
-                            }
-                        },
-                    });
-                },
-                "Set Initiative": async (ev) => {
-                    const initiativeInput = document.createElement("input");
-                    initiativeInput.type = "number";
-                    initiativeInput.maxLength = 128;
-
-                    const setButton = document.createElement("button");
-                    setButton.appendChild(document.createTextNode("Set"));
-
-                    const cancelButton = document.createElement("button");
-                    cancelButton.appendChild(document.createTextNode("Cancel"));
-
-                    const dialog = new Dialog({
-                        title: "Set Initiative",
-                        elements: [
-                            initiativeInput,
-                            [setButton, cancelButton]
-                        ]
-                    });
-
-                    setButton.addEventListener("click", async () => {
-                        const initiative = parseInt(initiativeInput.value);
+            ContextMenu.set(combatantElement, {
+                "Edit Combatant": {
+                    "Rename": async (ev) => {
+                        const selection = await InputDialog("Rename Combatant", { "Name": "text" }, "Finish");
+                        if (!selection || !selection.Name) {
+                            return;
+                        }
                         await ApiRequest("/combat/update", {
                             id: this.id,
                             changes: {
                                 "$set": {
-                                    [`combatants.${index}.initiative`]: initiative
+                                    [`combatants.${this.combatantIndexes[combatant.id]}.name`]: selection.Name
+                                },
+                            },
+                        });
+                    },
+                    "Delete Combatant": async (ev) => {
+                        await ApiRequest("/combat/update", {
+                            id: this.id,
+                            changes: {
+                                "$pull": {
+                                    combatants: {
+                                        id: combatant.id,
+                                    },
+                                },
+                            },
+                        });
+                    },
+                    "Roll Initiative": async (ev) => {
+                        await ApiRequest("/combat/update", {
+                            id: this.id,
+                            changes: {
+                                "$set": {
+                                    [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: Roll("2d6").total
+                                },
+                            },
+                        });
+                    },
+                    "Set Initiative": async (ev) => {
+                        const selection = await InputDialog("Set Initiative", { "Initiative": "number" }, "Set");
+                        if (!selection || !selection.Initiative) {
+                            return;
+                        }
+                        await ApiRequest("/combat/update", {
+                            id: this.id,
+                            changes: {
+                                "$set": {
+                                    [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: selection.Initiative
                                 }
                             },
                         });
-                        dialog.close();
-                    });
-
-                    cancelButton.addEventListener("click", () => {
-                        dialog.close();
-                    });
-
-                },
-                "Clear Initiative": async (ev) => {
-                    await ApiRequest("/combat/update", {
-                        id: this.id,
-                        changes: {
-                            "$set": {
-                                [`combatants.${index}.initiative`]: null
-                            }
-                        },
-                    });
-                },
-            }
-        });
+                    },
+                    "Clear Initiative": async (ev) => {
+                        await ApiRequest("/combat/update", {
+                            id: this.id,
+                            changes: {
+                                "$set": {
+                                    [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: null
+                                }
+                            },
+                        });
+                    },
+                }
+            });
+            this.combatantElements[combatant.id] = combatantElement;
+        }
     }
 
     async load(id) {
         await super.load();
-        this.content.innerHTML = "";
         this.setTitle("Combat Tracker");
 
         let combat;
@@ -148,16 +188,20 @@ export class CombatTrackerWindow extends ContentWindow {
         }
         this.id = combat.id;
 
-        this.combatantContainer = this.content.appendChild(Html(`
-            <div class="combatants">
-            </div>
-        `));
-
         // Use response
-        this.combatants = combat.combatants;
+        const combatantIds = new Set();
         for (let i = 0; i < combat.combatants.length; i++) {
             const combatant = combat.combatants[i];
             this.AddCombatant(i, combatant);
+            combatantIds.add(combatant.id);
+        }
+
+        for (let [id, combatantElement] of Object.entries(this.combatantElements)) {
+            if (!combatantIds.has(id)) {
+                combatantElement.remove();
+                delete this.combatantElements[id];
+                delete this.combatantIndexes[id];
+            }
         }
 
         // Set up update watcher
@@ -169,20 +213,10 @@ export class CombatTrackerWindow extends ContentWindow {
             if (data.type != "character") {
                 return false;
             }
-            console.log(`Adding character id '${data.id}' to the Combat Tracker`);
             await ApiRequest("/combat/add-combatant", {
                 combat_id: combat.id,
                 character_id: data.id,
             });
-        });
-
-        const endTurnButton = this.content.appendChild(Html(`
-            <button type="button" class="end-turn">End Turn</button>
-        `));
-        endTurnButton.addEventListener("click", async (ev) => {
-            await ApiRequest("/combat/end-turn", {
-                id: combat.id,
-            })
         });
     }
 }

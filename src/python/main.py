@@ -20,11 +20,11 @@ import files
 import ws_handlers
 from models import (
     Character, Item, User, Session,
-    Connection, Combat, get_pool
+    Connection, Combat, Message,
+    get_pool
 )
 from enums import Alignment, Language, Permissions
 from errors import AuthError, JsonError
-from messages import messages
 from security import check_password, hash_password
 
 
@@ -211,7 +211,6 @@ async def character_create(request: CharacterCreateRequest):
         if main_character:
             request.requester.character_id = character.id
     await get_pool("characters").broadcast({
-        "pool": "characters",
         "type": "create",
         "id": character.id,
         "name": character.name,
@@ -230,7 +229,6 @@ async def character_delete(request: CharacterDeleteRequest):
         auth_require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
     database.characters.delete(character.id)
     await get_pool("characters").broadcast({
-        "pool": "characters",
         "type": "delete",
         "id": character.id,
     })
@@ -251,6 +249,14 @@ async def character_update(request: CharacterUpdateRequest):
     database.characters.update(request.id, request.changes)
 
     await character.broadcast_update(request.changes)
+
+    if name := request.changes.get("$set", {}).get("name", None):
+        await get_pool("characters").broadcast({
+            "type": "rename",
+            "id": request.id,
+            "name": name,
+        })
+
     return {"status": "success"}
 
 
@@ -294,7 +300,6 @@ async def character_list(request: AuthRequest):
 async def map_create(request: GMRequest):
     map = database.maps.create({"name": "New Map"})
     await get_pool("maps").broadcast({
-        "pool": "maps",
         "type": "create",
         "id": map.id,
         "name": map.name,
@@ -327,7 +332,6 @@ async def map_delete(request: MapDeleteRequest):
         auth_require(map.has_permission(request.requester.id, "*", Permissions.OWNER))
     database.maps.delete(map.id)
     await get_pool("maps").broadcast({
-        "pool": "maps",
         "type": "delete",
         "id": map.id,
     })
@@ -411,6 +415,47 @@ async def combat_update(request: CombatUpdateRequest):
     return {"status": "success"}
 
 
+class CombatSortRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/combat/sort")
+async def combat_sort(request: CombatSortRequest):
+    combat = require(database.combats.get(request.id), "invalid combat id")
+    require(len(combat.combatants) > 0, "not enough combatants")
+    if not request.requester.is_gm:
+        auth_require(combat.has_permission(request.requester.id, "*", Permissions.WRITE))
+
+    combatants = combat.combatants
+    combatants.sort(key=lambda c: c.initiative if c.initiative else 0, reverse=True)
+
+    update = {"$set": {
+        "combatants": [c.dict() for c in combatants],
+    }}
+
+    database.combats.update(request.id, update)
+    await combat.broadcast_update(update)
+
+
+class CombatClearRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/combat/clear")
+async def combat_clear(request: CombatClearRequest):
+    combat = require(database.combats.get(request.id), "invalid combat id")
+    require(len(combat.combatants) > 0, "not enough combatants")
+    if not request.requester.is_gm:
+        auth_require(combat.has_permission(request.requester.id, "*", Permissions.WRITE))
+
+    update = {"$set": {
+        "combatants": [],
+    }}
+
+    database.combats.update(request.id, update)
+    await combat.broadcast_update(update)
+
+
 class EndTurnRequest(AuthRequest):
     id: str
 
@@ -441,7 +486,7 @@ async def combat_update(request: EndTurnRequest):
         }
     })
 
-    await combat.broadcast_update({"$rotate": combatant.id})
+    await combat.broadcast_update({"id": combatant.id}, type="end-turn")
     return {"status": "success"}
 
 
@@ -488,26 +533,32 @@ class RollRequest(AuthRequest):
     speaker: str
     formula: str
     character_id: Optional[str]
+    silent: bool = True
 
 
 @app.post("/api/messages/roll")
 async def send_roll(request: RollRequest):
+    result = {"status": "success"}
     # Permissions checks
     if not request.requester.is_gm and request.character_id is not None:
         character: Character = require(database.characters.get(request.character_id), "character does not exist")
         auth_require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
-    # Create message
-    message = messages.create(
-        speaker=request.speaker,
-        content="<p>TODO</p>",
-        character_id=request.character_id,
-    )
-    # Inform subscribers
-    broadcast = jsonable_encoder(message.dict())
-    broadcast["type"] = "send"
-    broadcast["pool"] = "messages"
-    await get_pool("messages").broadcast(broadcast)
-    return {"status": "success", "id": message.id}
+
+    if not request.silent:
+        # Create message
+        message: Message = database.messages.create({
+            "sender_id": request.requester.id,
+            "character_id": request.character_id,
+            "speaker": request.speaker,
+            "content": "<p>TODO</p>",
+        })
+        # Inform subscribers
+        broadcast = jsonable_encoder(message.dict())
+        broadcast["type"] = "send"
+        await get_pool("messages").broadcast(broadcast)
+        result["id"] = message.id
+
+    return result
 
 
 class SendMessageRequest(AuthRequest):
@@ -533,12 +584,13 @@ async def send_message(request: SendMessageRequest):
             auth_require(request.speaker == request.requester.name)
         auth_require(request.language == Language.COMMON or request.language in request.requester.languages)
     # Create message
-    message = messages.create(
-        speaker=request.speaker,
-        content=f"<p>{request.content}</p>",
-        character_id=request.character_id,
-        language=request.language
-    )
+    message: Message = database.messages.create({
+        "sender_id": request.requester.id,
+        "character_id": request.character_id,
+        "speaker": request.speaker,
+        "content": f"<p>{request.content}</p>",
+        "language": request.language,
+    })
     # Inform subscribers
     full_broadcast = jsonable_encoder(message.dict())
     full_broadcast["type"] = "send"
@@ -565,15 +617,13 @@ async def recent_messages(request: AuthRequest):
                 if message.language == Language.COMMON or message.language in languages else
                 message.foreign_dict()
             )
-            for message in messages.recent
-            if not message.is_deleted
+            for message in database.messages.find()
         ]
     }
 
 
 class EditMessageRequest(AuthRequest):
-    index: int
-    page: int
+    id: str
     content: str
 
     @validator('content')
@@ -584,8 +634,7 @@ class EditMessageRequest(AuthRequest):
 @app.post("/api/messages/edit")
 async def edit_message(request: EditMessageRequest):
     auth_require(request.requester.is_gm)
-    message = messages.get(request.page, request.index)
-    message.edit(request.content)
+    message = database.messages.get(request.id)
     broadcast = {"pool": "messages", "type": "edit", "id": message.id, "content": message.content}
     for connection in get_pool("messages"):
         if message.language in connection.user.languages:
@@ -594,16 +643,15 @@ async def edit_message(request: EditMessageRequest):
 
 
 class DeleteMessageRequest(AuthRequest):
-    index: int
-    page: int
+    id: str
 
 
 @app.post("/api/messages/delete")
 async def delete_message(request: DeleteMessageRequest):
     auth_require(request.requester.is_gm)
-    message = messages.get(request.page, request.index)
-    message.delete()
-    broadcast = {"pool": "messages", "type": "delete", "id": message.id}
+    message = database.messages.get(request.id)
+    database.messages.delete(request.id)
+    broadcast = {"type": "delete", "id": message.id}
     await get_pool("messages").broadcast(broadcast)
     return {"status": "success"}
 

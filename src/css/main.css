@@ -130,6 +130,10 @@
     padding: 1px 2px;
 }
 
+.combat-tracker .combatants .combatant .name {
+    margin: 0 2px;
+}
+
 .combat-tracker .combatants .combatant:hover {
     background-color: #ffffff4f;
 }
@@ -227,6 +231,11 @@ button:hover i {
     cursor: pointer;
     color: #ddeeff;
     filter: drop-shadow(0 0 4px #c6def8);
+}
+
+.dialog .description {
+    margin: 2px;
+    padding: 2px;
 }
 
 .dialog .row {

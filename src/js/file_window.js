@@ -1,5 +1,5 @@
 import * as ContextMenu from "./contextmenu.js";
-import { ContentWindow, ConfirmDialog, Dialog } from "./window.js";
+import { ContentWindow, ConfirmDialog, Dialog, InputDialog } from "./window.js";
 import { ApiRequest, Session, FileUpload } from "./requests.js";
 import { Vector2 } from "./vector.js";
 import { Button } from "./elements.js";
@@ -61,37 +61,16 @@ export class FileWindow extends ContentWindow {
         this.createFolderButton.type = "button";
         this.createFolderButton.className = "create-folder";
         this.createFolderButton.appendChild(document.createTextNode("Create Folder"));
-        this.createFolderButton.addEventListener("click", () => {
-            const folderName = document.createElement("input");
-            folderName.type = "text";
-            folderName.maxLength = 128;
-
-            const createButton = document.createElement("button");
-            createButton.appendChild(document.createTextNode("Create"));
-
-            const cancelButton = document.createElement("button");
-            cancelButton.appendChild(document.createTextNode("Cancel"));
-
-            const dialog = new Dialog({
-                title: "Create Folder",
-                elements: [
-                    folderName,
-                    [createButton, cancelButton]
-                ]
+        this.createFolderButton.addEventListener("click", async ev => {
+            const selection = await InputDialog("Create Folder", { "Name": "text" }, "Create");
+            if (!selection || !selection.Name) {
+                return;
+            }
+            await ApiRequest("/files/mkdir", {
+                name: selection.Name,
+                path: this.path,
             });
-
-            createButton.addEventListener("click", async () => {
-                await ApiRequest("/files/mkdir", {
-                    name: folderName.value,
-                    path: this.path,
-                });
-                await this.load(this.path);
-                dialog.close();
-            });
-
-            cancelButton.addEventListener("click", () => {
-                dialog.close();
-            });
+            await this.load(this.path);
         });
 
         this.path = "/";
@@ -146,6 +125,7 @@ export class FileWindow extends ContentWindow {
                 "Edit Directory": {
                     "Delete": async ev => {
                         await ApiRequest("/files/delete", { path });
+                        await this.load(this.path);
                     }
                 }
             });

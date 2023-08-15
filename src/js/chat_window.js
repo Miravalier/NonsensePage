@@ -81,6 +81,7 @@ export class ChatWindow extends ContentWindow {
 
         const element = this.messageContainer.appendChild(document.createElement("div"));
         element.className = "message";
+        element.dataset.id = message.id;
 
         const header = element.appendChild(document.createElement("div"));
         header.className = "header"

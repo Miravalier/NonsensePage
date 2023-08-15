@@ -1,6 +1,6 @@
 import * as ContextMenu from "./contextmenu.js";
 import { ApiRequest } from "./requests.js";
-import { ContentWindow, Dialog } from "./window.js";
+import { ContentWindow, InputDialog } from "./window.js";
 import { Parameter, AddDragListener } from "./utils.js";
 import { Vector2 } from "./vector.js";
 import { ErrorToast } from "./notifications.js";
@@ -37,33 +37,19 @@ export class MapListWindow extends ContentWindow {
         ContextMenu.set(element, {
             "Edit Map": {
                 "Rename": async (ev) => {
-                    const nameInput = Html(`<input type="text" maxlength="128">`);
-                    const renameButton = Html(`<button type="button">Rename</button>`);
-                    const cancelButton = Html(`<button type="button">Cancel</button>`);
-                    const dialog = new Dialog({
-                        title: `Rename Map`,
-                        elements: [
-                            nameInput,
-                            [renameButton, cancelButton]
-                        ]
+                    const selection = await InputDialog("Rename Map", { "Name": "text" }, "Rename");
+                    if (!selection || !selection.Name) {
+                        return;
+                    }
+                    await ApiRequest("/map/update", {
+                        id,
+                        changes: {
+                            "$set": {
+                                name: selection.Name,
+                            },
+                        },
                     });
-                    renameButton.addEventListener("click", async () => {
-                        if (nameInput.value) {
-                            await ApiRequest("/map/update", {
-                                id,
-                                changes: {
-                                    "$set": {
-                                        name: nameInput.value,
-                                    },
-                                },
-                            });
-                            element.textContent = nameInput.value;
-                        }
-                        dialog.close();
-                    });
-                    cancelButton.addEventListener("click", () => {
-                        dialog.close();
-                    });
+                    element.textContent = selection.Name;
                 },
                 "Delete": async (ev) => {
                     await ApiRequest("/map/delete", { id });

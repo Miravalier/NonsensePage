@@ -1,6 +1,6 @@
 import * as ContextMenu from "./contextmenu.js";
 import { Vector2 } from "./vector.js";
-import { ContentWindow, Dialog } from "./window.js";
+import { ContentWindow, Dialog, InputDialog } from "./window.js";
 import { ApiRequest, Session } from "./requests.js";
 import { ErrorToast } from "./notifications.js";
 import { CharacterSheetWindow } from "./character_sheet_window.js";
@@ -40,32 +40,17 @@ export class CharacterListWindow extends ContentWindow {
         ContextMenu.set(element, {
             "Edit Character": {
                 "Rename": async (ev) => {
-                    const nameInput = Html(`<input type="text" maxlength="128">`);
-                    const renameButton = Html(`<button type="button">Rename</button>`);
-                    const cancelButton = Html(`<button type="button">Cancel</button>`);
-                    const dialog = new Dialog({
-                        title: `Rename Character`,
-                        elements: [
-                            nameInput,
-                            [renameButton, cancelButton]
-                        ]
-                    });
-                    renameButton.addEventListener("click", async () => {
-                        if (nameInput.value) {
-                            await ApiRequest("/character/update", {
-                                id,
-                                changes: {
-                                    "$set": {
-                                        name: nameInput.value,
-                                    },
-                                },
-                            });
-                            element.textContent = nameInput.value;
-                        }
-                        dialog.close();
-                    });
-                    cancelButton.addEventListener("click", () => {
-                        dialog.close();
+                    const selection = await InputDialog("Rename Character", { "Name": "text" }, "Rename");
+                    if (!selection || !selection.Name) {
+                        return;
+                    }
+                    await ApiRequest("/character/update", {
+                        id,
+                        changes: {
+                            "$set": {
+                                name: selection.Name,
+                            },
+                        },
                     });
                 },
                 "Delete": async (ev) => {
@@ -98,8 +83,14 @@ export class CharacterListWindow extends ContentWindow {
                     characterDiv.remove();
                 }
             }
-            if (updateData.type == "create") {
+            else if (updateData.type == "create") {
                 await this.addCharacter(updateData.id, updateData.name);
+            }
+            else if (updateData.type == "rename") {
+                const characterDiv = this.characters.querySelector(`[data-character="${updateData.id}"]`);
+                if (characterDiv) {
+                    characterDiv.textContent = updateData.name;
+                }
             }
         });
     }

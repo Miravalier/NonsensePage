@@ -2,7 +2,6 @@ import { GenerateId } from "./utils.js";
 import { Sheet } from "./sheet.js?v=1";
 import { Html } from "./elements.js";
 
-console.log("LOADED");
 
 export default class GenericSheet extends Sheet {
     onLoad(data) {

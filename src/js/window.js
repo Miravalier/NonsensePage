@@ -85,6 +85,9 @@ export class BaseWindow {
 
         const rightGroup = titleBar.appendChild(document.createElement("div"));
         rightGroup.className = "group";
+        rightGroup.addEventListener("dblclick", ev => {
+            ev.stopPropagation();
+        });
 
         if (refreshable) {
             this.refreshButton = rightGroup.appendChild(Button("refresh"));
@@ -186,7 +189,6 @@ export class BaseWindow {
     }
 
     refresh() {
-        console.log("Refresh");
         this.load();
     }
 
@@ -324,6 +326,64 @@ export class Dialog extends ContentWindow {
             AddElement(this.elements, element);
         }
     }
+}
+
+
+export function InputDialog(title, inputs, acceptText) {
+    const inputElements = [];
+    for (const [labelText, inputType] of Object.entries(inputs)) {
+        const inputLabel = document.createElement("span");
+        inputLabel.classList.add("label");
+        inputLabel.textContent = labelText;
+
+        const inputElement = document.createElement("input");
+        inputElement.type = inputType;
+        if (inputType == "number") {
+            inputElement.max = 999999;
+        }
+        if (inputType == "text") {
+            inputElement.maxLength = 128;
+        }
+        inputElements.push([inputLabel, inputElement]);
+    }
+
+    const acceptButton = document.createElement("button");
+    acceptButton.textContent = acceptText;
+
+    const cancelButton = document.createElement("button");
+    cancelButton.appendChild(document.createTextNode("Cancel"));
+
+    const dialog = new Dialog({
+        title,
+        elements: [
+            inputElements,
+            [acceptButton, cancelButton]
+        ]
+    });
+
+    return new Promise((resolve) => {
+        let results = null;
+        acceptButton.addEventListener("click", () => {
+            results = {};
+            for (const [label, inputElement] of inputElements) {
+                let value;
+                if (inputElement.type == "number") {
+                    value = parseInt(inputElement.value);
+                }
+                else {
+                    value = inputElement.value;
+                }
+                results[label.textContent] = value;
+            }
+            dialog.close();
+        });
+        cancelButton.addEventListener("click", () => {
+            dialog.close();
+        });
+        dialog.on_close.push(() => {
+            resolve(results);
+        });
+    });
 }
 
 
