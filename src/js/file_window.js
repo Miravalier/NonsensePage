@@ -142,7 +142,7 @@ export class FileWindow extends ContentWindow {
             url_path = `/files${path}`;
         }
         else {
-            url_path = `/files/${Session.username}${path}`;
+            url_path = `/files/users/${Session.username}${path}`;
         }
 
         let icon;

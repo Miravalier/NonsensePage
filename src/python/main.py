@@ -29,7 +29,6 @@ from security import check_password, hash_password
 
 
 ADMIN_HASH = hashlib.sha256(os.environ.get("ADMIN_TOKEN", "").encode()).digest()
-FILES_ROOT = Path("/files")
 
 
 app = FastAPI()
@@ -129,7 +128,7 @@ async def login(request: LoginRequest):
         "user_id": user.id,
         "last_auth_date": datetime.utcnow(),
     })
-    return {"status": "success", "token": auth_token, "gm": user.is_gm}
+    return {"status": "success", "token": auth_token, "gm": user.is_gm, "id": user.id}
 
 
 class AuthRequest(BaseModel):
@@ -173,6 +172,7 @@ async def user_create(request: UserCreateRequest):
     if database.users.get({"name": request.username}):
         raise JsonError("username taken")
     user: User = database.users.create({"name": request.username, "hashed_password": hash_password(request.password)})
+    user.file_root.mkdir(parents=True, exist_ok=True)
     return {"status": "success", "id": user.id}
 
 
@@ -523,6 +523,7 @@ async def add_combatant(request: AddCombatantRequest):
         "id": combatant_id,
         "character_id": character.id,
         "name": character.name,
+        "permissions": character.permissions,
     }}}
     database.combats.update(combat.id, update)
     await combat.broadcast_update(update)
@@ -727,10 +728,7 @@ def validate_path(requester: User, path: str) -> Path:
     # Resolve '..' and symlinks in path
     path = path.resolve(strict=False)
     # Make path relative to user root
-    if requester.is_gm:
-        user_root = FILES_ROOT
-    else:
-        user_root = FILES_ROOT / requester.name
+    user_root = requester.file_root
     path = user_root / Path(str(path)[1:])
     if path == user_root:
         raise JsonError("cannot delete file root")
@@ -748,10 +746,7 @@ def validate_directory(requester: User, path: str) -> Path:
     # Resolve '..' and symlinks in path
     path = path.resolve(strict=False)
     # Make path relative to user root
-    if requester.is_gm:
-        user_root = FILES_ROOT
-    else:
-        user_root = FILES_ROOT / requester.name
+    user_root = requester.file_root
     path = user_root / Path(str(path)[1:])
     # Check that path is a directory that exists
     if not path.is_dir():
@@ -821,10 +816,7 @@ async def list_files(request: ListFilesRequest):
     # Validate path
     path = validate_directory(request.requester, request.path)
     # Make path relative to user root
-    if request.requester.is_gm:
-        user_root = FILES_ROOT
-    else:
-        user_root = FILES_ROOT / request.requester.name
+    user_root = request.requester.file_root
     # Get list of files
     if path == user_root:
         returned_path = "/"

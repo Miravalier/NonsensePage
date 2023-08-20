@@ -5,6 +5,7 @@ export class Session {
     static token = null;
     static gm = false;
     static username = "<Invalid>";
+    static id = null;
     static ws;
     static subscriptions = {};
 }
@@ -85,6 +86,7 @@ export async function LoginRequest(username, password) {
         Session.token = response.token;
     }
     Session.gm = response.gm;
+    Session.id = response.id;
     Session.username = username;
     return response;
 }

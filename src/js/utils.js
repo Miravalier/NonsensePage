@@ -1,5 +1,6 @@
 import { PcgEngine } from "./pcg-random.js";
 import { Vector2 } from "./vector.js";
+import { Permissions } from "./enums.js";
 
 
 export function GenerateId() {
@@ -13,13 +14,35 @@ export function GenerateId() {
 }
 
 
+export function InflateDocument(document) {
+    if (Array.isArray(document) || document === null || typeof document !== "object") {
+        return document;
+    }
+
+    const result = {};
+    for (const [key, value] of Object.entries(document)) {
+        let cursor = result;
+        const components = key.split(".");
+        const terminal = components.pop();
+        for (const component of components) {
+            if (typeof cursor[component] === "undefined") {
+                cursor[component] = {};
+            }
+            cursor = cursor[component];
+        }
+        cursor[terminal] = InflateDocument(value);
+    }
+    return result;
+}
+
+
 export function ResolvePath(object, path) {
     if (!object || !path) {
         return undefined;
     }
 
     let result = object;
-    for (let component of path.split(".")) {
+    for (const component of path.split(".")) {
         if (!result) {
             return undefined;
         }
@@ -29,6 +52,82 @@ export function ResolvePath(object, path) {
         result = result[component];
     }
     return result;
+}
+
+
+/**
+ * @param {object} document
+ * @param {string} id
+ * @param {string} field
+ * @returns {number}
+ */
+export function GetPermissions(document, id, field) {
+    if (Session.gm) {
+        return Permissions.OWNER;
+    }
+    if (id === undefined) {
+        id = "*";
+    }
+    if (field === undefined) {
+        field = "*";
+    }
+
+    if (!document || !document.permissions) {
+        console.error(document);
+        throw new Error("Invalid document does not contain permissions");
+    }
+
+    // Find the permissions sub-document appropriate for this entity
+    let entityPermissions;
+    if (document.permissions[id]) {
+        entityPermissions = document.permissions[id];
+    }
+    else if (document.permissions["*"]) {
+        entityPermissions = document.permissions["*"];
+    }
+    else {
+        entityPermissions = { "*": Permissions.INHERIT };
+    }
+
+    // Get the permission for this specific field
+    let permission;
+    if (entityPermissions[field]) {
+        permission = entityPermissions[field];
+    }
+    else if (entityPermissions["*"]) {
+        permission = entityPermissions["*"];
+    }
+    else {
+        permission = Permissions.INHERIT;
+    }
+
+    // Resolve inherited permissions
+    if (permission == Permissions.INHERIT) {
+        if (id == "*") {
+            return Permissions.NONE;
+        }
+        else {
+            return GetPermissions(document, "*", field);
+        }
+    }
+
+    return permission;
+}
+
+
+/**
+ * @param {object} document
+ * @param {string} id
+ * @param {string} field
+ * @param {number} level
+ * @returns {boolean}
+ */
+export function HasPermission(document, id, field, level) {
+    if (level === undefined) {
+        level = Permissions.READ;
+    }
+
+    return GetPermissions(document, id, field) >= level;
 }
 
 

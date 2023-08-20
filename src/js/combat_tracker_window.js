@@ -3,10 +3,11 @@ import { Vector2 } from "./vector.js";
 import { CharacterSheetWindow } from "./character_sheet_window.js";
 import { ConfirmDialog, ContentWindow, InputDialog } from "./window.js";
 import { ApiRequest, Session } from "./requests.js";
-import { Parameter } from "./utils.js";
+import { Parameter, HasPermission } from "./utils.js";
 import { ErrorToast } from "./notifications.js";
 import { Html } from "./elements.js";
 import { Roll } from "./dice.js";
+import { Permissions } from "./enums.js";
 
 
 export class CombatTrackerWindow extends ContentWindow {
@@ -26,10 +27,10 @@ export class CombatTrackerWindow extends ContentWindow {
             <div class="buttons"></div>
         `));
 
-        const endTurnButton = buttonContainer.appendChild(Html(`
+        this.endTurnButton = buttonContainer.appendChild(Html(`
             <button type="button" class="end-turn">End Turn</button>
         `));
-        endTurnButton.addEventListener("click", async (ev) => {
+        this.endTurnButton.addEventListener("click", async (ev) => {
             await ApiRequest("/combat/end-turn", {
                 id: this.id,
             });
@@ -201,6 +202,16 @@ export class CombatTrackerWindow extends ContentWindow {
                 combatantElement.remove();
                 delete this.combatantElements[id];
                 delete this.combatantIndexes[id];
+            }
+        }
+
+        if (combat.combatants.length > 0) {
+            const currentCombatant = combat.combatants[0];
+            if (HasPermission(currentCombatant, Session.id, "*", Permissions.WRITE)) {
+                this.endTurnButton.style.display = null;
+            }
+            else {
+                this.endTurnButton.style.display = 'none';
             }
         }
 

@@ -4,11 +4,15 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from fastapi import WebSocket
 from fastapi.encoders import jsonable_encoder
+from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Any, Dict, Iterator, List, Optional, Union, Set
 
 from enums import Alignment, Language, Permissions, Layer
 from utils import current_timestamp
+
+
+FILES_ROOT = Path("/files")
 
 
 @dataclass
@@ -165,8 +169,14 @@ class User(Entry):
     hashed_password: bytes
     is_gm: bool = False
     character_id: Optional[str] = None
-    auth_tokens: List[str] = Field(default_factory=list)
     languages: List[Language] = Field(default_factory=list)
+
+    @property
+    def file_root(self) -> Path:
+        if self.is_gm:
+            return FILES_ROOT
+        else:
+            return FILES_ROOT / "users" / self.name
 
 
 class Combatant(Entry):
