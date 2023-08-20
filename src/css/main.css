@@ -74,6 +74,17 @@
     margin: 2px;
 }
 
+.chat.window .turn-start {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+    margin: 4px;
+    padding: 2px;
+    background: #00000040;
+    border-radius: 4px;
+}
+
 .chat.window .content {
     display: flex;
     flex-flow: column nowrap;

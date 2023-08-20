@@ -76,6 +76,30 @@ def assert_no_mongo_operators(obj):
     return obj
 
 
+async def send_message(content: str, *, user: User, speaker: str = "System", character_id: str = None, language = Language.COMMON):
+    # Create message
+    message: Message = database.messages.create({
+        "sender_id": user.id,
+        "character_id": character_id,
+        "speaker": speaker,
+        "content": content,
+        "language": language,
+    })
+    # Inform subscribers
+    full_broadcast = jsonable_encoder(message.dict())
+    full_broadcast["type"] = "send"
+    full_broadcast["pool"] = "messages"
+    foreign_broadcast = jsonable_encoder(message.foreign_dict())
+    foreign_broadcast["type"] = "send"
+    foreign_broadcast["pool"] = "messages"
+    for connection in get_pool("messages"):
+        if language == Language.COMMON or language in connection.user.languages:
+            await connection.send(full_broadcast)
+        else:
+            await connection.send(foreign_broadcast)
+    return message
+
+
 class AdminConsoleRequest(BaseModel):
     admin_token: str
 
@@ -472,7 +496,7 @@ class EndTurnRequest(AuthRequest):
 @app.post("/api/combat/end-turn")
 async def combat_update(request: EndTurnRequest):
     combat = require(database.combats.get(request.id), "invalid combat id")
-    require(len(combat.combatants) > 0, "not enough combatants")
+    require(len(combat.combatants) > 1, "not enough combatants")
     combatant = combat.combatants[0]
     if not request.requester.is_gm:
         character = require(database.characters.get(combatant.character_id), "invalid character id")
@@ -496,6 +520,12 @@ async def combat_update(request: EndTurnRequest):
     })
 
     await combat.broadcast_update({"id": combatant.id}, type="end-turn")
+    await send_message(
+        f"""
+            <div class="turn-start">Turn Start: {combat.combatants[1].name}</p>
+        """,
+        user=request.requester,
+    )
     return {"status": "success"}
 
 
@@ -555,17 +585,12 @@ async def send_roll(request: RollRequest):
         auth_require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
 
     if not request.silent:
-        # Create message
-        message: Message = database.messages.create({
-            "sender_id": request.requester.id,
-            "character_id": request.character_id,
-            "speaker": request.speaker,
-            "content": "<p>TODO</p>",
-        })
-        # Inform subscribers
-        broadcast = jsonable_encoder(message.dict())
-        broadcast["type"] = "send"
-        await get_pool("messages").broadcast(broadcast)
+        message = await send_message(
+            "<p>TODO</p>",
+            user=request.requester,
+            character_id=request.character_id,
+            speaker=request.speaker,
+        )
         result["id"] = message.id
 
     return result
@@ -583,7 +608,7 @@ class SendMessageRequest(AuthRequest):
 
 
 @app.post("/api/messages/speak")
-async def send_message(request: SendMessageRequest):
+async def messages_speak(request: SendMessageRequest):
     # Permissions checks
     if not request.requester.is_gm:
         if request.character_id is not None:
@@ -594,25 +619,13 @@ async def send_message(request: SendMessageRequest):
             auth_require(request.speaker == request.requester.name)
         auth_require(request.language == Language.COMMON or request.language in request.requester.languages)
     # Create message
-    message: Message = database.messages.create({
-        "sender_id": request.requester.id,
-        "character_id": request.character_id,
-        "speaker": request.speaker,
-        "content": f"<p>{request.content}</p>",
-        "language": request.language,
-    })
-    # Inform subscribers
-    full_broadcast = jsonable_encoder(message.dict())
-    full_broadcast["type"] = "send"
-    full_broadcast["pool"] = "messages"
-    foreign_broadcast = jsonable_encoder(message.foreign_dict())
-    foreign_broadcast["type"] = "send"
-    foreign_broadcast["pool"] = "messages"
-    for connection in get_pool("messages"):
-        if request.language == Language.COMMON or request.language in connection.user.languages:
-            await connection.send(full_broadcast)
-        else:
-            await connection.send(foreign_broadcast)
+    message = await send_message(
+        f"<p>{request.content}</p>",
+        user=request.requester,
+        character_id=request.character_id,
+        speaker=request.speaker,
+        language=request.language,
+    )
     return {"status": "success", "id": message.id}
 
 
