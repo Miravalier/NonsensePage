@@ -196,20 +196,29 @@ class CharacterCreateRequest(AuthRequest):
 
 @app.post("/api/character/create")
 async def character_create(request: CharacterCreateRequest):
-    main_character = False
+    options = {"name": request.name}
     if request.alignment is None:
         if request.requester.is_gm:
-            request.alignment = Alignment.NEUTRAL
+            options["alignment"] = Alignment.NEUTRAL
         elif request.requester.character_id is None:
-            request.alignment = Alignment.PLAYER
-            main_character = True
+            options["alignment"] = Alignment.PLAYER
         else:
-            request.alignment = Alignment.ALLY
-    character = database.characters.create({"name": request.name, "alignment": request.alignment})
+            options["alignment"] = Alignment.ALLY
+    else:
+        options["alignment"] = request.alignment
     if not request.requester.is_gm:
-        character.set_permission(request.requester.id, "*", Permissions.OWNER)
-        if main_character:
-            request.requester.character_id = character.id
+        options["permissions"] = {"*": {"*": Permissions.READ}, request.requester.id: {"*": Permissions.OWNER}}
+
+    character = database.characters.create(options)
+
+    if request.requester.character_id is None and character.alignment == Alignment.PLAYER:
+        database.users.update(request.requester.id, {"$set": {"character_id": character.id}})
+        await get_pool("players").broadcast({
+            "type": "set_character",
+            "id": character.id,
+            "name": character.name,
+        })
+
     await get_pool("characters").broadcast({
         "type": "create",
         "id": character.id,
@@ -717,7 +726,12 @@ async def live_connection(websocket: WebSocket):
 
 @app.post("/api/status")
 async def status(request: AuthRequest):
-    return {"status": "success", "username": request.requester.name, "gm": request.requester.is_gm}
+    return {
+        "status": "success",
+        "id": request.requester.id,
+        "username": request.requester.name,
+        "gm": request.requester.is_gm,
+    }
 
 
 def validate_path(requester: User, path: str) -> Path:

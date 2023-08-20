@@ -42,6 +42,7 @@ async function OnLoad() {
 
     Session.gm = response.gm;
     Session.username = response.username;
+    Session.id = response.id;
 }
 
 

@@ -1,6 +1,27 @@
 import { ApiRequest, LoginRequest, Session } from "./requests.js"
 import { InfoToast, WarningToast, ErrorToast } from "./notifications.js";
 
+async function AttemptLogin() {
+    const username = document.querySelector("#login .username").value;
+    if (!username) {
+        ErrorToast("You must enter a username.");
+        return;
+    }
+    const password = document.querySelector("#login .password").value;
+    if (!password) {
+        ErrorToast("You must enter a password.");
+        return;
+    }
+    const response = await LoginRequest(username, password);
+    if (response.status === "success") {
+        console.log("Auth successful, redirecting to main application")
+        window.location.href = "/";
+    }
+    else {
+        ErrorToast("Login failed.");
+    }
+}
+
 window.addEventListener("load", async () => {
     window.InfoToast = InfoToast;
     window.ErrorToast = ErrorToast;
@@ -20,24 +41,14 @@ window.addEventListener("load", async () => {
 
     window.LoginRequest = LoginRequest;
 
-    document.querySelector("#login .button").addEventListener("click", async () => {
-        const username = document.querySelector("#login .username").value;
-        if (!username) {
-            ErrorToast("You must enter a username.");
-            return;
-        }
-        const password = document.querySelector("#login .password").value;
-        if (!password) {
-            ErrorToast("You must enter a password.");
-            return;
-        }
-        const response = await LoginRequest(username, password);
-        if (response.status === "success") {
-            console.log("Auth successful, redirecting to main application")
-            window.location.href = "/";
-        }
-        else {
-            ErrorToast("Login failed.");
-        }
-    });
+    for (let inputElement of document.querySelectorAll("#login input")) {
+        inputElement.addEventListener("keypress", ev => {
+            if (ev.key == "Enter") {
+                ev.preventDefault();
+                AttemptLogin();
+            }
+        });
+    }
+
+    document.querySelector("#login .button").addEventListener("click", AttemptLogin);
 });
