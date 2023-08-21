@@ -60,16 +60,16 @@ export class ChatWindow extends ContentWindow {
                 this.addMessage(data);
             }
             else if (data.type == "edit") {
-                message = this.messages[data.id];
+                const message = this.messages[data.id];
                 if (!message) {
-                    console.error(`Received edit for non-existing message id ${data.id}`);
+                    console.warn(`Received edit for non-existing message id ${data.id}`);
                     return;
                 }
-                const contentElement = message.querySelector(".content");
-                contentElement.firstChild.textContent = data.content;
+                const contentElement = message.querySelector(".text");
+                contentElement.innerHTML = data.content;
             }
             else if (data.type == "delete") {
-                message = this.messages[data.id];
+                const message = this.messages[data.id];
                 if (!message) {
                     console.error(`Received delete for non-existing message id ${data.id}`);
                     return;
@@ -104,6 +104,25 @@ export class ChatWindow extends ContentWindow {
         const element = this.messageContainer.appendChild(document.createElement("div"));
         element.className = "message";
         element.dataset.id = message.id;
+
+        if (Session.gm) {
+            ContextMenu.set(element, {
+                "Edit Message": {
+                    "Edit": async ev => {
+                        const selection = await InputDialog("Edit Message", { "Content": ["paragraph", message.content] }, "Save");
+                        if (!selection || !selection.Content) {
+                            return;
+                        }
+
+                        message.content = selection.Content;
+                        await ApiRequest("/messages/edit", { id: message.id, content: selection.Content });
+                    },
+                    "Delete": async ev => {
+                        await ApiRequest("/messages/delete", { id: message.id });
+                    },
+                },
+            });
+        }
 
         const header = element.appendChild(document.createElement("div"));
         header.className = "header"

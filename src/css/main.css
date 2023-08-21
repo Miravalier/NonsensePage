@@ -249,6 +249,11 @@ button:hover i {
     padding: 2px;
 }
 
+.dialog textarea {
+    height: 6em;
+    width: 400px;
+}
+
 .dialog .row {
     display: flex;
     flex-flow: row nowrap;

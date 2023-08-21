@@ -332,18 +332,35 @@ export class Dialog extends ContentWindow {
 
 export function InputDialog(title, inputs, acceptText) {
     const inputElements = [];
-    for (const [labelText, inputType] of Object.entries(inputs)) {
+    for (const [labelText, inputData] of Object.entries(inputs)) {
+        let inputType;
+        let startingValue = "";
+        if (Array.isArray(inputData)) {
+            [inputType, startingValue] = inputData;
+        }
+        else {
+            inputType = inputData;
+        }
+
         const inputLabel = document.createElement("span");
         inputLabel.classList.add("label");
         inputLabel.textContent = labelText;
-
-        const inputElement = document.createElement("input");
-        inputElement.type = inputType;
-        if (inputType == "number") {
-            inputElement.max = 999999;
+        let inputElement;
+        if (inputType == "paragraph") {
+            inputElement = document.createElement("textarea");
+            inputElement.maxLength = 10000;
+            inputElement.value = startingValue;
         }
-        if (inputType == "text") {
-            inputElement.maxLength = 128;
+        else {
+            inputElement = document.createElement("input");
+            inputElement.type = inputType;
+            if (inputType == "number") {
+                inputElement.max = 999999;
+            }
+            if (inputType == "text") {
+                inputElement.maxLength = 128;
+            }
+            inputElement.value = startingValue;
         }
         inputElements.push([inputLabel, inputElement]);
     }

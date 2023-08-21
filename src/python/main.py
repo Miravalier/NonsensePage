@@ -674,37 +674,26 @@ async def recent_messages(request: AuthRequest):
     }
 
 
-class EditMessageRequest(AuthRequest):
+class EditMessageRequest(GMRequest):
     id: str
     content: str
-
-    @validator('content')
-    def escape_content(cls, value):
-        return html.escape(value)
 
 
 @app.post("/api/messages/edit")
 async def edit_message(request: EditMessageRequest):
-    auth_require(request.requester.is_gm)
-    message = database.messages.get(request.id)
-    broadcast = {"pool": "messages", "type": "edit", "id": message.id, "content": message.content}
-    for connection in get_pool("messages"):
-        if message.language in connection.user.languages:
-            await connection.send(broadcast)
+    database.messages.update(request.id, {"$set": {"content": request.content}})
+    await get_pool("messages").broadcast({"type": "edit", "id": request.id, "content": request.content})
     return {"status": "success"}
 
 
-class DeleteMessageRequest(AuthRequest):
+class DeleteMessageRequest(GMRequest):
     id: str
 
 
 @app.post("/api/messages/delete")
 async def delete_message(request: DeleteMessageRequest):
-    auth_require(request.requester.is_gm)
-    message = database.messages.get(request.id)
     database.messages.delete(request.id)
-    broadcast = {"type": "delete", "id": message.id}
-    await get_pool("messages").broadcast(broadcast)
+    await get_pool("messages").broadcast({"type": "delete", "id": request.id})
     return {"status": "success"}
 
 
