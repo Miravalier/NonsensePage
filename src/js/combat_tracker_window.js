@@ -85,70 +85,72 @@ export class CombatTrackerWindow extends ContentWindow {
                 });
                 await characterSheetWindow.load(combatant.character_id);
             });
-            ContextMenu.set(combatantElement, {
-                "Edit Combatant": {
-                    "Rename": async (ev) => {
-                        const selection = await InputDialog("Rename Combatant", { "Name": "text" }, "Finish");
-                        if (!selection || !selection.Name) {
-                            return;
-                        }
-                        await ApiRequest("/combat/update", {
-                            id: this.id,
-                            changes: {
-                                "$set": {
-                                    [`combatants.${this.combatantIndexes[combatant.id]}.name`]: selection.Name
-                                },
-                            },
-                        });
-                    },
-                    "Delete Combatant": async (ev) => {
-                        await ApiRequest("/combat/update", {
-                            id: this.id,
-                            changes: {
-                                "$pull": {
-                                    combatants: {
-                                        id: combatant.id,
+            if (Session.gm) {
+                ContextMenu.set(combatantElement, {
+                    "Edit Combatant": {
+                        "Rename": async (ev) => {
+                            const selection = await InputDialog("Rename Combatant", { "Name": "text" }, "Finish");
+                            if (!selection || !selection.Name) {
+                                return;
+                            }
+                            await ApiRequest("/combat/update", {
+                                id: this.id,
+                                changes: {
+                                    "$set": {
+                                        [`combatants.${this.combatantIndexes[combatant.id]}.name`]: selection.Name
                                     },
                                 },
-                            },
-                        });
-                    },
-                    "Roll Initiative": async (ev) => {
-                        await ApiRequest("/combat/update", {
-                            id: this.id,
-                            changes: {
-                                "$set": {
-                                    [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: Roll("2d6").total
+                            });
+                        },
+                        "Delete Combatant": async (ev) => {
+                            await ApiRequest("/combat/update", {
+                                id: this.id,
+                                changes: {
+                                    "$pull": {
+                                        combatants: {
+                                            id: combatant.id,
+                                        },
+                                    },
                                 },
-                            },
-                        });
-                    },
-                    "Set Initiative": async (ev) => {
-                        const selection = await InputDialog("Set Initiative", { "Initiative": "number" }, "Set");
-                        if (!selection || !selection.Initiative) {
-                            return;
-                        }
-                        await ApiRequest("/combat/update", {
-                            id: this.id,
-                            changes: {
-                                "$set": {
-                                    [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: selection.Initiative
-                                }
-                            },
-                        });
-                    },
-                    "Clear Initiative": async (ev) => {
-                        await ApiRequest("/combat/update", {
-                            id: this.id,
-                            changes: {
-                                "$set": {
-                                    [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: null
-                                }
-                            },
-                        });
-                    },
-                }
-            });
+                            });
+                        },
+                        "Roll Initiative": async (ev) => {
+                            await ApiRequest("/combat/update", {
+                                id: this.id,
+                                changes: {
+                                    "$set": {
+                                        [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: Roll("2d6").total
+                                    },
+                                },
+                            });
+                        },
+                        "Set Initiative": async (ev) => {
+                            const selection = await InputDialog("Set Initiative", { "Initiative": "number" }, "Set");
+                            if (!selection || !selection.Initiative) {
+                                return;
+                            }
+                            await ApiRequest("/combat/update", {
+                                id: this.id,
+                                changes: {
+                                    "$set": {
+                                        [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: selection.Initiative
+                                    }
+                                },
+                            });
+                        },
+                        "Clear Initiative": async (ev) => {
+                            await ApiRequest("/combat/update", {
+                                id: this.id,
+                                changes: {
+                                    "$set": {
+                                        [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: null
+                                    }
+                                },
+                            });
+                        },
+                    }
+                });
+            }
             this.combatantElements[combatant.id] = combatantElement;
         }
     }

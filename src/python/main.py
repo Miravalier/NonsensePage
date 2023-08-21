@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import json
 import os
 import secrets
 import shutil
@@ -26,6 +27,7 @@ from models import (
 from enums import Alignment, Language, Permissions
 from errors import AuthError, JsonError
 from security import check_password, hash_password
+from utils import current_timestamp
 
 
 ADMIN_HASH = hashlib.sha256(os.environ.get("ADMIN_TOKEN", "").encode()).digest()
@@ -596,6 +598,33 @@ async def send_roll(request: RollRequest):
     return result
 
 
+class SaveMessagesRequest(GMRequest):
+    filename: str
+
+
+@app.post("/api/messages/save")
+async def messages_save(request: SaveMessagesRequest):
+    path = validate_path(request.requester, (Path("/chats/") / request.filename).with_suffix(".json"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as fp:
+        json.dump(
+            {
+                "timestamp": current_timestamp(),
+                "messages": [message.dict() for message in database.messages.find()],
+            },
+            fp
+        )
+
+    return {"status": "success"}
+
+
+@app.post("/api/messages/clear")
+async def messages_clear(request: GMRequest):
+    database.messages.multiple_delete()
+    await get_pool("messages").broadcast({"type": "clear"})
+    return {"status": "success"}
+
+
 class SendMessageRequest(AuthRequest):
     speaker: str
     content: str
@@ -758,10 +787,7 @@ def validate_path(requester: User, path: str) -> Path:
     user_root = requester.file_root
     path = user_root / Path(str(path)[1:])
     if path == user_root:
-        raise JsonError("cannot delete file root")
-    # Check that path is a directory that exists
-    if not path.exists():
-        raise JsonError("path does not exist")
+        raise JsonError("invalid path: file root")
     return path
 
 
@@ -791,6 +817,11 @@ async def files_mkdir(request: CreateFolderRequest):
     path = validate_directory(request.requester, request.path)
     new_path = path / request.name
     new_path.mkdir()
+    await get_pool("files").broadcast({
+        "type": "mkdir",
+        "user": request.requester.id,
+        "path": str(Path(request.path) / request.name),
+    })
     return {"status": "success"}
 
 
@@ -811,7 +842,15 @@ class DeleteFileRequest(AuthRequest):
 @app.post("/api/files/delete")
 async def delete_file(request: DeleteFileRequest):
     path = validate_path(request.requester, request.path)
+    # Check that path is a file or directory that exists
+    if not path.exists():
+        raise JsonError("path does not exist")
     recursive_delete(path)
+    await get_pool("files").broadcast({
+        "type": "delete",
+        "user": request.requester.id,
+        "path": request.path,
+    })
     return {"status": "success"}
 
 
@@ -825,12 +864,17 @@ async def upload_file(token: str = Form(...), path: str = Form(...), file: Uploa
     if requester is None:
         raise AuthError("valid token for deleted user")
 
-    path = validate_directory(requester, path)
+    resolved_path = validate_directory(requester, path)
 
     # Copy file to permanent location
-    with open(path / file.filename, "wb") as f:
+    with open(resolved_path / file.filename, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
+    await get_pool("files").broadcast({
+        "type": "upload",
+        "user": requester.id,
+        "path": str(Path(path) / file.filename),
+    })
     return {"status": "success"}
 
 

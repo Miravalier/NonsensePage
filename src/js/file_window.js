@@ -1,8 +1,7 @@
 import * as ContextMenu from "./contextmenu.js";
-import { ContentWindow, ConfirmDialog, Dialog, InputDialog } from "./window.js";
+import { ContentWindow, InputDialog } from "./window.js";
 import { ApiRequest, Session, FileUpload } from "./requests.js";
 import { Vector2 } from "./vector.js";
-import { Button } from "./elements.js";
 import { Parameter, AddDragListener } from "./utils.js";
 
 
@@ -52,7 +51,6 @@ export class FileWindow extends ContentWindow {
                 for (let file of this.filePicker.files) {
                     await FileUpload(file, this.path);
                 }
-                await this.load(this.path);
             });
             this.filePicker.click();
         });
@@ -70,7 +68,6 @@ export class FileWindow extends ContentWindow {
                 name: selection.Name,
                 path: this.path,
             });
-            await this.load(this.path);
         });
 
         this.path = "/";
@@ -81,6 +78,7 @@ export class FileWindow extends ContentWindow {
     }
 
     async load(path) {
+        await super.load();
         this.files.innerHTML = "";
 
         const response = await ApiRequest("/files/list", { path });
@@ -106,6 +104,10 @@ export class FileWindow extends ContentWindow {
                 this.addFile(filetype, img, name, path);
             }
         }
+
+        await this.subscribe("files", updateData => {
+            this.refresh();
+        });
     }
 
     addFolder(img, name, path) {
@@ -125,7 +127,6 @@ export class FileWindow extends ContentWindow {
                 "Edit Directory": {
                     "Delete": async ev => {
                         await ApiRequest("/files/delete", { path });
-                        await this.load(this.path);
                     }
                 }
             });

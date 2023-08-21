@@ -1,5 +1,6 @@
+import * as ContextMenu from "./contextmenu.js";
 import { Vector2 } from "./vector.js";
-import { ContentWindow } from "./window.js";
+import { ContentWindow, InputDialog } from "./window.js";
 import { ApiRequest, Session } from "./requests.js";
 import { Parameter, DerivePcgEngine, RandomText, ParseHtml } from "./utils.js";
 
@@ -32,6 +33,23 @@ export class ChatWindow extends ContentWindow {
                 }
             }
         });
+
+        if (Session.gm) {
+            ContextMenu.set(this.viewPort, {
+                "Edit Chat": {
+                    "Save": async ev => {
+                        const selection = await InputDialog("Save Chat", { "Filename": "text" }, "Save");
+                        if (!selection || !selection.Filename) {
+                            return;
+                        }
+                        await ApiRequest("/messages/save", { filename: selection.Filename });
+                    },
+                    "Clear": async ev => {
+                        await ApiRequest("/messages/clear");
+                    },
+                },
+            });
+        }
     }
 
     async load() {
@@ -58,6 +76,10 @@ export class ChatWindow extends ContentWindow {
                 }
                 message.remove();
                 delete this.messages[data.id];
+            }
+            else if (data.type == "clear") {
+                this.messages = {};
+                this.messageContainer.innerHTML = "";
             }
         });
 

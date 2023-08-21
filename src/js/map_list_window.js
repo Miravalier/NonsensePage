@@ -1,5 +1,5 @@
 import * as ContextMenu from "./contextmenu.js";
-import { ApiRequest } from "./requests.js";
+import { ApiRequest, Session } from "./requests.js";
 import { ContentWindow, InputDialog } from "./window.js";
 import { Parameter, AddDragListener } from "./utils.js";
 import { Vector2 } from "./vector.js";
@@ -15,12 +15,14 @@ export class MapListWindow extends ContentWindow {
         options.size = Parameter(options.size, new Vector2(300, 400));
         super(options);
         this.maps = this.content.appendChild(Html(`<div class="maps"></div>`));
-        this.createMapButton = this.content.appendChild(Html(`
-            <button class="create-map" type="button">Create Map</button>
-        `))
-        this.createMapButton.addEventListener("click", async () => {
-            await ApiRequest("/map/create");
-        });
+        if (Session.gm) {
+            this.createMapButton = this.content.appendChild(Html(`
+                <button class="create-map" type="button">Create Map</button>
+            `))
+            this.createMapButton.addEventListener("click", async () => {
+                await ApiRequest("/map/create");
+            });
+        }
     }
 
     async addMap(id, name) {
