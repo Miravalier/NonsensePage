@@ -151,10 +151,12 @@ class Container(Entry):
 
 
 class Item(Entity, Container):
+    type: str = "item"
     description: str = ""
 
 
 class Character(Entity, Container):
+    type: str = "character"
     description: str = ""
     image: str = ""
     alignment: Alignment = Alignment.NEUTRAL
@@ -166,7 +168,8 @@ class Character(Entity, Container):
 
 
 class User(Entry):
-    hashed_password: bytes
+    type: str = "user"
+    hashed_password: bytes = b""
     is_gm: bool = False
     character_id: Optional[str] = None
     languages: List[Language] = Field(default_factory=list)
@@ -178,17 +181,23 @@ class User(Entry):
         else:
             return FILES_ROOT / "users" / self.name
 
+    def dict(self):
+        return super().dict(exclude={"hashed_password"})
+
 
 class Combatant(Entry):
+    type: str = "combatant"
     character_id: Optional[str] = None
     initiative: Optional[float] = None
 
 
 class Combat(Entry):
+    type: str = "combat"
     combatants: List[Combatant] = Field(default_factory=list)
 
 
 class Token(Entry):
+    type: str = "token"
     layer: Layer = Layer.DETAILS
     src: str = ""
     x: float = 0.0
@@ -199,6 +208,7 @@ class Token(Entry):
 
 
 class Map(Entry):
+    type: str = "map"
     tokens: Dict[str, Token] = Field(default_factory=dict)
 
 
@@ -210,6 +220,7 @@ class Message(BaseModel):
     language: Language = Language.COMMON
     speaker: str = ""
     content: str = ""
+    type: str = "message"
 
     def __hash__(self):
         return hash(self.id)

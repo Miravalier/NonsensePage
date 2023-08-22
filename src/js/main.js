@@ -1,4 +1,5 @@
 import * as ContextMenu from "./contextmenu.js";
+import * as Database from "./database.js";
 import { Vector2 } from "./vector.js";
 import { CombatTrackerWindow } from "./combat_tracker_window.js";
 import { ChatWindow } from "./chat_window.js";
@@ -18,6 +19,7 @@ window.addEventListener("load", async () => {
 
 async function OnLoad() {
     window.Session = Session;
+    window.Database = Database;
     window.ApiRequest = ApiRequest;
     window.Roll = Roll;
 
@@ -53,7 +55,8 @@ async function Main() {
     }, 5000);
     setInterval(CheckUpdates, 1000);
 
-    ContextMenu.init();
+    await Database.init();
+    await ContextMenu.init();
 
     ContextMenu.set(document, {
         "Open": {

@@ -11,6 +11,18 @@ export class Session {
 }
 
 
+export function HandleWsMessage(data) {
+    const pool = Session.subscriptions[data.pool];
+    if (!pool) {
+        console.warn(`Ignoring message bound for pool: ${data.pool}`)
+        return;
+    }
+    for (let subscription of pool) {
+        subscription.callback(data);
+    }
+}
+
+
 export async function WsConnect() {
     let ws_prefix = (window.location.protocol === "https:" ? "wss:" : "ws:");
     Session.ws = new WebSocket(`${ws_prefix}//${window.location.host}/api/live`);
@@ -24,14 +36,7 @@ export async function WsConnect() {
     }
     Session.ws.onmessage = ev => {
         const data = JSON.parse(ev.data);
-        const pool = Session.subscriptions[data.pool];
-        if (!pool) {
-            console.warn(`Ignoring message bound for pool: ${data.pool}`)
-            return;
-        }
-        for (let subscription of pool) {
-            subscription.callback(data);
-        }
+        HandleWsMessage(data);
     };
     Session.ws.onclose = async ev => {
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -62,7 +67,7 @@ export async function Subscribe(pool, callback) {
         subscription_set = new Set();
         Session.subscriptions[pool] = subscription_set;
     }
-    if (subscription_set.size == 0) {
+    if (subscription_set.size == 0 && Session.ws && Session.ws.readyState == WebSocket.OPEN) {
         Session.ws.send(JSON.stringify({ type: "subscribe", pool }));
     }
     let subscription = new Subscription(pool, callback);

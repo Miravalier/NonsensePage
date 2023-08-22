@@ -14,7 +14,7 @@ export function close() {
 }
 
 
-export function init() {
+export async function init() {
     document.addEventListener("click", () => {
         close();
     });

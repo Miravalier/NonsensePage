@@ -126,6 +126,26 @@
     font-style: italic;
 }
 
+.message .emote,
+.message .narrate {
+    color: green;
+    font-style: italic;
+}
+
+.message .story {
+    color: crimson;
+    text-shadow: 1px 1px 0 black;
+}
+
+.message .ooc {
+    color: grey;
+    font-style: italic;
+}
+
+.message .system * {
+    font-family: monospace;
+}
+
 .window .input-section textarea {
     margin: 4px;
     height: 4em;

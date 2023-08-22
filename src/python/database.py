@@ -1,6 +1,7 @@
 import pymongo
 from bson import ObjectId
 from pydantic import BaseModel
+from pymongo import ReturnDocument
 from pymongo.collection import Collection
 from typing import Generic, List, Type, TypeVar, Union
 
@@ -68,8 +69,16 @@ class DocumentCollection(Generic[M]):
     def multiple_delete(self, filter: dict = None, *args, **kwargs):
         return self.collection.delete_many(self.pre_process_filter(filter), *args, **kwargs).deleted_count
 
-    def update(self, filter: dict, update: dict, *args, **kwargs):
-        self.collection.update_one(self.pre_process_filter(filter), update, *args, **kwargs)
+    def update(self, filter: dict, update: dict, *args, **kwargs) -> M:
+        return self.post_process_result(
+            self.collection.find_one_and_update(
+                self.pre_process_filter(filter),
+                update,
+                *args,
+                return_document=ReturnDocument.AFTER,
+                **kwargs
+            )
+        )
 
     def multiple_update(self, filter: dict, update: dict, *args, **kwargs):
         self.collection.update_many(self.pre_process_filter(filter), update, *args, **kwargs)

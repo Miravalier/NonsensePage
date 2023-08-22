@@ -1,13 +1,180 @@
+import * as Database from "./database.js";
 import * as ContextMenu from "./contextmenu.js";
 import { Vector2 } from "./vector.js";
 import { ContentWindow, InputDialog } from "./window.js";
-import { ApiRequest, Session } from "./requests.js";
-import { Parameter, DerivePcgEngine, RandomText, ParseHtml } from "./utils.js";
+import { ApiRequest, Session, HandleWsMessage } from "./requests.js";
+import { Parameter, DerivePcgEngine, RandomText, GenerateId } from "./utils.js";
+import { ErrorToast } from "./notifications.js";
+import { Language } from "./enums.js";
 
 
 const LANGUAGES = [
     "common",
 ];
+
+
+export const COMMANDS = {
+    "r": rollCommand,
+    "roll": rollCommand,
+    "e": emoteCommand,
+    "em": emoteCommand,
+    "emote": emoteCommand,
+    "me": memoteCommand,
+    "memote": memoteCommand,
+    "o": oocCommand,
+    "oc": oocCommand,
+    "oo": oocCommand,
+    "ooc": oocCommand,
+    "n": narrateCommand,
+    "na": narrateCommand,
+    "nar": narrateCommand,
+    "narrate": narrateCommand,
+    "narration": narrateCommand,
+    "narate": narrateCommand,
+    "naratte": narrateCommand,
+    "desc": storyCommand,
+    "d": storyCommand,
+    "story": storyCommand,
+    "s": storyCommand,
+    "?": helpCommand,
+    "help": helpCommand,
+    "h": helpCommand,
+};
+
+
+function spongebobCase(s) {
+    let capital = true;
+    return s.replace(/[a-z]/gi, letter => {
+        capital = !capital;
+        if (capital) return letter.toUpperCase();
+        else return letter.toLowerCase();
+    });
+}
+
+
+function getSpeaker() {
+    const user = Database.users[Session.id];
+    if (user.character) {
+        return user.character;
+    }
+    else {
+        return user;
+    }
+}
+
+
+function escapeHtml(message) {
+    const div = document.createElement("div");
+    div.textContent = message;
+    return div.innerHTML;
+}
+
+
+function sendSystemMessage(message) {
+    HandleWsMessage({
+        pool: "messages",
+        type: "send",
+        id: GenerateId(),
+        sender_id: Session.id,
+        character_id: null,
+        timestamp: parseInt(new Date().getTime() / 1000),
+        language: Language.COMMON,
+        speaker: "System",
+        content: `<div class="system">${message}</div>`,
+    });
+}
+
+
+async function helpCommand() {
+    sendSystemMessage(`
+        <p><b>/?</b> display this help message</p>
+        <p><b>/e</b> describe what your character is doing</p>
+        <p><b>/o</b> speak out of character</p>
+        <p><b>/n</b> like /e, but doesn't put your name at the front</p>
+        <p><b>/r</b> roll dice</p>
+        <br>
+        <p><b>Examples:</b></p>
+        <p>/e opens the door</p>
+        <p>/n The door opens by itself</p>
+        <p>/r 2d6</p>
+    `);
+}
+
+
+async function rollCommand(formula) {
+    let characterId = null;
+    const speaker = getSpeaker();
+    if (speaker.type == "character") {
+        characterId = speaker.id;
+    }
+    await ApiRequest("/messages/roll", {
+        speaker: speaker.name,
+        character_id: characterId,
+        formula: formula,
+        silent: false,
+    });
+}
+
+
+async function memoteCommand(message) {
+    const speaker = getSpeaker();
+    await ApiRequest("/messages/speak", {
+        speaker: Session.username,
+        content: `
+            <div class="emote">
+                <img class="inline-img" src="/spongebob.png" width=36 height=36/>
+                ${spongebobCase(speaker.name)} ${spongebobCase(escapeHtml(message))}
+            </div>
+        `,
+    });
+}
+
+
+async function oocCommand(message) {
+    await ApiRequest("/messages/speak", {
+        speaker: Session.username,
+        content: `<div class="ooc">${escapeHtml(message)}</div>`,
+    });
+}
+
+
+async function emoteCommand(message) {
+    const speaker = getSpeaker();
+    await ApiRequest("/messages/speak", {
+        speaker: Session.username,
+        content: `<div class="emote">${speaker.name} ${escapeHtml(message)}</div>`
+    });
+}
+
+
+async function storyCommand(message) {
+    await ApiRequest("/messages/speak", {
+        speaker: Session.username,
+        content: `<div class="story">${escapeHtml(message)}</div>`
+    });
+}
+
+
+async function narrateCommand(message) {
+    await ApiRequest("/messages/speak", {
+        speaker: Session.username,
+        content: `<div class="narrate">${escapeHtml(message)}</div>`
+    });
+}
+
+
+async function speakCommand(message) {
+    let characterId = null;
+    const speaker = getSpeaker();
+    if (speaker.type == "character") {
+        characterId = speaker.id;
+    }
+    await ApiRequest("/messages/speak", {
+        speaker: speaker.name,
+        character_id: characterId,
+        content: `<div class="speak">${escapeHtml(message)}</div>`,
+    });
+}
 
 
 export class ChatWindow extends ContentWindow {
@@ -29,7 +196,26 @@ export class ChatWindow extends ContentWindow {
                 const content = this.textarea.value.trim();
                 this.textarea.value = "";
                 if (content) {
-                    await ApiRequest("/messages/speak", { content: content, speaker: Session.username });
+                    // Check for a command pattern
+                    const CMD_PATTERN = /^\s*\/([a-z0-9?_-]+)\s*/i;
+                    let command = null;
+                    const message = content.replace(CMD_PATTERN, (_, m) => {
+                        command = m;
+                        return "";
+                    });
+                    if (command) {
+                        // Dispatch command
+                        const commandFunction = COMMANDS[command];
+                        if (commandFunction) {
+                            await commandFunction(message);
+                        }
+                        else {
+                            ErrorToast(`Unknown command '${command}'`);
+                        }
+                    }
+                    else {
+                        await speakCommand(content);
+                    }
                 }
             }
         });
@@ -129,6 +315,9 @@ export class ChatWindow extends ContentWindow {
 
         const speaker = header.appendChild(document.createElement("div"));
         speaker.className = "speaker";
+        if (message.character_id) {
+            speaker.classList.add("character");
+        }
         speaker.appendChild(document.createTextNode(message.speaker));
 
         const messageDate = new Date(message.timestamp * 1000);
@@ -137,13 +326,18 @@ export class ChatWindow extends ContentWindow {
         timestamp.appendChild(document.createTextNode(messageDate.toLocaleString()));
 
         const content = element.appendChild(document.createElement("div"));
+        if (message.character_id) {
+            content.classList.add("character");
+        }
+        content.classList.add("text");
+        content.classList.add(LANGUAGES[message.language]);
         if (message.content) {
-            content.classList = `text spoken ${LANGUAGES[message.language]}`;
-            content.appendChild(ParseHtml(message.content));
+            content.classList.add("spoken");
+            content.innerHTML = message.content;
         }
         else {
             const engine = DerivePcgEngine(message.id);
-            content.classList = `text foreign ${LANGUAGES[message.language]}`;
+            content.classList.add("foreign");
             content.appendChild(document.createTextNode(
                 RandomText(engine, message.length)
             ));

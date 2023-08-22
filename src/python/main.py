@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import html
 import json
 import os
 import secrets
@@ -86,6 +85,7 @@ async def send_message(content: str, *, user: User, speaker: str = "System", cha
         "speaker": speaker,
         "content": content,
         "language": language,
+        "timestamp": current_timestamp(),
     })
     # Inform subscribers
     full_broadcast = jsonable_encoder(message.dict())
@@ -163,12 +163,10 @@ class AuthRequest(BaseModel):
     @validator('requester', pre=True)
     def resolve_requester(cls, value):
         session: Session = database.sessions.get({"auth_token": value})
-        if session is None:
-            raise AuthError("invalid token")
+        auth_require(session is not None, "invalid token")
 
         user: User = database.users.get(session.user_id)
-        if user is None:
-            raise AuthError("valid token for deleted user")
+        auth_require(user is not None, "valid token for deleted user")
 
         return user
 
@@ -199,7 +197,33 @@ async def user_create(request: UserCreateRequest):
         raise JsonError("username taken")
     user: User = database.users.create({"name": request.username, "hashed_password": hash_password(request.password)})
     user.file_root.mkdir(parents=True, exist_ok=True)
+    await get_pool("users").broadcast({
+        "type": "create",
+        "user": user.dict(),
+    })
     return {"status": "success", "id": user.id}
+
+
+class UserDeleteRequest(GMRequest):
+    id: str
+
+
+@app.post("/api/user/delete")
+async def user_delete(request: UserDeleteRequest):
+    if not database.users.delete(request.id):
+        raise JsonError("No user exists with that id")
+
+    await get_pool("users").broadcast({
+        "type": "delete",
+        "id": request.id,
+    })
+
+    return {"status": "success"}
+
+
+@app.post("/api/user/list")
+async def user_list(request: AuthRequest):
+    return {"status": "success", "users": [user.dict() for user in database.users.find()]}
 
 
 class ItemDeleteRequest(AuthRequest):
@@ -209,6 +233,8 @@ class ItemDeleteRequest(AuthRequest):
 @app.post("/api/item/delete")
 async def item_delete(request: ItemDeleteRequest):
     item: Item = database.items.get(request.id)
+    if item is None:
+        raise JsonError("Invalid item id")
     if not request.requester.is_gm:
         auth_require(item.has_permission(request.requester.id, "*", Permissions.OWNER))
     database.items.delete(item.id)
@@ -238,11 +264,10 @@ async def character_create(request: CharacterCreateRequest):
     character = database.characters.create(options)
 
     if request.requester.character_id is None and character.alignment == Alignment.PLAYER:
-        database.users.update(request.requester.id, {"$set": {"character_id": character.id}})
-        await get_pool("players").broadcast({
-            "type": "set_character",
-            "id": character.id,
-            "name": character.name,
+        user = database.users.update(request.requester.id, {"$set": {"character_id": character.id}})
+        await get_pool("users").broadcast({
+            "type": "update",
+            "user": user.dict(),
         })
 
     await get_pool("characters").broadcast({
@@ -588,7 +613,7 @@ async def send_roll(request: RollRequest):
 
     if not request.silent:
         message = await send_message(
-            "<p>TODO</p>",
+            f"<p>Formula: {request.formula}</p>",
             user=request.requester,
             character_id=request.character_id,
             speaker=request.speaker,
@@ -631,10 +656,6 @@ class SendMessageRequest(AuthRequest):
     character_id: Optional[str] = None
     language: Language = Language.COMMON
 
-    @validator('content')
-    def escape_content(cls, value):
-        return html.escape(value).replace('\n', '<br>')
-
 
 @app.post("/api/messages/speak")
 async def messages_speak(request: SendMessageRequest):
@@ -649,7 +670,7 @@ async def messages_speak(request: SendMessageRequest):
         auth_require(request.language == Language.COMMON or request.language in request.requester.languages)
     # Create message
     message = await send_message(
-        f"<p>{request.content}</p>",
+        request.content,
         user=request.requester,
         character_id=request.character_id,
         speaker=request.speaker,
