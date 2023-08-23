@@ -100,11 +100,9 @@ class Entry(BaseModel):
     def pool(self):
         return get_pool(self.id)
 
-    async def broadcast_update(self, changes: Dict = None, type: str = "update"):
-        if changes is None:
-            changes = {}
+    async def broadcast_changes(self, changes: Dict):
         await self.pool.broadcast(jsonable_encoder({
-            "type": type,
+            "type": "update",
             "changes": changes,
         }))
 

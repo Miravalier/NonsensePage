@@ -288,6 +288,9 @@ async def character_delete(request: CharacterDeleteRequest):
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
     database.characters.delete(character.id)
+    await character.pool.broadcast({
+        "type": "delete",
+    })
     await get_pool("characters").broadcast({
         "type": "delete",
         "id": character.id,
@@ -308,7 +311,7 @@ async def character_update(request: CharacterUpdateRequest):
 
     database.characters.update(request.id, request.changes)
 
-    await character.broadcast_update(request.changes)
+    await character.broadcast_changes(request.changes)
 
     if name := request.changes.get("$set", {}).get("name", None):
         await get_pool("characters").broadcast({
@@ -411,7 +414,7 @@ async def map_update(request: MapUpdateRequest):
 
     database.maps.update(request.id, request.changes)
 
-    await map.broadcast_update(request.changes)
+    await map.broadcast_changes(request.changes)
     return {"status": "success"}
 
 
@@ -471,7 +474,7 @@ async def combat_update(request: CombatUpdateRequest):
 
     database.combats.update(request.id, request.changes)
 
-    await combat.broadcast_update(request.changes)
+    await combat.broadcast_changes(request.changes)
     return {"status": "success"}
 
 
@@ -494,7 +497,9 @@ async def combat_sort(request: CombatSortRequest):
     }}
 
     database.combats.update(request.id, update)
-    await combat.broadcast_update(update)
+    await combat.broadcast_changes(update)
+
+    return {"status": "success"}
 
 
 class CombatClearRequest(AuthRequest):
@@ -513,7 +518,70 @@ async def combat_clear(request: CombatClearRequest):
     }}
 
     database.combats.update(request.id, update)
-    await combat.broadcast_update(update)
+    await combat.broadcast_changes(update)
+
+    return {"status": "success"}
+
+
+class AnnounceTurnRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/combat/announce-turn")
+async def combat_announce_turn(request: AnnounceTurnRequest):
+    combat = require(database.combats.get(request.id), "invalid combat id")
+    require(len(combat.combatants) > 0, "not enough combatants")
+    combatant = combat.combatants[0]
+    await send_message(
+        f"""
+            <div class="turn-start">Turn Start: {combatant.name}</p>
+        """,
+        user=request.requester,
+    )
+    return {"status": "success"}
+
+
+class ReverseTurnRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/combat/reverse-turn")
+async def combat_end_turn(request: ReverseTurnRequest):
+    combat = require(database.combats.get(request.id), "invalid combat id")
+    require(len(combat.combatants) > 1, "not enough combatants")
+    combatant = combat.combatants[-1]
+    if not request.requester.is_gm:
+        character = require(database.characters.get(combatant.character_id), "invalid character id")
+        auth_require(
+            character.has_permission(request.requester.id, "*", Permissions.OWNER)
+            or
+            combat.has_permission(request.requester.id, "*", Permissions.WRITE)
+        )
+
+    database.combats.update(request.id, {
+        "$pull": {
+            "combatants": {
+                "id": combatant.id,
+            },
+        },
+    })
+    database.combats.update(request.id, {
+        "$push": {
+            "combatants": {
+                "$each": [combatant.dict()],
+                "$position": 0,
+            }
+        }
+    })
+
+    await combat.pool.broadcast({"type": "reverse-turn", "id": combatant.id})
+    await send_message(
+        f"""
+            <div class="turn-start">Turn Start: {combatant.name}</p>
+        """,
+        user=request.requester,
+    )
+    return {"status": "success"}
 
 
 class EndTurnRequest(AuthRequest):
@@ -521,7 +589,7 @@ class EndTurnRequest(AuthRequest):
 
 
 @app.post("/api/combat/end-turn")
-async def combat_update(request: EndTurnRequest):
+async def combat_end_turn(request: EndTurnRequest):
     combat = require(database.combats.get(request.id), "invalid combat id")
     require(len(combat.combatants) > 1, "not enough combatants")
     combatant = combat.combatants[0]
@@ -546,7 +614,7 @@ async def combat_update(request: EndTurnRequest):
         }
     })
 
-    await combat.broadcast_update({"id": combatant.id}, type="end-turn")
+    await combat.pool.broadcast({"type": "end-turn", "id": combatant.id})
     await send_message(
         f"""
             <div class="turn-start">Turn Start: {combat.combatants[1].name}</p>
@@ -592,7 +660,7 @@ async def add_combatant(request: AddCombatantRequest):
         "permissions": character.permissions,
     }}}
     database.combats.update(combat.id, update)
-    await combat.broadcast_update(update)
+    await combat.broadcast_changes(update)
     return {"status": "success", "id": combatant_id}
 
 

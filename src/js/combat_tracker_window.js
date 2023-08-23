@@ -27,8 +27,28 @@ export class CombatTrackerWindow extends ContentWindow {
             <div class="buttons"></div>
         `));
 
+        if (Session.gm) {
+            const announceButton = buttonContainer.appendChild(Html(`
+                <button type="button" class="announce">Announce</button>
+            `));
+            announceButton.addEventListener("click", async (ev) => {
+                await ApiRequest("/combat/announce-turn", {
+                    id: this.id,
+                });
+            });
+
+            const reverseButton = buttonContainer.appendChild(Html(`
+                <button type="button" class="reverse-turn">◀</button>
+            `));
+            reverseButton.addEventListener("click", async (ev) => {
+                await ApiRequest("/combat/reverse-turn", {
+                    id: this.id,
+                });
+            });
+        }
+
         this.endTurnButton = buttonContainer.appendChild(Html(`
-            <button type="button" class="end-turn">End Turn</button>
+            <button type="button" class="end-turn">End Turn ▶</button>
         `));
         this.endTurnButton.addEventListener("click", async (ev) => {
             await ApiRequest("/combat/end-turn", {
