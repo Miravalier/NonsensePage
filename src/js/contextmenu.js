@@ -48,12 +48,30 @@ export function set(element, options) {
             `);
         }
 
+        // Create the menu offscreen for better UX
         contextMenuElement = Html(`
-            <div class="contextMenu" style="left: ${ev.clientX}px; top: ${ev.clientY}px;">
+            <div class="contextMenu" style="left: -999px; top: -999px;">
                 ${categoryDivs.join("")}
             </div>
         `);
         document.body.appendChild(contextMenuElement);
+
+        const rect = contextMenuElement.getBoundingClientRect();
+        const flip_threshold = 0.7;
+        let left = ev.clientX;
+        let top = ev.clientY;
+
+        if (left > (flip_threshold * window.innerWidth)) {
+            left -= rect.width;
+        }
+
+        if (top > (flip_threshold * window.innerHeight)) {
+            top -= rect.height;
+        }
+
+        // Move the menu to the correct spot
+        contextMenuElement.style.left = `${left}px`;
+        contextMenuElement.style.top = `${top}px`;
 
         for (let choiceElement of contextMenuElement.querySelectorAll(".choice")) {
             choiceElement.addEventListener("click", ev => {
