@@ -120,7 +120,32 @@ export class MapWindow extends CanvasWindow {
             });
         });
 
-        await this.subscribe(this.id, async updateData => {
+        await this.subscribe(this.id, async update => {
+            if (update.type == "update"
+                && Object.keys(update.changes).length == 1
+                && update.changes["$set"]) {
+
+                const changes = update.changes["$set"];
+                let onlyTokenChanges = true;
+                for (const [key, value] of Object.entries(changes)) {
+                    const [upperAttr, tokenId, attribute] = key.split(".");
+                    if (upperAttr != "tokens" || !tokenId || !attribute) {
+                        onlyTokenChanges = false;
+                        break;
+                    }
+                    if (attribute == "x" || attribute == "y") {
+                        this.canvas.tokenNodes[tokenId][attribute] = value;
+                    }
+                    else {
+                        onlyTokenChanges = false;
+                        break;
+                    }
+                }
+                if (onlyTokenChanges) {
+                    return;
+                }
+            }
+
             this.refresh();
         });
     }

@@ -18,7 +18,11 @@ export function HandleWsMessage(data) {
         return;
     }
     for (let subscription of pool) {
-        subscription.callback(data);
+        try {
+            subscription.callback(data);
+        } catch (error) {
+            console.error(error);
+        }
     }
 }
 
