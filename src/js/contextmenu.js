@@ -48,12 +48,28 @@ export function set(element, options) {
             `);
         }
 
+        const flip_threshold = 0.7;
+        let horizontal = "left";
+        let vertical = "top";
+        let xOffset = ev.clientX;
+        let yOffset = ev.clientY;
+
+        if (xOffset > (flip_threshold * window.innerWidth)) {
+            xOffset = window.innerWidth - xOffset;
+            horizontal = "right"; 
+        }
+
+        if (yOffset > (flip_threshold * window.innerHeight)) {
+            yOffset = window.innerHeight - yOffset;
+            vertical = "bottom";
+        }
+
         contextMenuElement = Html(`
-            <div class="contextMenu" style="left: ${ev.clientX}px; top: ${ev.clientY}px;">
+            <div class="contextMenu" style="${horizontal}: ${xOffset}px; ${vertical}: ${yOffset}px;">
                 ${categoryDivs.join("")}
             </div>
         `);
-        document.body.appendChild(contextMenuElement);
+        document.body.appendChild(contextMenuElement);        
 
         for (let choiceElement of contextMenuElement.querySelectorAll(".choice")) {
             choiceElement.addEventListener("click", ev => {
