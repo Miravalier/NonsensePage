@@ -48,30 +48,28 @@ export function set(element, options) {
             `);
         }
 
-        // Create the menu offscreen for better UX
+        const flip_threshold = 0.7;
+        let horizontal = "left";
+        let vertical = "top";
+        let xOffset = ev.clientX;
+        let yOffset = ev.clientY;
+
+        if (xOffset > (flip_threshold * window.innerWidth)) {
+            xOffset = window.innerWidth - xOffset;
+            horizontal = "right"; 
+        }
+
+        if (yOffset > (flip_threshold * window.innerHeight)) {
+            yOffset = window.innerHeight - yOffset;
+            vertical = "bottom";
+        }
+
         contextMenuElement = Html(`
-            <div class="contextMenu" style="left: -999px; top: -999px;">
+            <div class="contextMenu" style="${horizontal}: ${xOffset}px; ${vertical}: ${yOffset}px;">
                 ${categoryDivs.join("")}
             </div>
         `);
-        document.body.appendChild(contextMenuElement);
-
-        const rect = contextMenuElement.getBoundingClientRect();
-        const flip_threshold = 0.7;
-        let left = ev.clientX;
-        let top = ev.clientY;
-
-        if (left > (flip_threshold * window.innerWidth)) {
-            left -= rect.width;
-        }
-
-        if (top > (flip_threshold * window.innerHeight)) {
-            top -= rect.height;
-        }
-
-        // Move the menu to the correct spot
-        contextMenuElement.style.left = `${left}px`;
-        contextMenuElement.style.top = `${top}px`;
+        document.body.appendChild(contextMenuElement);        
 
         for (let choiceElement of contextMenuElement.querySelectorAll(".choice")) {
             choiceElement.addEventListener("click", ev => {
