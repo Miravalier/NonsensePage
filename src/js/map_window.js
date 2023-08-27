@@ -1,6 +1,6 @@
 import * as ContextMenu from "./contextmenu.js";
 import { CanvasWindow } from "./window.js";
-import { Parameter, GenerateId } from "./utils.js";
+import { Parameter, GenerateId, GetLocalStorageObject, SetLocalStorageObject } from "./utils.js";
 import { Vector2 } from "./vector.js";
 import { ApiRequest } from "./requests.js";
 import { MapCanvas } from "./canvas.js";
@@ -16,6 +16,7 @@ export class MapWindow extends CanvasWindow {
         this.id = null;
         this.translation = new Vector2(0, 0);
         this.scale = 1;
+        this.viewChangesMade = false;
 
         this.viewPort.addEventListener("contextmenu", ev => {
             ev.preventDefault();
@@ -74,11 +75,13 @@ export class MapWindow extends CanvasWindow {
     applyTranslation() {
         this.canvas.tokenContainer.node.x = this.translation.x;
         this.canvas.tokenContainer.node.y = this.translation.y;
+        this.viewChangesMade = true;
     }
 
     applyScale() {
         this.canvas.tokenContainer.node.scale.x = this.scale;
         this.canvas.tokenContainer.node.scale.y = this.scale;
+        this.viewChangesMade = true;
     }
 
     async load(id) {
@@ -94,10 +97,30 @@ export class MapWindow extends CanvasWindow {
             return;
         }
 
+        const localMapData = GetLocalStorageObject(`map.${this.id}`);
+        if (localMapData.x) {
+            this.translation.x = localMapData.x;
+        }
+        if (localMapData.y) {
+            this.translation.y = localMapData.y;
+        }
+        if (localMapData.scale) {
+            this.scale = localMapData.scale;
+        }
+
+        this.repeatFunction(() => {
+            if (this.viewChangesMade) {
+                SetLocalStorageObject(`map.${this.id}`, {
+                    x: this.translation.x,
+                    y: this.translation.y,
+                    scale: this.scale,
+                });
+                this.viewChangesMade = false;
+            }
+        }, 1000);
+
         this.setTitle(`Map: ${response.map.name}`);
-        await this.canvas.render(response.map);
-        this.applyTranslation();
-        this.applyScale();
+        await this.canvas.render(response.map, this.translation, this.scale);
 
         this.addDropListener(this.viewPort, async (data, ev) => {
             if (data.type != "file") {

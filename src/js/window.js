@@ -29,6 +29,7 @@ export class BaseWindow {
         this.on_close = [];
         this.subscriptions = [];
         this.abortControllers = [];
+        this.intervalIds = [];
 
         this.minimized = false;
         this.fullscreen = false;
@@ -164,6 +165,12 @@ export class BaseWindow {
         windows.appendChild(this.container);
     }
 
+    repeatFunction(func, delay) {
+        const intervalId = setInterval(func, delay);
+        this.intervalIds.push(intervalId);
+        return intervalId;
+    }
+
     setTitle(s) {
         this.titleNode.textContent = StringBound(s, 40);
     }
@@ -185,8 +192,12 @@ export class BaseWindow {
         for (let controller of this.abortControllers) {
             controller.abort();
         }
+        for (let intervalId of this.intervalIds) {
+            clearInterval(intervalId);
+        }
         this.subscriptions = [];
         this.abortControllers = [];
+        this.intervalIds = [];
     }
 
     refresh() {
@@ -256,6 +267,9 @@ export class BaseWindow {
         }
         for (let callback of this.on_close) {
             callback()
+        }
+        for (let intervalId of this.intervalIds) {
+            clearInterval(intervalId);
         }
     }
 }

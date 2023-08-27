@@ -14,6 +14,20 @@ export function GenerateId() {
 }
 
 
+export function SetLocalStorageObject(identifier, obj) {
+    localStorage.setItem(identifier, JSON.stringify(obj));
+}
+
+
+export function GetLocalStorageObject(identifier) {
+    const storedJson = localStorage.getItem(identifier);
+    if (!storedJson) {
+        return {};
+    }
+    return JSON.parse(storedJson);
+}
+
+
 export function InflateDocument(document) {
     if (Array.isArray(document) || document === null || typeof document !== "object") {
         return document;

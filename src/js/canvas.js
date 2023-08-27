@@ -10,11 +10,14 @@ export class CanvasContainer {
         this.node = node;
     }
 
-    AddContainer(position) {
+    AddContainer(position, scale) {
         position = Parameter(position, new Vector2(0, 0));
+        scale = Parameter(scale, 1);
         const container = new PIXI.Container();
         container.x = position.x;
         container.y = position.y;
+        container.scale.x = scale;
+        container.scale.y = scale;
         this.node.addChild(container);
         return new CanvasContainer(container);
     }
@@ -239,13 +242,13 @@ export class MapCanvas extends Canvas {
         delete this.tokenNodes[id];
     }
 
-    async render(map) {
+    async render(map, translation, scale) {
         this.id = map.id;
 
         if (this.tokenContainer) {
             this.tokenContainer.node.destroy();
         }
-        this.tokenContainer = this.AddContainer();
+        this.tokenContainer = this.AddContainer(translation, scale);
         this.backgroundContainer = this.tokenContainer.AddContainer();
         this.detailContainer = this.tokenContainer.AddContainer();
         this.characterContainer = this.tokenContainer.AddContainer();
