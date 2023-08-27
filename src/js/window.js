@@ -221,6 +221,9 @@ export class BaseWindow {
                 this.canvas.view.height = this.viewPort.offsetHeight;
             }
             this.resizeHandle.style.display = null;
+            if (this.canvas) {
+                this.canvas.renderer.resize(this.viewPort.offsetWidth, this.viewPort.offsetHeight);
+            }
         }
         // Become fullscreen
         else {
@@ -237,6 +240,9 @@ export class BaseWindow {
                 this.canvas.view.height = this.viewPort.offsetHeight;
             }
             this.resizeHandle.style.display = "none";
+            if (this.canvas) {
+                this.canvas.renderer.resize(this.viewPort.offsetWidth, this.viewPort.offsetHeight);
+            }
         }
         this.fullscreen = !this.fullscreen;
     }
