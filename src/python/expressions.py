@@ -1,5 +1,8 @@
 from __future__ import annotations
+
+import math
 import string
+from collections import deque
 from dataclasses import dataclass, field
 from enum import IntEnum
 
@@ -16,10 +19,18 @@ class TokenizerState(IntEnum):
     STRING_LITERAL_ESCAPE = 6
 
 
+class UnaryOpState(IntEnum):
+    SEEK_OP = 0
+    SEEK_UNIT = 1
+
+
 class BinaryOpState(IntEnum):
     SEEK_FIRST_UNIT = 0
     SEEK_OP = 1
     SEEK_SECOND_UNIT = 2
+
+
+OPERATOR_CHARACTERS = set(string.punctuation) - {'(', ')'}
 
 
 EXP_OPERATORS = {'**'}
@@ -85,7 +96,7 @@ class Tokenizer:
         elif character in '()':
             self.tokens.append(Token('operator', self.current_token, self.current_token_start_index))
             self.state = TokenizerState.SEEK_ANY
-        elif character in string.punctuation:
+        elif character in OPERATOR_CHARACTERS:
             self.state = TokenizerState.OPERATOR
         else:
             self.state = TokenizerState.SEEK_ANY
@@ -101,7 +112,7 @@ class Tokenizer:
             self.seek_any(character)
 
     def seek_operator(self, character: str):
-        if character in string.punctuation:
+        if character in OPERATOR_CHARACTERS:
             self.current_token += character
         else:
             self.tokens.append(Token('operator', self.current_token, self.current_token_start_index))
@@ -232,6 +243,8 @@ class UnaryOperator(Node):
     def evaluate(self, values: dict[str, float]) -> float:
         if self.operator == '-':
             return -1 * self.operand.evaluate(values)
+        elif self.operator == '!':
+            return float(math.factorial(int(self.operand.evaluate(values))))
         else:
             raise NotImplementedError(f"unimplemented unary operator {self.operator}")
 
@@ -288,6 +301,52 @@ class Expression(Node):
         return result
 
     @classmethod
+    def find_prefix_unary_operators_in_set(cls, tokens: list[Token|Node], operators: set[str]) -> list[Token|Node]:
+        result = []
+        state = UnaryOpState.SEEK_OP
+        history = deque([None, None, None])
+        for token in tokens:
+            if state == UnaryOpState.SEEK_OP:
+                if isinstance(token, Token) and token.type == "operator" and token.value in operators:
+                    state = UnaryOpState.SEEK_UNIT
+            elif state == UnaryOpState.SEEK_UNIT:
+                if isinstance(token, Token) and token.type == "operator" and token.value in operators:
+                    pass
+                elif isinstance(token, Node):
+                    if not isinstance(history[-2], Node):
+                        operator: Token = result.pop()
+                        token = UnaryOperator(operator.value, token)
+                        history.pop()
+                        history.appendleft(None)
+                    state = UnaryOpState.SEEK_OP
+                else:
+                    state = UnaryOpState.SEEK_OP
+            result.append(token)
+            history.popleft()
+            history.append(token)
+        return result
+
+    @classmethod
+    def find_postfix_unary_operators_in_set(cls, tokens: list[Token|Node], operators: set[str]) -> list[Token|Node]:
+        result = []
+        state = UnaryOpState.SEEK_UNIT
+        for token in tokens:
+            if state == UnaryOpState.SEEK_UNIT:
+                if isinstance(token, Node):
+                    state = UnaryOpState.SEEK_OP
+            elif state == UnaryOpState.SEEK_OP:
+                if isinstance(token, Node):
+                    pass
+                elif isinstance(token, Token) and token.type == "operator" and token.value in operators:
+                    operand: Node = result.pop()
+                    token = UnaryOperator(token.value, operand)
+                    state = UnaryOpState.SEEK_OP
+                else:
+                    state = UnaryOpState.SEEK_UNIT
+            result.append(token)
+        return result
+
+    @classmethod
     def find_binary_operators_in_set(cls, tokens: list[Token|Node], operators: set[str]) -> list[Token|Node]:
         result = []
         state = BinaryOpState.SEEK_FIRST_UNIT
@@ -314,22 +373,6 @@ class Expression(Node):
         return result
 
     @classmethod
-    def find_prefix_unary_operators(cls, tokens: list[Token|Node]) -> list[Token|Node]:
-        result = []
-        previous = None
-        for token in tokens:
-            result.append(token)
-            previous = token
-        return result
-
-    @classmethod
-    def find_postfix_unary_operators(cls, tokens: list[Token|Node]) -> list[Token|Node]:
-        result = []
-        for token in tokens:
-            result.append(token)
-        return result
-
-    @classmethod
     def parse(cls, tokens: list[Token|Node]) -> Expression:
         if not tokens:
             raise SyntaxError("empty expression")
@@ -337,6 +380,8 @@ class Expression(Node):
         tokens = cls.convert_literals(tokens)
         tokens = cls.find_subexpressions(tokens)
         tokens = cls.find_binary_operators_in_set(tokens, DICE_OPERATORS)
+        tokens = cls.find_postfix_unary_operators_in_set(tokens, UNARY_POSTFIX_OPERATORS)
+        tokens = cls.find_prefix_unary_operators_in_set(tokens, UNARY_PREFIX_OPERATORS)
         tokens = cls.find_binary_operators_in_set(tokens, EXP_OPERATORS)
         tokens = cls.find_binary_operators_in_set(tokens, MULT_OPERATORS)
         tokens = cls.find_binary_operators_in_set(tokens, ADD_OPERATORS)
@@ -344,8 +389,6 @@ class Expression(Node):
         tokens = cls.find_binary_operators_in_set(tokens, RELATIONAL_OPERATORS)
         tokens = cls.find_binary_operators_in_set(tokens, EQUALITY_OPERATORS)
         tokens = cls.find_binary_operators_in_set(tokens, BITWISE_OPERATORS)
-        tokens = cls.find_prefix_unary_operators(tokens)
-        tokens = cls.find_postfix_unary_operators(tokens)
 
         if len(tokens) > 1:
             raise SyntaxError("too many tokens after parsing")
