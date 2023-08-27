@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Dict, Optional, Any
 
 import database
+import expressions
 import files
 import ws_handlers
 from models import (
@@ -665,7 +666,6 @@ async def add_combatant(request: AddCombatantRequest):
 
 
 class RollRequest(AuthRequest):
-    speaker: str
     formula: str
     character_id: Optional[str]
     silent: bool = True
@@ -673,22 +673,32 @@ class RollRequest(AuthRequest):
 
 @app.post("/api/messages/roll")
 async def send_roll(request: RollRequest):
-    result = {"status": "success"}
+    response = {"status": "success"}
+
+    character: Optional[Character] = None
+    if request.character_id is not None:
+        character = require(database.characters.get(request.character_id), "character does not exist")
+
     # Permissions checks
-    if not request.requester.is_gm and request.character_id is not None:
-        character: Character = require(database.characters.get(request.character_id), "character does not exist")
+    if not request.requester.is_gm and character is not None:
         auth_require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
+
+    try:
+        result = expressions.evaluate(request.formula, character.data if character else None)
+    except Exception as e:
+        raise JsonError(str(e))
 
     if not request.silent:
         message = await send_message(
-            f"<p>Formula: {request.formula}</p>",
+            f"<p>{request.formula} = {result}</p>",
             user=request.requester,
             character_id=request.character_id,
-            speaker=request.speaker,
+            speaker=request.requester.name,
         )
-        result["id"] = message.id
+        response["id"] = message.id
 
-    return result
+    response["result"] = result
+    return response
 
 
 class SaveMessagesRequest(GMRequest):
