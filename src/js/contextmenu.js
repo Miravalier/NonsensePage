@@ -56,7 +56,7 @@ export function set(element, options) {
 
         if (xOffset > (flip_threshold * window.innerWidth)) {
             xOffset = window.innerWidth - xOffset;
-            horizontal = "right"; 
+            horizontal = "right";
         }
 
         if (yOffset > (flip_threshold * window.innerHeight)) {
@@ -69,7 +69,7 @@ export function set(element, options) {
                 ${categoryDivs.join("")}
             </div>
         `);
-        document.body.appendChild(contextMenuElement);        
+        document.body.appendChild(contextMenuElement);
 
         for (let choiceElement of contextMenuElement.querySelectorAll(".choice")) {
             choiceElement.addEventListener("click", ev => {

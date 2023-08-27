@@ -58,6 +58,8 @@ class PcgEngine:
         """
         Returns a random integer between [0, max)
         """
+        if max <= 0:
+            return 0
         threshold = 0x100000000 % max
         while (result := self.rand32()) < threshold:
             pass
