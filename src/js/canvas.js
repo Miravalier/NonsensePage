@@ -10,21 +10,24 @@ export class CanvasContainer {
         this.node = node;
     }
 
-    AddGrid() {
+    AddGrid(width, height, translation, scale) {
         const fragmentShaderCode = `
             precision mediump float;
 
-            uniform vec2 offset; // e.g. [-0.023500000000000434 0.9794000000000017], currently the same as the x/y offset in the mvMatrix
+            uniform vec2 viewport; // e.g. [800 600]
+            uniform vec2 offset; // e.g. [-0.023500000000000434 0.9794000000000017]
             uniform vec2 pitch;  // e.g. [50 50]
+            uniform vec2 translation; // e.g. [0 0] Pixel Offset
+            uniform vec2 scale; // e.g. [1.0 1.0] Percentage
 
             void main() {
                 float scaleFactor = 10000.0;
 
-                float offX = (scaleFactor * offset[0]) + gl_FragCoord.x;
-                float offY = (scaleFactor * offset[1]) + (1.0 - gl_FragCoord.y);
+                float offX = (scaleFactor * offset[0]) + (gl_FragCoord.x - translation.x);
+                float offY = (scaleFactor * offset[1]) + (1.0 - (viewport.y - (gl_FragCoord.y + translation.y)));
 
-                if (int(mod(offX, pitch[0])) == 0 ||
-                    int(mod(offY, pitch[1])) == 0) {
+                if (int(mod(offX, pitch[0] * scale[0])) == 0 ||
+                    int(mod(offY, pitch[1] * scale[1])) == 0) {
                     gl_FragColor = vec4(0.0, 0.0, 0.0, 0.1);
                 } else {
                     gl_FragColor = vec4(0.7, 0.7, 0.7, 0.1);
@@ -32,14 +35,18 @@ export class CanvasContainer {
             }
         `;
 
-        const uniforms = {};
-        uniforms.offset = [0, 1];
-        uniforms.pitch = [50, 50];
+        const uniforms = {
+            viewport: [width, height],
+            offset: [0, 1],
+            pitch: [200, 200],
+            translation: [translation.x, translation.y],
+            scale: [scale, scale],
+        };
 
         const gridFilter = new PIXI.Filter(undefined, fragmentShaderCode, uniforms);
         const grid = new PIXI.Graphics();
         grid.beginFill(0xFFFFFF, 1);
-        grid.drawRect(0, 0, 1000, 1000);
+        grid.drawRect(0, 0, width, height);
         grid.filters = [gridFilter];
 
         this.node.addChild(grid);
@@ -167,6 +174,10 @@ export class Canvas extends CanvasContainer {
         this.renderer = app.renderer;
         this.htmlContainer.appendChild(this.app.view);
     }
+
+    onResize(x, y) {
+        this.renderer.resize(x, y);
+    }
 }
 
 
@@ -175,7 +186,14 @@ export class MapCanvas extends Canvas {
         super(options);
         this.id = null;
         this.tokenNodes = {};
-        //this.grid = this.AddGrid();
+    }
+
+    onResize(x, y) {
+        super.onResize(x, y);
+        this.grid.width = x;
+        this.grid.height = y;
+        const gridFilter = this.grid.filters[0];
+        gridFilter.uniforms.viewport = [x, y];
     }
 
     /**
@@ -285,6 +303,10 @@ export class MapCanvas extends Canvas {
         if (this.tokenContainer) {
             this.tokenContainer.node.destroy();
         }
+        if (this.grid) {
+            this.grid.destroy();
+        }
+        this.grid = this.AddGrid(this.htmlContainer.offsetWidth, this.htmlContainer.offsetHeight, translation, scale);
         this.tokenContainer = this.AddContainer(translation, scale);
         this.backgroundContainer = this.tokenContainer.AddContainer();
         this.detailContainer = this.tokenContainer.AddContainer();

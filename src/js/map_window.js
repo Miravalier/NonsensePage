@@ -76,12 +76,16 @@ export class MapWindow extends CanvasWindow {
         this.canvas.tokenContainer.node.x = this.translation.x;
         this.canvas.tokenContainer.node.y = this.translation.y;
         this.viewChangesMade = true;
+        const gridFilter = this.canvas.grid.filters[0];
+        gridFilter.uniforms.translation = [this.translation.x, this.translation.y];
     }
 
     applyScale() {
         this.canvas.tokenContainer.node.scale.x = this.scale;
         this.canvas.tokenContainer.node.scale.y = this.scale;
         this.viewChangesMade = true;
+        const gridFilter = this.canvas.grid.filters[0];
+        gridFilter.uniforms.scale = [this.scale, this.scale];
     }
 
     async load(id) {
