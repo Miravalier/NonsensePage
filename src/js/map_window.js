@@ -153,22 +153,33 @@ export class MapWindow extends CanvasWindow {
                 && update.changes["$set"]) {
 
                 const changes = update.changes["$set"];
-                let onlyTokenChanges = true;
+                let simpleChanges = true;
+
                 for (const [key, value] of Object.entries(changes)) {
-                    const [upperAttr, tokenId, attribute] = key.split(".");
-                    if (upperAttr != "tokens" || !tokenId || !attribute) {
-                        onlyTokenChanges = false;
-                        break;
+                    if (key.startsWith("tokens.")) {
+                        const [upperAttr, tokenId, attribute] = key.split(".");
+                        if (upperAttr != "tokens" || !tokenId || !attribute) {
+                            simpleChanges = false;
+                            break;
+                        }
+                        if (attribute == "x" || attribute == "y") {
+                            this.canvas.tokenNodes[tokenId][attribute] = value;
+                        }
+                        else {
+                            simpleChanges = false;
+                            break;
+                        }
                     }
-                    if (attribute == "x" || attribute == "y") {
-                        this.canvas.tokenNodes[tokenId][attribute] = value;
+                    else if (key == "squareSize") {
+                        const gridFilter = this.canvas.grid.filters[0];
+                        gridFilter.uniforms.pitch = [value, value];
                     }
                     else {
-                        onlyTokenChanges = false;
+                        simpleChanges = false;
                         break;
                     }
                 }
-                if (onlyTokenChanges) {
+                if (simpleChanges) {
                     return;
                 }
             }

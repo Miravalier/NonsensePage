@@ -10,21 +10,18 @@ export class CanvasContainer {
         this.node = node;
     }
 
-    AddGrid(width, height, translation, scale) {
+    AddGrid(width, height, squareSize, translation, scale) {
         const fragmentShaderCode = `
             precision mediump float;
 
-            uniform vec2 viewport; // e.g. [800 600]
-            uniform vec2 offset; // e.g. [-0.023500000000000434 0.9794000000000017]
-            uniform vec2 pitch;  // e.g. [50 50]
-            uniform vec2 translation; // e.g. [0 0] Pixel Offset
-            uniform vec2 scale; // e.g. [1.0 1.0] Percentage
+            uniform vec2 viewport;      // e.g. [800 600] Size of the canvas
+            uniform vec2 pitch;         // e.g. [512 512] Size of the grid squares
+            uniform vec2 translation;   // e.g. [0 0] Shifts the grid by x, y pixels
+            uniform vec2 scale;         // e.g. [1.0 1.0] 0.0 - 1.0, Scale percentage in x and y
 
             void main() {
-                float scaleFactor = 10000.0;
-
-                float offX = (scaleFactor * offset[0]) + (gl_FragCoord.x - translation.x);
-                float offY = (scaleFactor * offset[1]) + (1.0 - (viewport.y - (gl_FragCoord.y + translation.y)));
+                float offX = (gl_FragCoord.x - translation.x);
+                float offY = (1.0 - (viewport.y - (gl_FragCoord.y + translation.y)));
 
                 if (int(mod(offX, pitch[0] * scale[0])) == 0 ||
                     int(mod(offY, pitch[1] * scale[1])) == 0) {
@@ -37,8 +34,7 @@ export class CanvasContainer {
 
         const uniforms = {
             viewport: [width, height],
-            offset: [0, 1],
-            pitch: [200, 200],
+            pitch: [squareSize, squareSize],
             translation: [translation.x, translation.y],
             scale: [scale, scale],
         };
@@ -306,7 +302,7 @@ export class MapCanvas extends Canvas {
         if (this.grid) {
             this.grid.destroy();
         }
-        this.grid = this.AddGrid(this.htmlContainer.offsetWidth, this.htmlContainer.offsetHeight, translation, scale);
+        this.grid = this.AddGrid(this.htmlContainer.offsetWidth, this.htmlContainer.offsetHeight, map.squareSize, translation, scale);
         this.tokenContainer = this.AddContainer(translation, scale);
         this.backgroundContainer = this.tokenContainer.AddContainer();
         this.detailContainer = this.tokenContainer.AddContainer();

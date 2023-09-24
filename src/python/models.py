@@ -208,6 +208,7 @@ class Token(Entry):
 class Map(Entry):
     type: str = "map"
     tokens: Dict[str, Token] = Field(default_factory=dict)
+    squareSize: int = 512
 
 
 class Message(BaseModel):
