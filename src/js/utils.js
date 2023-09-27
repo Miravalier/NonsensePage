@@ -3,6 +3,25 @@ import { Vector2 } from "./vector.js";
 import { Permissions } from "./enums.js";
 
 
+export function ColorIntToVec3(value) {
+    return [
+        ((value & 0xFF0000) >>> 16) / 255,
+        ((value & 0xFF00) >>> 8) / 255,
+        (value & 0xFF) / 255
+    ]
+}
+
+
+export function ColorIntToVec4(value) {
+    return [
+        ((value & 0xFF000000) >>> 24) / 255,
+        ((value & 0xFF0000) >>> 16) / 255,
+        ((value & 0xFF00) >>> 8) / 255,
+        (value & 0xFF) / 255
+    ]
+}
+
+
 export function GenerateId() {
     const values = new Uint8Array(12);
     crypto.getRandomValues(values);

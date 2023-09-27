@@ -25,3 +25,9 @@ class Layer(IntEnum):
     DETAILS = 1
     CHARACTERS = 2
     EFFECTS = 3
+
+
+class GridColor(IntEnum):
+    NONE = 0
+    WHITE = 1
+    BLACK = 2

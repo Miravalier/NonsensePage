@@ -4,20 +4,43 @@ import { Vector2 } from "./vector.js";
 import { Layer } from "./enums.js";
 import { ApiRequest } from "./requests.js";
 
+const NO_GRID = 0
+const WHITE_GRID = 1
+const BLACK_GRID = 2
+
 
 export class CanvasContainer {
     constructor(node) {
         this.node = node;
     }
 
-    AddGrid(width, height, squareSize, translation, scale) {
-        const fragmentShaderCode = `
+    AddGrid(options) {
+        // Get options
+        Require(options);
+        const width = Require(options.width);
+        const height = Require(options.height);
+        const squareSize = Require(options.squareSize);
+        const translation = Parameter(options.translation, new Vector2(0, 0));
+        const scale = Parameter(options.scale, 1);
+        let color;
+        if (options.color == WHITE_GRID) {
+            color = [0.1, 0.1, 0.1, 0.2];
+        }
+        else if (options.color == BLACK_GRID) {
+            color = [0.0, 0.0, 0.0, 0.25];
+        }
+        else {
+            color = [0.0, 0.0, 0.0, 0.0];
+        }
+
+        const fragmentShader = `
             precision mediump float;
 
             uniform vec2 viewport;      // e.g. [800 600] Size of the canvas
             uniform vec2 pitch;         // e.g. [512 512] Size of the grid squares
             uniform vec2 translation;   // e.g. [0 0] Shifts the grid by x, y pixels
             uniform vec2 scale;         // e.g. [1.0 1.0] 0.0 - 1.0, Scale percentage in x and y
+            uniform vec4 color;         // e.g. [0.1, 0.1, 0.1, 0.2] Color of the  grid
 
             void main() {
                 float offX = (gl_FragCoord.x - translation.x);
@@ -25,9 +48,9 @@ export class CanvasContainer {
 
                 if (int(mod(offX, pitch[0] * scale[0])) == 0 ||
                     int(mod(offY, pitch[1] * scale[1])) == 0) {
-                    gl_FragColor = vec4(0.0, 0.0, 0.0, 0.1);
+                    gl_FragColor = color;
                 } else {
-                    gl_FragColor = vec4(0.7, 0.7, 0.7, 0.1);
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
                 }
             }
         `;
@@ -37,16 +60,19 @@ export class CanvasContainer {
             pitch: [squareSize, squareSize],
             translation: [translation.x, translation.y],
             scale: [scale, scale],
+            color: [0.1, 0.1, 0.1, 0.2],
         };
 
-        const gridFilter = new PIXI.Filter(undefined, fragmentShaderCode, uniforms);
-        const grid = new PIXI.Graphics();
-        grid.beginFill(0xFFFFFF, 1);
-        grid.drawRect(0, 0, width, height);
-        grid.filters = [gridFilter];
+        const gridFilter = new PIXI.Filter(undefined, fragmentShader, uniforms);
+        const maskContainer = new PIXI.Container();
+        const maskBackground = new PIXI.Graphics();
+        maskBackground.beginFill(0xFFFFFF, 1);
+        maskBackground.drawRect(0, 0, width, height);
+        maskContainer.addChild(maskBackground);
+        maskContainer.filters = [gridFilter];
 
-        this.node.addChild(grid);
-        return grid;
+        this.node.addChild(maskContainer);
+        return maskContainer;
     }
 
     AddContainer(position, scale) {
@@ -302,12 +328,20 @@ export class MapCanvas extends Canvas {
         if (this.grid) {
             this.grid.destroy();
         }
-        this.grid = this.AddGrid(this.htmlContainer.offsetWidth, this.htmlContainer.offsetHeight, map.squareSize, translation, scale);
+
         this.tokenContainer = this.AddContainer(translation, scale);
         this.backgroundContainer = this.tokenContainer.AddContainer();
         this.detailContainer = this.tokenContainer.AddContainer();
         this.characterContainer = this.tokenContainer.AddContainer();
         this.effectContainer = this.tokenContainer.AddContainer();
+        this.grid = this.AddGrid({
+            width: this.htmlContainer.offsetWidth,
+            height: this.htmlContainer.offsetHeight,
+            squareSize: map.squareSize,
+            translation: translation,
+            scale: scale,
+            color: map.color,
+        });
 
         for (const token of Object.values(map.tokens)) {
             await this.AddToken(token);

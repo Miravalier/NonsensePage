@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Any, Dict, Iterator, List, Optional, Union, Set
 
-from enums import Alignment, Language, Permissions, Layer
+from enums import Alignment, Language, Permissions, Layer, GridColor
 from utils import current_timestamp
 
 
@@ -209,6 +209,7 @@ class Map(Entry):
     type: str = "map"
     tokens: Dict[str, Token] = Field(default_factory=dict)
     squareSize: int = 512
+    color: GridColor = GridColor.WHITE
 
 
 class Message(BaseModel):
