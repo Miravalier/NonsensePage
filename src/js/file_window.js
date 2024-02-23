@@ -3,6 +3,7 @@ import { ContentWindow, InputDialog } from "./window.js";
 import { ApiRequest, Session, FileUpload } from "./requests.js";
 import { Vector2 } from "./vector.js";
 import { Parameter, AddDragListener } from "./utils.js";
+import { ErrorToast } from "./notifications.js";
 
 
 const FILE_ICONS = {
@@ -28,6 +29,7 @@ export class FileWindow extends ContentWindow {
         options.refreshable = Parameter(options.refreshable, true);
         super(options);
 
+        this.fileNames = new Set();
         this.files = this.content.appendChild(document.createElement("div"));
         this.files.className = "files";
 
@@ -64,6 +66,9 @@ export class FileWindow extends ContentWindow {
             if (!selection || !selection.Name) {
                 return;
             }
+            if (this.fileNames.has(selection.Name)) {
+                ErrorToast("Error: A file or directory already exists with that name");
+            }
             await ApiRequest("/files/mkdir", {
                 name: selection.Name,
                 path: this.path,
@@ -80,6 +85,7 @@ export class FileWindow extends ContentWindow {
     async load(path) {
         await super.load();
         this.files.innerHTML = "";
+        this.fileNames = new Set();
 
         const response = await ApiRequest("/files/list", { path });
         if (response.status != "success") {
@@ -111,6 +117,7 @@ export class FileWindow extends ContentWindow {
     }
 
     addFolder(img, name, path) {
+        this.fileNames.add(name);
         const icon = document.createElement("i");
         icon.classList = `fa-solid fa-${img}`;
 
@@ -138,6 +145,7 @@ export class FileWindow extends ContentWindow {
     }
 
     async addFile(filetype, img, name, path) {
+        this.fileNames.add(name);
         let url_path = null;
         if (Session.gm) {
             url_path = `/files${path}`;

@@ -904,7 +904,10 @@ class CreateFolderRequest(AuthRequest):
 async def files_mkdir(request: CreateFolderRequest):
     path = validate_directory(request.requester, request.path)
     new_path = path / request.name
-    new_path.mkdir()
+    try:
+        new_path.mkdir()
+    except FileExistsError:
+        raise JsonError("directory already exists")
     await get_pool("files").broadcast({
         "type": "mkdir",
         "user": request.requester.id,
