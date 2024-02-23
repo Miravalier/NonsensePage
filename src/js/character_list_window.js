@@ -13,6 +13,7 @@ export class CharacterListWindow extends ContentWindow {
         options.classList = ["character-list"];
         options.refreshable = Parameter(options.refreshable, true);
         options.size = Parameter(options.size, new Vector2(300, 400));
+        options.title = Parameter(options.title, "Characters");
         super(options);
         this.characters = this.content.appendChild(document.createElement("div"));
         this.characters.className = "characters";

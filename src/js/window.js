@@ -8,10 +8,13 @@ import {
     Bound,
     StringBound,
     AddDropListener,
+    GenerateId,
 } from "./utils.js";
 
 
 let nextZIndex = 0;
+
+export const windows = {};
 
 
 export class BaseWindow {
@@ -30,6 +33,8 @@ export class BaseWindow {
         this.subscriptions = [];
         this.abortControllers = [];
         this.intervalIds = [];
+        this.id = GenerateId();
+        windows[this.id] = this;
 
         this.minimized = false;
         this.fullscreen = false;
@@ -161,8 +166,8 @@ export class BaseWindow {
             });
         }
 
-        const windows = document.querySelector("#windows");
-        windows.appendChild(this.container);
+        const windowElements = document.querySelector("#windows");
+        windowElements.appendChild(this.container);
     }
 
     repeatFunction(func, delay) {
@@ -173,6 +178,14 @@ export class BaseWindow {
 
     setTitle(s) {
         this.titleNode.textContent = StringBound(s, 40);
+    }
+
+    serialize() {
+        return {};
+    }
+
+    deserialize(data) {
+        this.load();
     }
 
     addDropListener(element, fn) {

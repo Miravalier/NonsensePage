@@ -14,6 +14,7 @@ export class CombatTrackerWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["combat-tracker"];
         options.size = Parameter(options.size, new Vector2(380, 520));
+        options.title = Parameter(options.title, "Combat Tracker");
         super(options);
         this.id = null;
         this.dropListener = false;

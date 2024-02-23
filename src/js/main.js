@@ -62,38 +62,50 @@ async function Main() {
         "Open": {
             "Characters": async (ev) => {
                 const characterListWindow = new CharacterListWindow({
-                    title: "Characters",
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await characterListWindow.load();
             },
             "Chat": async (ev) => {
                 const chatWindow = new ChatWindow({
-                    title: "Chat",
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await chatWindow.load();
             },
             "Combat Tracker": async (ev) => {
                 const combatTrackerWindow = new CombatTrackerWindow({
-                    title: "Combat Tracker",
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await combatTrackerWindow.load();
             },
             "Files": async (ev) => {
                 const fileWindow = new FileWindow({
-                    title: "Files",
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await fileWindow.load("/");
             },
             "Maps": async (ev) => {
                 const mapListWindow = new MapListWindow({
-                    title: "Maps",
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await mapListWindow.load();
+            },
+        },
+        "Layout": {
+            "Save": async (ev) => {
+                const selection = await InputDialog("Save Layout", { "Name": "text" }, "Create");
+                if (!selection || !selection.Name) {
+                    return;
+                }
+            },
+            "Load": async (ev) => {
+                // TODO: add check / error msg if no saves
+                // TODO: auto load format if only one is saved
+                const loadFormatWindow = new LoadFormatWindow({
+                    title: "Choose Format",
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await loadFormatWindow.load();
             },
         },
     });

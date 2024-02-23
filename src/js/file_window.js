@@ -26,6 +26,7 @@ export class FileWindow extends ContentWindow {
         options.classList = ["file"];
         options.size = Parameter(options.size, new Vector2(400, 400));
         options.refreshable = Parameter(options.refreshable, true);
+        options.title = Parameter(options.title, "Files");
         super(options);
 
         this.files = this.content.appendChild(document.createElement("div"));

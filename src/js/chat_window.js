@@ -181,6 +181,7 @@ export class ChatWindow extends ContentWindow {
     constructor(options) {
         options.classList = ["chat"];
         options.size = Parameter(options.size, new Vector2(400, 600));
+        options.title = Parameter(options.title, "Chat");
         super(options);
         this.messages = {};
         this.messageContainer = this.content.appendChild(document.createElement("div"));

@@ -13,6 +13,7 @@ export class MapListWindow extends ContentWindow {
         options.classList = ["map-list-window"];
         options.refreshable = Parameter(options.refreshable, true);
         options.size = Parameter(options.size, new Vector2(300, 400));
+        options.title = Parameter(options.title, "Maps");
         super(options);
         this.maps = this.content.appendChild(Html(`<div class="maps"></div>`));
         if (Session.gm) {
