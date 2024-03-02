@@ -9,6 +9,7 @@ import { CharacterListWindow } from "./character_list_window.js";
 import { CheckUpdates } from "./pending_updates.js";
 import { Roll } from "./dice.js";
 import { MapListWindow } from "./map_list_window.js";
+import { windows } from "./window.js";
 
 
 window.addEventListener("load", async () => {
@@ -45,6 +46,11 @@ async function OnLoad() {
     Session.gm = response.gm;
     Session.username = response.username;
     Session.id = response.id;
+    const chatWindow = new ChatWindow({
+        size: new Vector2(400, window.innerHeight),
+        position: new Vector2(window.innerWidth-400, 0),
+    });
+    await chatWindow.load();
 }
 
 

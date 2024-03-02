@@ -111,6 +111,14 @@ export class FileWindow extends ContentWindow {
         });
     }
 
+    serialize() {
+        return {path: this.path};
+    }
+
+    deserialize(data) {
+        this.load(data.path);
+    }
+
     addFolder(img, name, path) {
         const icon = document.createElement("i");
         icon.classList = `fa-solid fa-${img}`;
