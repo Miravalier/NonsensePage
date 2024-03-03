@@ -16,7 +16,7 @@ export class CombatTrackerWindow extends ContentWindow {
         options.size = Parameter(options.size, new Vector2(380, 520));
         options.title = Parameter(options.title, "Combat Tracker");
         super(options);
-        this.id = null;
+        this.combatId = null;
         this.dropListener = false;
         this.combatantContainer = this.content.appendChild(Html(`
             <div class="combatants">
@@ -34,7 +34,7 @@ export class CombatTrackerWindow extends ContentWindow {
             `));
             announceButton.addEventListener("click", async (ev) => {
                 await ApiRequest("/combat/announce-turn", {
-                    id: this.id,
+                    id: this.combatId,
                 });
             });
 
@@ -43,7 +43,7 @@ export class CombatTrackerWindow extends ContentWindow {
             `));
             reverseButton.addEventListener("click", async (ev) => {
                 await ApiRequest("/combat/reverse-turn", {
-                    id: this.id,
+                    id: this.combatId,
                 });
             });
         }
@@ -53,7 +53,7 @@ export class CombatTrackerWindow extends ContentWindow {
         `));
         this.endTurnButton.addEventListener("click", async (ev) => {
             await ApiRequest("/combat/end-turn", {
-                id: this.id,
+                id: this.combatId,
             });
         });
 
@@ -63,7 +63,7 @@ export class CombatTrackerWindow extends ContentWindow {
             `));
             sortButton.addEventListener("click", async (ev) => {
                 await ApiRequest("/combat/sort", {
-                    id: this.id,
+                    id: this.combatId,
                 });
             });
 
@@ -75,7 +75,7 @@ export class CombatTrackerWindow extends ContentWindow {
                     return;
                 }
                 await ApiRequest("/combat/clear", {
-                    id: this.id,
+                    id: this.combatId,
                 });
             });
         }
@@ -115,7 +115,7 @@ export class CombatTrackerWindow extends ContentWindow {
                                 return;
                             }
                             await ApiRequest("/combat/update", {
-                                id: this.id,
+                                id: this.combatId,
                                 changes: {
                                     "$set": {
                                         [`combatants.${this.combatantIndexes[combatant.id]}.name`]: selection.Name
@@ -125,7 +125,7 @@ export class CombatTrackerWindow extends ContentWindow {
                         },
                         "Delete Combatant": async (ev) => {
                             await ApiRequest("/combat/update", {
-                                id: this.id,
+                                id: this.combatId,
                                 changes: {
                                     "$pull": {
                                         combatants: {
@@ -137,7 +137,7 @@ export class CombatTrackerWindow extends ContentWindow {
                         },
                         "Roll Initiative": async (ev) => {
                             await ApiRequest("/combat/update", {
-                                id: this.id,
+                                id: this.combatId,
                                 changes: {
                                     "$set": {
                                         [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: Roll("2d6").total
@@ -151,7 +151,7 @@ export class CombatTrackerWindow extends ContentWindow {
                                 return;
                             }
                             await ApiRequest("/combat/update", {
-                                id: this.id,
+                                id: this.combatId,
                                 changes: {
                                     "$set": {
                                         [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: selection.Initiative
@@ -161,7 +161,7 @@ export class CombatTrackerWindow extends ContentWindow {
                         },
                         "Clear Initiative": async (ev) => {
                             await ApiRequest("/combat/update", {
-                                id: this.id,
+                                id: this.combatId,
                                 changes: {
                                     "$set": {
                                         [`combatants.${this.combatantIndexes[combatant.id]}.initiative`]: null
@@ -185,8 +185,8 @@ export class CombatTrackerWindow extends ContentWindow {
             let response = await ApiRequest("/combat/get", { id });
             combat = response.combat;
         }
-        else if (this.id) {
-            let response = await ApiRequest("/combat/get", { id: this.id });
+        else if (this.combatId) {
+            let response = await ApiRequest("/combat/get", { id: this.combatId });
             combat = response.combat;
         }
         else {
@@ -209,8 +209,8 @@ export class CombatTrackerWindow extends ContentWindow {
                 }
                 combat = response.combat;
             }
-        }
-        this.id = combat.id;
+        }this.combatId
+        this.combatId = combat.id;
 
         // Use response
         const combatantIds = new Set();

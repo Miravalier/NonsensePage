@@ -11,13 +11,13 @@ export class CharacterSheetWindow extends ContentWindow {
         options.classList = ["character"];
         options.size = Parameter(options.size, new Vector2(540, 600));
         super(options);
-        this.id = null;
+        this.characterId = null;
     }
 
     async load(id) {
         await super.load();
         this.content.innerHTML = "";
-        this.id = id;
+        this.characterId = id;
 
         // Get character data
         const response = await ApiRequest("/character/get", { id });
@@ -46,10 +46,10 @@ export class CharacterSheetWindow extends ContentWindow {
     }
 
     serialize() {
-        return {id: this.id};
+        return {characterId: this.characterId};
     }
 
     deserialize(data) {
-        this.load(data.id);
+        this.load(data.characterId);
     }
 }

@@ -33,8 +33,8 @@ export class BaseWindow {
         this.subscriptions = [];
         this.abortControllers = [];
         this.intervalIds = [];
-        this.id = GenerateId();
-        windows[this.id] = this;
+        this.windowId = GenerateId();
+        windows[this.windowId] = this;
 
         this.minimized = false;
         this.fullscreen = false;

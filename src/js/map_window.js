@@ -13,7 +13,7 @@ export class MapWindow extends CanvasWindow {
         options.refreshable = Parameter(options.refreshable, true);
         options.canvasClass = Parameter(options.canvasClass, MapCanvas);
         super(options);
-        this.id = null;
+        this.mapId = null;
         this.translation = new Vector2(0, 0);
         this.scale = 1;
         this.viewChangesMade = false;
@@ -91,17 +91,17 @@ export class MapWindow extends CanvasWindow {
     async load(id) {
         await super.load();
         if (id) {
-            this.id = id;
+            this.mapId = id;
         }
 
-        const response = await ApiRequest("/map/get", { id: this.id });
+        const response = await ApiRequest("/map/get", { id: this.mapId });
         if (response.status != "success") {
             ErrorToast("Failed to load map.");
             this.close();
             return;
         }
 
-        const localMapData = GetLocalStorageObject(`map.${this.id}`);
+        const localMapData = GetLocalStorageObject(`map.${this.mapId}`);
         if (localMapData.x) {
             this.translation.x = localMapData.x;
         }
@@ -114,7 +114,7 @@ export class MapWindow extends CanvasWindow {
 
         this.repeatFunction(() => {
             if (this.viewChangesMade) {
-                SetLocalStorageObject(`map.${this.id}`, {
+                SetLocalStorageObject(`map.${this.mapId}`, {
                     x: this.translation.x,
                     y: this.translation.y,
                     scale: this.scale,
@@ -133,7 +133,7 @@ export class MapWindow extends CanvasWindow {
             const worldCoords = this.canvas.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
             const newId = GenerateId();
             await ApiRequest("/map/update", {
-                id: this.id,
+                id: this.mapId,
                 changes: {
                     "$set": {
                         [`tokens.${newId}`]: {
@@ -147,7 +147,7 @@ export class MapWindow extends CanvasWindow {
             });
         });
 
-        await this.subscribe(this.id, async update => {
+        await this.subscribe(this.mapId, async update => {
             if (update.type == "update"
                 && Object.keys(update.changes).length == 1
                 && update.changes["$set"]) {

@@ -46,11 +46,11 @@ async function OnLoad() {
     Session.gm = response.gm;
     Session.username = response.username;
     Session.id = response.id;
-    const chatWindow = new ChatWindow({
-        size: new Vector2(400, window.innerHeight),
-        position: new Vector2(window.innerWidth-400, 0),
-    });
-    await chatWindow.load();
+    // const chatWindow = new ChatWindow({
+    //     size: new Vector2(400, window.innerHeight), // Might want 90% height
+    //     position: new Vector2(window.innerWidth-400, 0),
+    // });
+    // await chatWindow.load();
 }
 
 
