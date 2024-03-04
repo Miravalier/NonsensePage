@@ -9,7 +9,8 @@ import { CharacterListWindow } from "./character_list_window.js";
 import { CheckUpdates } from "./pending_updates.js";
 import { Roll } from "./dice.js";
 import { MapListWindow } from "./map_list_window.js";
-import { windows } from "./window.js";
+import { windows, InputDialog } from "./window.js";
+import { Parameter } from "./utils.js";
 
 
 window.addEventListener("load", async () => {
@@ -99,10 +100,32 @@ async function Main() {
         },
         "Layout": {
             "Save": async (ev) => {
-                const selection = await InputDialog("Save Layout", { "Name": "text" }, "Create");
+                const selection = await InputDialog("Save Layout", { "Name": "text", "Default": "checkbox" }, "Create");
                 if (!selection || !selection.Name) {
                     return;
                 }
+
+                const windowArray = [];
+                for (const openWindow of Object.values(windows)) {
+                    const windowMap = {
+                        type: openWindow.constructor.name,
+                        data: openWindow.serialize(),
+                        left: openWindow.position.x / window.innerWidth,
+                        right: (window.innerWidth - openWindow.position.x - openWindow.size.x) / window.innerWidth,
+                        top: openWindow.position.y / window.innerHeight,
+                        bottom: (window.innerHeight - openWindow.position.y - openWindow.size.y) / window.innerHeight,
+                    };
+                    windowArray.push(windowMap);
+                }
+
+                if (selection.Default) {
+                    window.localStorage.setItem("defaultFormat", selection.Name);
+                }
+                let allFormatsString = Parameter(window.localStorage.getItem("formats"), "{}");
+                let allFormatsMap = JSON.parse(allFormatsString);
+                allFormatsMap[selection.Name] = windowArray;
+                allFormatsString = JSON.stringify(allFormatsMap);
+                window.localStorage.setItem("formats", allFormatsString);
             },
             "Load": async (ev) => {
                 // TODO: add check / error msg if no saves
