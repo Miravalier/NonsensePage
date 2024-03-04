@@ -407,7 +407,7 @@ export function InputDialog(title, inputs, acceptText) {
     const dialog = new Dialog({
         title,
         elements: [
-            inputElements,
+            [inputElements],
             [acceptButton, cancelButton]
         ]
     });

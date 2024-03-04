@@ -264,6 +264,10 @@ button:hover i {
     filter: drop-shadow(0 0 4px #c6def8);
 }
 
+.dialog .label {
+    margin-right: 6px;
+}
+
 .dialog .description {
     margin: 2px;
     padding: 2px;
