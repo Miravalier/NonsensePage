@@ -1,6 +1,6 @@
 import * as ContextMenu from "./contextmenu.js";
 import { ApiRequest, Session } from "./requests.js";
-import { ContentWindow, InputDialog } from "./window.js";
+import { ContentWindow, InputDialog, registerWindowType } from "./window.js";
 import { Parameter, AddDragListener } from "./utils.js";
 import { Vector2 } from "./vector.js";
 import { ErrorToast } from "./notifications.js";
@@ -13,6 +13,7 @@ export class MapListWindow extends ContentWindow {
         options.classList = ["map-list-window"];
         options.refreshable = Parameter(options.refreshable, true);
         options.size = Parameter(options.size, new Vector2(300, 400));
+        options.title = Parameter(options.title, "Maps");
         super(options);
         this.maps = this.content.appendChild(Html(`<div class="maps"></div>`));
         if (Session.gm) {
@@ -89,3 +90,4 @@ export class MapListWindow extends ContentWindow {
         });
     }
 }
+registerWindowType(MapListWindow);

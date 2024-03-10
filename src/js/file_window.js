@@ -1,5 +1,5 @@
 import * as ContextMenu from "./contextmenu.js";
-import { ContentWindow, InputDialog } from "./window.js";
+import { ContentWindow, InputDialog, registerWindowType } from "./window.js";
 import { ApiRequest, Session, FileUpload } from "./requests.js";
 import { Vector2 } from "./vector.js";
 import { Parameter, AddDragListener } from "./utils.js";
@@ -27,6 +27,7 @@ export class FileWindow extends ContentWindow {
         options.classList = ["file"];
         options.size = Parameter(options.size, new Vector2(400, 400));
         options.refreshable = Parameter(options.refreshable, true);
+        options.title = Parameter(options.title, "Files");
         super(options);
 
         this.fileNames = new Set();
@@ -116,6 +117,14 @@ export class FileWindow extends ContentWindow {
         });
     }
 
+    serialize() {
+        return {path: this.path};
+    }
+
+    async deserialize(data) {
+        await this.load(data.path);
+    }
+
     addFolder(img, name, path) {
         this.fileNames.add(name);
         const icon = document.createElement("i");
@@ -194,3 +203,4 @@ export class FileWindow extends ContentWindow {
         });
     }
 }
+registerWindowType(FileWindow);

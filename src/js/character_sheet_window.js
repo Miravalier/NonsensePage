@@ -1,4 +1,4 @@
-import { ContentWindow } from "./window.js";
+import { ContentWindow, registerWindowType } from "./window.js";
 import { Vector2 } from "./vector.js";
 import { ApiRequest } from "./requests.js";
 import { Templates } from "./templates.js";
@@ -11,11 +11,13 @@ export class CharacterSheetWindow extends ContentWindow {
         options.classList = ["character"];
         options.size = Parameter(options.size, new Vector2(540, 600));
         super(options);
+        this.characterId = null;
     }
 
     async load(id) {
         await super.load();
         this.content.innerHTML = "";
+        this.characterId = id;
 
         // Get character data
         const response = await ApiRequest("/character/get", { id });
@@ -42,4 +44,13 @@ export class CharacterSheetWindow extends ContentWindow {
             sheet.update(updateData.changes);
         });
     }
+
+    serialize() {
+        return {characterId: this.characterId};
+    }
+
+    async deserialize(data) {
+        await this.load(data.characterId);
+    }
 }
+registerWindowType(CharacterSheetWindow);

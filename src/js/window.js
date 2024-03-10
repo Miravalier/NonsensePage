@@ -8,18 +8,27 @@ import {
     Bound,
     StringBound,
     AddDropListener,
+    GenerateId,
 } from "./utils.js";
 
 
 let nextZIndex = 0;
 
+export const windows = {};
+
+export const windowTypes = {};
+
+export function registerWindowType(type) {
+    windowTypes[type.name] = type;
+}
 
 export class BaseWindow {
     constructor(options) {
         options = Parameter(options, {});
+        const register = Parameter(options.register, true);
         const title = Parameter(options.title, "");
-        const size = Parameter(options.size, new Vector2(600, 400));
-        const position = Parameter(options.position, PageCenter().subtract(size).divide(2));
+        this.size = Parameter(options.size, new Vector2(600, 400));
+        this.position = Parameter(options.position, PageCenter().subtract(this.size).divide(2));
         const backgroundColor = Parameter(options.backgroundColor, "#324051");
         const classList = Parameter(options.classList, []);
         classList.push("window");
@@ -30,14 +39,19 @@ export class BaseWindow {
         this.subscriptions = [];
         this.abortControllers = [];
         this.intervalIds = [];
+        this.windowId = GenerateId();
+        if (register) {
+            windows[this.windowId] = this;
+        }
+
 
         this.minimized = false;
         this.fullscreen = false;
 
         this.container = document.createElement("div");
         this.container.classList = classList.join(" ");
-        this.container.style.left = `${position.x}px`;
-        this.container.style.top = `${position.y}px`;
+        this.container.style.left = `${this.position.x}px`;
+        this.container.style.top = `${this.position.y}px`;
         this.container.style.zIndex = ++nextZIndex;
         if (this.backgroundColor !== null) {
             this.container.style.backgroundColor = backgroundColor;
@@ -60,8 +74,10 @@ export class BaseWindow {
             const yMax = window.innerHeight - (Math.ceil(this.container.offsetHeight) + 1);
 
             const onDrag = ev => {
-                this.container.style.left = `${Bound(0, ev.clientX - xOffset, xMax)}px`;
-                this.container.style.top = `${Bound(0, ev.clientY - yOffset, yMax)}px`;
+                this.position.x = Bound(0, ev.clientX - xOffset, xMax);
+                this.container.style.left = `${this.position.x}px`;
+                this.position.y = Bound(0, ev.clientY - yOffset, yMax);
+                this.container.style.top = `${this.position.y}px`;
             }
 
             const onDragEnd = ev => {
@@ -117,8 +133,8 @@ export class BaseWindow {
         this.viewPort = this.container.appendChild(document.createElement("div"));
         this.viewPort.className = "viewPort";
         if (resizable) {
-            this.viewPort.style.width = `${size.x}px`;
-            this.viewPort.style.height = `${size.y}px`;
+            this.viewPort.style.width = `${this.size.x}px`;
+            this.viewPort.style.height = `${this.size.y}px`;
         }
 
         if (resizable) {
@@ -137,10 +153,10 @@ export class BaseWindow {
                     for (const group of this.titleBar.children) {
                         minWidth += group.clientWidth;
                     }
-                    const width = Bound(minWidth, xOffset, xMax);
-                    const height = Bound(40, yOffset, yMax);
-                    this.viewPort.style.width = `${width}px`;
-                    this.viewPort.style.height = `${height}px`;
+                    this.size.x = Bound(minWidth, xOffset, xMax);
+                    this.size.y = Bound(40, yOffset, yMax);
+                    this.viewPort.style.width = `${this.size.x}px`;
+                    this.viewPort.style.height = `${this.size.y}px`;
                     if (this.canvas) {
                         this.canvas.view.style.display = "none";
                     }
@@ -161,8 +177,8 @@ export class BaseWindow {
             });
         }
 
-        const windows = document.querySelector("#windows");
-        windows.appendChild(this.container);
+        const windowElements = document.querySelector("#windows");
+        windowElements.appendChild(this.container);
     }
 
     repeatFunction(func, delay) {
@@ -173,6 +189,14 @@ export class BaseWindow {
 
     setTitle(s) {
         this.titleNode.textContent = StringBound(s, 40);
+    }
+
+    serialize() {
+        return {};
+    }
+
+    async deserialize(data) {
+        await this.load();
     }
 
     addDropListener(element, fn) {
@@ -277,8 +301,10 @@ export class BaseWindow {
         for (let intervalId of this.intervalIds) {
             clearInterval(intervalId);
         }
+        delete windows[this.windowId];
     }
 }
+registerWindowType(BaseWindow);
 
 
 export class CanvasWindow extends BaseWindow {
@@ -290,6 +316,7 @@ export class CanvasWindow extends BaseWindow {
         this.canvas = new canvasClass(options);
     }
 }
+registerWindowType(CanvasWindow);
 
 
 export class ContentWindow extends BaseWindow {
@@ -299,6 +326,7 @@ export class ContentWindow extends BaseWindow {
         this.content.className = "content";
     }
 }
+registerWindowType(ContentWindow);
 
 
 /**
@@ -330,6 +358,7 @@ export class Dialog extends ContentWindow {
         // Default resizable to false instead of true
         options.resizable = Parameter(options.resizable, false);
         options.title = Parameter(options.title, "New Dialog");
+        options.register = Parameter(options.register, false);
         super(options);
         this.content.classList.add("dialog");
 
@@ -348,15 +377,16 @@ export class Dialog extends ContentWindow {
         }
     }
 }
+registerWindowType(Dialog);
 
 
 export function InputDialog(title, inputs, acceptText) {
     const inputElements = [];
     for (const [labelText, inputData] of Object.entries(inputs)) {
         let inputType;
-        let startingValue = "";
+        let inputValue = "";
         if (Array.isArray(inputData)) {
-            [inputType, startingValue] = inputData;
+            [inputType, inputValue] = inputData;
         }
         else {
             inputType = inputData;
@@ -369,7 +399,15 @@ export function InputDialog(title, inputs, acceptText) {
         if (inputType == "paragraph") {
             inputElement = document.createElement("textarea");
             inputElement.maxLength = 10000;
-            inputElement.value = startingValue;
+            inputElement.value = inputValue;
+        }
+        else if (inputType == "select") {
+            inputElement = document.createElement("select");
+            for (const option of inputValue) {
+                const optionElement = inputElement.appendChild(document.createElement("option"));
+                optionElement.value = option;
+                optionElement.innerText = option;
+            }
         }
         else {
             inputElement = document.createElement("input");
@@ -380,7 +418,7 @@ export function InputDialog(title, inputs, acceptText) {
             if (inputType == "text") {
                 inputElement.maxLength = 128;
             }
-            inputElement.value = startingValue;
+            inputElement.value = inputValue;
         }
         inputElements.push([inputLabel, inputElement]);
     }
@@ -394,7 +432,7 @@ export function InputDialog(title, inputs, acceptText) {
     const dialog = new Dialog({
         title,
         elements: [
-            inputElements,
+            [inputElements],
             [acceptButton, cancelButton]
         ]
     });
@@ -407,6 +445,9 @@ export function InputDialog(title, inputs, acceptText) {
                 let value;
                 if (inputElement.type == "number") {
                     value = parseInt(inputElement.value);
+                }
+                else if (inputElement.type == "checkbox") {
+                    value = inputElement.checked;
                 }
                 else {
                     value = inputElement.value;
@@ -511,4 +552,25 @@ export class Wizard extends ContentWindow {
             }
         }
     }
+}
+registerWindowType(Wizard);
+
+export async function loadFormat(format) {
+    const promises = [];
+    for (const windowMap of format) {
+        const position = {
+            x: windowMap.left * window.innerWidth,
+            y: windowMap.top * window.innerHeight,
+        }
+        const windowType = windowTypes[windowMap.type];
+        const newWindow = new windowType({
+            size: {
+                x: window.innerWidth - position.x - (windowMap.right * window.innerWidth),
+                y: window.innerHeight - position.y - (windowMap.bottom * window.innerHeight),
+            },
+            position,
+        });
+        promises.push(newWindow.deserialize(windowMap.data));
+    }
+    await Promise.all(promises);
 }
