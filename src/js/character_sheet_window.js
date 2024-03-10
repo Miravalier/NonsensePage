@@ -1,4 +1,4 @@
-import { ContentWindow } from "./window.js";
+import { ContentWindow, registerWindowType } from "./window.js";
 import { Vector2 } from "./vector.js";
 import { ApiRequest } from "./requests.js";
 import { Templates } from "./templates.js";
@@ -49,7 +49,8 @@ export class CharacterSheetWindow extends ContentWindow {
         return {characterId: this.characterId};
     }
 
-    deserialize(data) {
-        this.load(data.characterId);
+    async deserialize(data) {
+        await this.load(data.characterId);
     }
 }
+registerWindowType(CharacterSheetWindow);

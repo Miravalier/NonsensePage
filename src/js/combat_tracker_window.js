@@ -1,7 +1,7 @@
 import * as ContextMenu from "./contextmenu.js";
 import { Vector2 } from "./vector.js";
 import { CharacterSheetWindow } from "./character_sheet_window.js";
-import { ConfirmDialog, ContentWindow, InputDialog } from "./window.js";
+import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from "./window.js";
 import { ApiRequest, Session } from "./requests.js";
 import { Parameter, HasPermission } from "./utils.js";
 import { ErrorToast } from "./notifications.js";
@@ -209,7 +209,7 @@ export class CombatTrackerWindow extends ContentWindow {
                 }
                 combat = response.combat;
             }
-        }this.combatId
+        }
         this.combatId = combat.id;
 
         // Use response
@@ -253,4 +253,13 @@ export class CombatTrackerWindow extends ContentWindow {
             });
         });
     }
+
+    serialize() {
+        return {combatId: this.combatId};
+    }
+
+    async deserialize(data) {
+        await this.load(data.combatId);
+    }
 }
+registerWindowType(CombatTrackerWindow);

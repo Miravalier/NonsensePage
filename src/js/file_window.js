@@ -1,5 +1,5 @@
 import * as ContextMenu from "./contextmenu.js";
-import { ContentWindow, InputDialog } from "./window.js";
+import { ContentWindow, InputDialog, registerWindowType } from "./window.js";
 import { ApiRequest, Session, FileUpload } from "./requests.js";
 import { Vector2 } from "./vector.js";
 import { Parameter, AddDragListener } from "./utils.js";
@@ -115,8 +115,8 @@ export class FileWindow extends ContentWindow {
         return {path: this.path};
     }
 
-    deserialize(data) {
-        this.load(data.path);
+    async deserialize(data) {
+        await this.load(data.path);
     }
 
     addFolder(img, name, path) {
@@ -195,3 +195,4 @@ export class FileWindow extends ContentWindow {
         });
     }
 }
+registerWindowType(FileWindow);

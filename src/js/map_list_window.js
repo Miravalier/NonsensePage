@@ -1,6 +1,6 @@
 import * as ContextMenu from "./contextmenu.js";
 import { ApiRequest, Session } from "./requests.js";
-import { ContentWindow, InputDialog } from "./window.js";
+import { ContentWindow, InputDialog, registerWindowType } from "./window.js";
 import { Parameter, AddDragListener } from "./utils.js";
 import { Vector2 } from "./vector.js";
 import { ErrorToast } from "./notifications.js";
@@ -90,3 +90,4 @@ export class MapListWindow extends ContentWindow {
         });
     }
 }
+registerWindowType(MapListWindow);

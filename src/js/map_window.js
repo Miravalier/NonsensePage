@@ -1,5 +1,5 @@
 import * as ContextMenu from "./contextmenu.js";
-import { CanvasWindow } from "./window.js";
+import { CanvasWindow, registerWindowType } from "./window.js";
 import { Parameter, GenerateId, GetLocalStorageObject, SetLocalStorageObject } from "./utils.js";
 import { Vector2 } from "./vector.js";
 import { ApiRequest } from "./requests.js";
@@ -188,3 +188,4 @@ export class MapWindow extends CanvasWindow {
         });
     }
 }
+registerWindowType(MapWindow);

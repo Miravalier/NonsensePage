@@ -1,7 +1,7 @@
 import * as Database from "./database.js";
 import * as ContextMenu from "./contextmenu.js";
 import { Vector2 } from "./vector.js";
-import { ContentWindow, InputDialog } from "./window.js";
+import { ContentWindow, InputDialog, registerWindowType } from "./window.js";
 import { ApiRequest, Session, HandleWsMessage } from "./requests.js";
 import { Parameter, DerivePcgEngine, RandomText, GenerateId } from "./utils.js";
 import { ErrorToast } from "./notifications.js";
@@ -273,7 +273,7 @@ export class ChatWindow extends ContentWindow {
         const response = await ApiRequest("/messages/recent");
         if (response.status != "success") {
             this.messageContainer.className = "messages-error";
-            this.messageContainer.appendChild(document.createTextNode(`Error: Failed to chat messages`));
+            this.messageContainer.appendChild(document.createTextNode(`Error: Failed to load chat messages`));
             return;
         }
 
@@ -350,3 +350,4 @@ export class ChatWindow extends ContentWindow {
         return element;
     }
 }
+registerWindowType(ChatWindow);
