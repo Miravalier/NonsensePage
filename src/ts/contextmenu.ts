@@ -1,8 +1,8 @@
 import { Html } from "./elements.js";
 
 // Globals
-let contextMenuElement = null;
-let contextMenuResolve = null;
+let contextMenuElement: HTMLDivElement = null;
+let contextMenuResolve: (value: [MouseEvent, string]) => void = null;
 
 
 export function close() {
@@ -21,15 +21,15 @@ export async function init() {
 }
 
 
-export function set(element: HTMLElement, options: any) {
+export function set(element: HTMLElement, options: { [category: string]: { [choice: string]: (ev: MouseEvent) => void } }) {
     element.addEventListener("contextmenu", async (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
 
         close();
 
-        const callbacks = {};
-        const categoryDivs = [];
+        const callbacks: { [choice: string]: (ev: MouseEvent) => void } = {};
+        const categoryDivs: string[] = [];
         for (const [category, suboptions] of Object.entries(options)) {
             const optionDivs = [];
             for (const [choice, callback] of Object.entries(suboptions)) {
@@ -64,10 +64,10 @@ export function set(element: HTMLElement, options: any) {
             <div class="contextMenu" style="${horizontal}: ${xOffset}px; ${vertical}: ${yOffset}px;">
                 ${categoryDivs.join("")}
             </div>
-        `);
+        `) as HTMLDivElement;
         document.body.appendChild(contextMenuElement);
 
-        for (let choiceElement of contextMenuElement.querySelectorAll(".choice")) {
+        for (let choiceElement of contextMenuElement.querySelectorAll<HTMLDivElement>(".choice")) {
             choiceElement.addEventListener("click", ev => {
                 ev.preventDefault();
                 ev.stopPropagation();
@@ -77,7 +77,7 @@ export function set(element: HTMLElement, options: any) {
             });
         }
 
-        const [resolvingEvent, selectedOption] = await new Promise<string>((resolve) => {
+        const [resolvingEvent, selectedOption] = await new Promise<[MouseEvent, string]>((resolve) => {
             contextMenuResolve = resolve;
         });
         if (selectedOption) {

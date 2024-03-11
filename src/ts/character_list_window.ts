@@ -28,11 +28,11 @@ export class CharacterListWindow extends ContentWindow {
         });
     }
 
-    async addCharacter(id, name) {
+    async addCharacter(id: string, name: string) {
         const element = this.characters.appendChild(document.createElement("div"));
         element.dataset.character = id;
         element.className = "character";
-        element.appendChild(document.createTextNode(name));
+        element.innerText = name;
         element.addEventListener("click", async () => {
             const characterSheetWindow = new CharacterSheetWindow({
                 title: "Character Sheet",
