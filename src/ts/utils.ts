@@ -3,7 +3,7 @@ import { Vector2 } from "./vector.js";
 import { Permissions } from "./enums.js";
 
 
-export function ColorIntToVec3(value) {
+export function ColorIntToVec3(value: number): [number, number, number] {
     return [
         ((value & 0xFF0000) >>> 16) / 255,
         ((value & 0xFF00) >>> 8) / 255,
@@ -12,7 +12,7 @@ export function ColorIntToVec3(value) {
 }
 
 
-export function ColorIntToVec4(value) {
+export function ColorIntToVec4(value: number): [number, number, number, number] {
     return [
         ((value & 0xFF000000) >>> 24) / 255,
         ((value & 0xFF0000) >>> 16) / 255,
@@ -22,7 +22,7 @@ export function ColorIntToVec4(value) {
 }
 
 
-export function GenerateId() {
+export function GenerateId(): string {
     const values = new Uint8Array(12);
     crypto.getRandomValues(values);
     let result = "";
@@ -32,18 +32,18 @@ export function GenerateId() {
     return result;
 }
 
-
-export function SetLocalStorageObject(identifier, obj) {
-    localStorage.setItem(identifier, JSON.stringify(obj));
-}
-
-
-export function GetLocalStorageObject(identifier) {
-    const storedJson = localStorage.getItem(identifier);
-    if (!storedJson) {
-        return {};
+export class LocalPersist {
+    static save(identifier: string, obj: any) {
+        localStorage.setItem(identifier, JSON.stringify(obj));
     }
-    return JSON.parse(storedJson);
+
+    static load<T>(identifier: string, defaultValue: T = null): T {
+        const storedJson = localStorage.getItem(identifier);
+        if (!storedJson) {
+            return defaultValue;
+        }
+        return JSON.parse(storedJson);
+    }
 }
 
 
@@ -210,12 +210,7 @@ export function AddDragListener(element, data) {
 }
 
 
-/**
- * @param {HTMLElement} element
- * @param {Function} fn
- * @returns {AbortController}
- */
-export function AddDropListener(element, fn) {
+export function AddDropListener(element: HTMLElement, fn: CallableFunction): AbortController {
     const abortController = new AbortController();
 
     element.addEventListener("dragover", (ev) => {
@@ -247,7 +242,7 @@ export function Bound(min, value, max) {
 }
 
 
-export function StringBound(s, maxLength) {
+export function StringBound(s: string, maxLength: number): string {
     if (s.length <= maxLength) {
         return s;
     }
@@ -260,27 +255,27 @@ export function StringBound(s, maxLength) {
 }
 
 
-export function IsDefined(value) {
+export function IsDefined(value: any): boolean {
     return typeof (value) !== "undefined";
 }
 
 
-export function PageCenter() {
+export function PageCenter(): Vector2 {
     return new Vector2(window.innerWidth, window.innerHeight);
 }
 
 
-export function Parameter() {
-    for (let argument of arguments) {
-        if (typeof (argument) !== "undefined") {
-            return argument;
+export function Parameter<T>(...values: T[]): T {
+    for (let value of values) {
+        if (typeof (value) !== "undefined") {
+            return value;
         }
     }
     return undefined;
 }
 
 
-export function Require(argument) {
+export function Require<T>(argument: T): T {
     if (typeof (argument) === "undefined") {
         throw new Error("Required parameter missing.")
     }

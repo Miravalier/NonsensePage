@@ -1,10 +1,10 @@
 import { FetchHtml } from "./requests.js";
 
 export class Templates {
-    static cache = {};
+    static cache: { [url: string]: any } = {};
 
-    static async loadCss(url) {
-        let link = Templates.cache[url];
+    static async loadCss(url: string) {
+        let link: HTMLLinkElement = Templates.cache[url];
         if (link) {
             return link;
         }
@@ -19,9 +19,9 @@ export class Templates {
         return link;
     }
 
-    static async loadHtml(url) {
+    static async loadHtml(url: string): Promise<DocumentFragment> {
         // Try cached template
-        let template = Templates.cache[url];
+        let template: HTMLTemplateElement = Templates.cache[url];
         if (template) {
             return document.importNode(template.content, true);
         }

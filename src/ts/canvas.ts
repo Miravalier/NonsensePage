@@ -4,12 +4,17 @@ import { Vector2 } from "./vector.js";
 import { Layer } from "./enums.js";
 import { ApiRequest } from "./requests.js";
 
+declare const PIXI: any;
+
 const NO_GRID = 0
 const WHITE_GRID = 1
 const BLACK_GRID = 2
 
 
 export class CanvasContainer {
+    node: any;
+    grid: any;
+
     constructor(node) {
         this.node = node;
     }
@@ -176,6 +181,12 @@ export class CanvasContainer {
 
 
 export class Canvas extends CanvasContainer {
+    htmlContainer: HTMLDivElement;
+    app: any;
+    view: any;
+    stage: any;
+    renderer: any;
+
     constructor(options) {
         const htmlContainer = Parameter(options.container, document.body);
         const backgroundColor = Parameter(options.backgroundColor, 0x2d2d2d);
@@ -204,6 +215,14 @@ export class Canvas extends CanvasContainer {
 
 
 export class MapCanvas extends Canvas {
+    id: string;
+    tokenNodes: { [id: string]: any };
+    tokenContainer: any;
+    backgroundContainer: any;
+    detailContainer: any;
+    characterContainer: any;
+    effectContainer: any;
+
     constructor(options) {
         super(options);
         this.id = null;
