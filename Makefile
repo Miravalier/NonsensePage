@@ -1,4 +1,6 @@
 DOMAIN = nonsense.local
+USER_UID ?= $(shell id -u)
+USER_GID ?= $(shell id -g)
 
 .PHONY: help frontend backend nginx
 
@@ -20,6 +22,8 @@ frontend:
 		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
 		exit 1; \
 	fi
+	echo $(CURDIR)
+	docker run --rm tsc
 	mkdir -p /var/www/nonsense/ /var/www/nonsense/files/ /var/www/nonsense/thumbnails/
 	cp $$(find src/ -name '*.js' -or -name '*.css' -or -name '*.html') /var/www/nonsense
 	cp $$(find deps/toastify -type f) /var/www/nonsense/
