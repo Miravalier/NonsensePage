@@ -1,15 +1,14 @@
 import { PCG } from "./pcg-random.js";
 
 
-/**
- * @param {string} formula
- * @param {object} data
- */
-export function Roll(formula, data, results) {
-    if (!data) {
+declare const math: any;
+
+
+export function Roll(formula: string, data = null, results = null) {
+    if (data === null) {
         data = {};
     }
-    if (!results) {
+    if (results === null) {
         results = { total: 0, rolls: [] };
     }
 
@@ -57,12 +56,7 @@ export function Roll(formula, data, results) {
 }
 
 
-/**
- * @param {string} formula
- * @param {object} data
- * @param {object} results
- */
-function FlatRoll(formula, data, results) {
+function FlatRoll(formula: string, data, results) {
     const diceResolvedFormula = formula.replaceAll(/([0-9]*)d([0-9]+)(d[0-9]+)?/g, (_, numDice, dieSize, dropped) => {
         // Parse input parameters into numbers
         if (numDice == "") {
@@ -99,7 +93,7 @@ function FlatRoll(formula, data, results) {
         for (const roll of rolls) {
             rollTotal += roll.result;
         }
-        return rollTotal;
+        return rollTotal.toString();
     });
 
     results.total = math.evaluate(diceResolvedFormula, data);

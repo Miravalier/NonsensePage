@@ -8,6 +8,9 @@ import { Parameter, AddDragListener } from "./utils.js";
 
 
 export class CharacterListWindow extends ContentWindow {
+    characters: HTMLDivElement;
+    createCharacterButton: HTMLButtonElement;
+
     constructor(options) {
         options.classList = ["character-list"];
         options.refreshable = Parameter(options.refreshable, true);

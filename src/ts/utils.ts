@@ -1,3 +1,4 @@
+import { Session } from "./requests.js";
 import { PcgEngine } from "./pcg-random.js";
 import { Vector2 } from "./vector.js";
 import { Permissions } from "./enums.js";
@@ -47,7 +48,7 @@ export class LocalPersist {
 }
 
 
-export function InflateDocument(document) {
+export function InflateDocument(document: any) {
     if (Array.isArray(document) || document === null || typeof document !== "object") {
         return document;
     }
@@ -69,7 +70,7 @@ export function InflateDocument(document) {
 }
 
 
-export function ResolvePath(object, path) {
+export function ResolvePath(object: any, path: string) {
     if (!object || !path) {
         return undefined;
     }
@@ -88,21 +89,9 @@ export function ResolvePath(object, path) {
 }
 
 
-/**
- * @param {object} document
- * @param {string} id
- * @param {string} field
- * @returns {number}
- */
-export function GetPermissions(document, id, field) {
+export function GetPermissions(document: any, id: string = "*", field: string = "*"): number {
     if (Session.gm) {
         return Permissions.OWNER;
-    }
-    if (id === undefined) {
-        id = "*";
-    }
-    if (field === undefined) {
-        field = "*";
     }
 
     if (!document || !document.permissions) {
@@ -148,23 +137,12 @@ export function GetPermissions(document, id, field) {
 }
 
 
-/**
- * @param {object} document
- * @param {string} id
- * @param {string} field
- * @param {number} level
- * @returns {boolean}
- */
-export function HasPermission(document, id, field, level) {
-    if (level === undefined) {
-        level = Permissions.READ;
-    }
-
+export function HasPermission(document: any, id: string, field: string, level: number = Permissions.READ): boolean {
     return GetPermissions(document, id, field) >= level;
 }
 
 
-export function ContainsOperators(data) {
+export function ContainsOperators(data: any): boolean {
     if (!data) {
         return false;
     }
@@ -194,10 +172,7 @@ export function ContainsOperators(data) {
 }
 
 
-/**
- * @param {HTMLElement} element
- */
-export function AddDragListener(element, data) {
+export function AddDragListener(element: HTMLElement, data: any) {
     element.draggable = true;
     element.addEventListener("dragstart", (ev) => {
         ev.dataTransfer.setData("application/nonsense", JSON.stringify(data));
@@ -229,15 +204,15 @@ export function AddDropListener(element: HTMLElement, fn: CallableFunction): Abo
 }
 
 
-export function DerivePcgEngine(id) {
+export function DerivePcgEngine(id: string) {
     return new PcgEngine(
-        BigInt(parseInt(id.substr(0, 6), 36)),
-        BigInt(parseInt(id.substr(6, 6), 36))
+        BigInt(parseInt(id.slice(0, 6), 36)),
+        BigInt(parseInt(id.slice(6, 12), 36))
     );
 }
 
 
-export function Bound(min, value, max) {
+export function Bound(min: number, value: number, max: number): number {
     return Math.min(Math.max(min, value), max);
 }
 
@@ -247,10 +222,10 @@ export function StringBound(s: string, maxLength: number): string {
         return s;
     }
     else if (maxLength < 10) {
-        return s.substring(0, maxLength);
+        return s.slice(0, maxLength);
     }
     else {
-        return s.substring(0, maxLength - 3) + "...";
+        return s.slice(0, maxLength - 3) + "...";
     }
 }
 
@@ -319,7 +294,7 @@ for (let i = 0; i < FREQUENCIES.length; i++) {
     LETTER_FREQUENCIES.push([LETTER_FREQUENCY_SUM, LETTERS[i]]);
 }
 
-export function RandomLetter(engine) {
+export function RandomLetter(engine: PcgEngine): string {
     const value = engine.randFloat();
     for (const [limit, letter] of LETTER_FREQUENCIES) {
         if (value < limit) {
@@ -331,7 +306,7 @@ export function RandomLetter(engine) {
 }
 
 
-export function RandomText(engine, length) {
+export function RandomText(engine: PcgEngine, length: number): string {
     let result = "";
     for (let i = 0; i < length; i++) {
         result += RandomLetter(engine);
@@ -340,7 +315,7 @@ export function RandomText(engine, length) {
 }
 
 
-export function LoremIpsum() {
+export function LoremIpsum(): string {
     return `
         Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt
         ut labore et dolore magna aliqua. Elementum curabitur vitae nunc sed velit dignissim

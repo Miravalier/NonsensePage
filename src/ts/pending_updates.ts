@@ -1,7 +1,12 @@
 import { ApiRequest } from "./requests.js";
 
 
-const CHARACTER_UPDATES = {}
+const CHARACTER_UPDATES: {
+    [id: string]: {
+        expiration: number,
+        changes: any,
+    }
+} = {};
 
 
 export async function CheckUpdates() {
@@ -18,7 +23,7 @@ export async function CheckUpdates() {
 }
 
 
-export function AddCharacterUpdate(id, changes) {
+export function AddCharacterUpdate(id: string, changes: any) {
     let update = CHARACTER_UPDATES[id];
     if (update) {
         update.expiration = Date.now() + 500;

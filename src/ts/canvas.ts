@@ -6,9 +6,9 @@ import { ApiRequest } from "./requests.js";
 
 declare const PIXI: any;
 
-const NO_GRID = 0
-const WHITE_GRID = 1
-const BLACK_GRID = 2
+export const NO_GRID = 0
+export const WHITE_GRID = 1
+export const BLACK_GRID = 2
 
 
 export class CanvasContainer {

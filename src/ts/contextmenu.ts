@@ -21,11 +21,7 @@ export async function init() {
 }
 
 
-/**
- * @param {HTMLDivElement} element
- * @param {object} options
- */
-export function set(element, options) {
+export function set(element: HTMLElement, options: any) {
     element.addEventListener("contextmenu", async (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
@@ -81,7 +77,7 @@ export function set(element, options) {
             });
         }
 
-        const [resolvingEvent, selectedOption] = await new Promise((resolve) => {
+        const [resolvingEvent, selectedOption] = await new Promise<string>((resolve) => {
             contextMenuResolve = resolve;
         });
         if (selectedOption) {

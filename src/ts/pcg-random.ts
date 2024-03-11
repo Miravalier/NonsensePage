@@ -3,7 +3,10 @@
  * algorithm described at http://www.pcg-random.org/
  */
 export class PcgEngine {
-    constructor(seed, inc) {
+    state: bigint;
+    inc: bigint;
+
+    constructor(seed = undefined, inc = undefined) {
         if (seed === null && inc === null) {
             return;
         }
@@ -26,7 +29,7 @@ export class PcgEngine {
         this.setSeed(seed, inc);
     }
 
-    next() {
+    next(): bigint {
         const oldState = this.state;
         this.state = BigInt.asUintN(64, (oldState * 6364136223846793005n) + this.inc);
         const xorShifted = BigInt.asUintN(32, ((oldState >> 18n) ^ oldState) >> 27n);
@@ -38,14 +41,14 @@ export class PcgEngine {
      * Creates a new PcgRandom from an existing one.
      * @returns A new PcgRandom.
      */
-    child() {
+    child(): PcgEngine {
         return new PcgEngine(this.randInt64(), this.randInt64());
     }
 
     /**
      * Creates a new engine with a copy of the current state.
      */
-    copy() {
+    copy(): PcgEngine {
         const engine = new PcgEngine(null, null);
         engine.state = this.state;
         engine.inc = this.inc;
@@ -57,7 +60,7 @@ export class PcgEngine {
      * @param seed state initializer
      * @param inc stream id
      */
-    setSeed(seed, inc) {
+    setSeed(seed: bigint, inc: bigint) {
         this.state = 0n;
         this.inc = BigInt.asUintN(64, (inc << 1n) | 1n);
         this.next();
@@ -68,14 +71,14 @@ export class PcgEngine {
     /**
      * @returns A random uint32 Number.
      */
-    randInt() {
+    randInt(): number {
         return Number(this.next());
     }
 
     /**
      * @returns A random uint64 BigInt.
      */
-    randInt64() {
+    randInt64(): bigint {
         return this.next() | (this.next() << 32n);
     }
 
@@ -84,7 +87,7 @@ export class PcgEngine {
      * @param max Integer limit (exclusive). Must fit in a uint32.
      * @returns A uint32 in the range [0, max).
      */
-    randBelow(max) {
+    randBelow(max: number): number {
         const bigMax = BigInt(max);
         const threshold = 0x100000000n % bigMax;
         while (true) {
@@ -101,23 +104,21 @@ export class PcgEngine {
      * @param max Integer limit (exclusive). Must fit in a uint32.
      * @returns A uint32 in the range [min, max).
      */
-    randBetween(min, max) {
+    randBetween(min: number, max: number): number {
         return min + this.randBelow(max - min);
     }
 
     /**
      * @returns A double in the range of [0.0, 1.0)
      */
-    randFloat() {
+    randFloat(): number {
         return Number(this.randInt64()) / Number(1n << 64n);
     }
 
     /**
      * Picks a random element out of an array.
-     * @param array
-     * @returns
      */
-    choice(array) {
+    choice<T>(array: T[]): T {
         return array[this.randBelow(array.length)];
     }
 
@@ -125,7 +126,7 @@ export class PcgEngine {
      * Shuffles a given array in-place.
      * @param array The array to shuffle.
      */
-    shuffle(array) {
+    shuffle(array: any[]) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = this.randBelow(i + 1);
             const tmp = array[i];

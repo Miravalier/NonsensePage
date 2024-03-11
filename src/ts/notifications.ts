@@ -1,7 +1,8 @@
+// @ts-ignore
 import { Toastify } from "./toastify.js";
 
 
-export function InfoToast(message) {
+export function InfoToast(message: string) {
     console.info(message);
     const toast = new Toastify({
         text: message,
@@ -12,7 +13,7 @@ export function InfoToast(message) {
 }
 
 
-export function WarningToast(message) {
+export function WarningToast(message: string) {
     console.warn(message);
     const toast = new Toastify({
         text: message,
@@ -23,7 +24,7 @@ export function WarningToast(message) {
 }
 
 
-export function ErrorToast(message) {
+export function ErrorToast(message: string) {
     console.error(message);
     const toast = new Toastify({
         text: message,

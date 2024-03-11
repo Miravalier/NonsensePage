@@ -564,7 +564,7 @@ export function ImageSelectDialog(prompt: string): Promise<string> {
 
 
 export async function loadFormat(format: SerializedWindow[]) {
-    const promises = [];
+    const promises: Promise<void>[] = [];
     for (const windowMap of format) {
         const position = {
             x: windowMap.left * window.innerWidth,

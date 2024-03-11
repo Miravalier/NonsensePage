@@ -4,9 +4,11 @@ import { Parameter, GenerateId, LocalPersist } from "./utils.js";
 import { Vector2 } from "./vector.js";
 import { ApiRequest } from "./requests.js";
 import { MapCanvas } from "./canvas.js";
+import { ErrorToast } from "./notifications.js";
 
 
 declare const PIXI: any;
+type MapData = { x: number, y: number, scale: number };
 
 
 export class MapWindow extends CanvasWindow {
@@ -14,6 +16,7 @@ export class MapWindow extends CanvasWindow {
     translation: Vector2;
     scale: number;
     viewChangesMade: boolean;
+    canvas: MapCanvas;
 
     constructor(options) {
         options.classList = ["map-window"];
@@ -109,14 +112,14 @@ export class MapWindow extends CanvasWindow {
             return;
         }
 
-        const localMapData = LocalPersist.load(`map.${this.mapId}`, {});
-        if (localMapData.x != null) {
+        const localMapData: MapData = LocalPersist.load(`map.${this.mapId}`, { x: null, y: null, scale: null });
+        if (localMapData.x !== null) {
             this.translation.x = localMapData.x;
         }
-        if (localMapData.y != null) {
+        if (localMapData.y !== null) {
             this.translation.y = localMapData.y;
         }
-        if (localMapData.scale != null) {
+        if (localMapData.scale !== null) {
             this.scale = localMapData.scale;
         }
 

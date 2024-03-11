@@ -1,5 +1,5 @@
 import { ApiRequest, LoginRequest, Session } from "./requests.js"
-import { InfoToast, WarningToast, ErrorToast } from "./notifications.js";
+import { ErrorToast } from "./notifications.js";
 
 async function AttemptLogin() {
     const username = document.querySelector<HTMLInputElement>("#login .username").value;
@@ -35,9 +35,7 @@ window.addEventListener("load", async () => {
         }
     }
 
-    window.LoginRequest = LoginRequest;
-
-    for (let inputElement of document.querySelectorAll("#login input")) {
+    for (let inputElement of document.querySelectorAll<HTMLInputElement>("#login input")) {
         inputElement.addEventListener("keypress", ev => {
             if (ev.key == "Enter") {
                 ev.preventDefault();

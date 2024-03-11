@@ -22,10 +22,11 @@ frontend:
 		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
 		exit 1; \
 	fi
-	echo $(CURDIR)
-	docker run --rm tsc
 	mkdir -p /var/www/nonsense/ /var/www/nonsense/files/ /var/www/nonsense/thumbnails/
-	cp $$(find src/ -name '*.js' -or -name '*.css' -or -name '*.html') /var/www/nonsense
+	docker run --rm -w $(CURDIR) -v $(CURDIR):$(CURDIR) tsc
+	cp $$(find build -type f) /var/www/nonsense
+	rm -rf build
+	cp $$(find src/ -name '*.css' -or -name '*.html') /var/www/nonsense
 	cp $$(find deps/toastify -type f) /var/www/nonsense/
 	cp -r assets/* /var/www/nonsense/
 
