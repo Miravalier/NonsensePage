@@ -70,14 +70,14 @@ function escapeHtml(message) {
 }
 
 
-function sendSystemMessage(message) {
+function sendSystemMessage(message: string) {
     HandleWsMessage({
         pool: "messages",
         type: "send",
         id: GenerateId(),
         sender_id: Session.id,
         character_id: null,
-        timestamp: parseInt(new Date().getTime() / 1000),
+        timestamp: Math.floor(new Date().getTime() / 1000),
         language: Language.COMMON,
         speaker: "System",
         content: `<div class="system">${message}</div>`,
@@ -178,6 +178,11 @@ async function speakCommand(message) {
 
 
 export class ChatWindow extends ContentWindow {
+    messages: { [id: string]: HTMLDivElement };
+    messageContainer: HTMLDivElement;
+    inputSection: HTMLDivElement;
+    textarea: HTMLTextAreaElement;
+
     constructor(options) {
         options.classList = ["chat"];
         options.size = Parameter(options.size, new Vector2(400, 600));

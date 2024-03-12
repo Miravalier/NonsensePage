@@ -8,20 +8,26 @@ import { ErrorToast } from "./notifications.js";
 import { Html } from "./elements.js";
 import { Roll } from "./dice.js";
 import { Permissions } from "./enums.js";
+import { Combat, Combatant } from "./models.js";
 
 
 export class CombatTrackerWindow extends ContentWindow {
+    combatId: string;
+    combatantContainer: HTMLDivElement;
+    combatantElements: { [id: string]: HTMLDivElement };
+    combatantIndexes: { [id: string]: number };
+    endTurnButton: HTMLButtonElement;
+
     constructor(options) {
         options.classList = ["combat-tracker"];
         options.size = Parameter(options.size, new Vector2(380, 520));
         options.title = Parameter(options.title, "Combat Tracker");
         super(options);
         this.combatId = null;
-        this.dropListener = false;
         this.combatantContainer = this.content.appendChild(Html(`
             <div class="combatants">
             </div>
-        `));
+        `) as HTMLDivElement);
         this.combatantElements = {};
         this.combatantIndexes = {};
         const buttonContainer = this.content.appendChild(Html(`
@@ -31,8 +37,8 @@ export class CombatTrackerWindow extends ContentWindow {
         if (Session.gm) {
             const announceButton = buttonContainer.appendChild(Html(`
                 <button type="button" class="announce">Announce</button>
-            `));
-            announceButton.addEventListener("click", async (ev) => {
+            `) as HTMLButtonElement);
+            announceButton.addEventListener("click", async () => {
                 await ApiRequest("/combat/announce-turn", {
                     id: this.combatId,
                 });
@@ -40,8 +46,8 @@ export class CombatTrackerWindow extends ContentWindow {
 
             const reverseButton = buttonContainer.appendChild(Html(`
                 <button type="button" class="reverse-turn">◀</button>
-            `));
-            reverseButton.addEventListener("click", async (ev) => {
+            `) as HTMLButtonElement);
+            reverseButton.addEventListener("click", async () => {
                 await ApiRequest("/combat/reverse-turn", {
                     id: this.combatId,
                 });
@@ -50,8 +56,8 @@ export class CombatTrackerWindow extends ContentWindow {
 
         this.endTurnButton = buttonContainer.appendChild(Html(`
             <button type="button" class="end-turn">End Turn ▶</button>
-        `));
-        this.endTurnButton.addEventListener("click", async (ev) => {
+        `) as HTMLButtonElement);
+        this.endTurnButton.addEventListener("click", async () => {
             await ApiRequest("/combat/end-turn", {
                 id: this.combatId,
             });
@@ -81,11 +87,14 @@ export class CombatTrackerWindow extends ContentWindow {
         }
     }
 
-    AddCombatant(index, combatant) {
+    AddCombatant(index: number, combatant: Combatant) {
         this.combatantIndexes[combatant.id] = index;
-        let initiative = combatant.initiative;
-        if (initiative === null || initiative === undefined) {
+        let initiative: string;
+        if (combatant.initiative === null) {
             initiative = "";
+        }
+        else {
+            initiative = combatant.initiative.toString();
         }
         let combatantElement = this.combatantElements[combatant.id];
         if (combatantElement) {
@@ -99,7 +108,7 @@ export class CombatTrackerWindow extends ContentWindow {
                     <span class="name">${combatant.name}</span>
                     <span class="initiative">${initiative}</span>
                 </div>
-            `));
+            `) as HTMLDivElement);
             combatantElement.addEventListener("click", async () => {
                 const characterSheetWindow = new CharacterSheetWindow({
                     title: "Character Sheet",
@@ -176,12 +185,12 @@ export class CombatTrackerWindow extends ContentWindow {
         }
     }
 
-    async load(id) {
+    async load(id: string = null) {
         await super.load();
         this.setTitle("Combat Tracker");
 
-        let combat;
-        if (id) {
+        let combat: Combat;
+        if (id === null) {
             let response = await ApiRequest("/combat/get", { id });
             combat = response.combat;
         }
@@ -255,7 +264,7 @@ export class CombatTrackerWindow extends ContentWindow {
     }
 
     serialize() {
-        return {combatId: this.combatId};
+        return { combatId: this.combatId };
     }
 
     async deserialize(data) {

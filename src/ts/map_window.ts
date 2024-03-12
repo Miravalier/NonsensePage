@@ -1,12 +1,23 @@
 import * as ContextMenu from "./contextmenu.js";
 import { CanvasWindow, registerWindowType } from "./window.js";
-import { Parameter, GenerateId, GetLocalStorageObject, SetLocalStorageObject } from "./utils.js";
+import { Parameter, GenerateId, LocalPersist } from "./utils.js";
 import { Vector2 } from "./vector.js";
 import { ApiRequest } from "./requests.js";
 import { MapCanvas } from "./canvas.js";
+import { ErrorToast } from "./notifications.js";
+
+
+declare const PIXI: any;
+type MapData = { x: number, y: number, scale: number };
 
 
 export class MapWindow extends CanvasWindow {
+    mapId: string;
+    translation: Vector2;
+    scale: number;
+    viewChangesMade: boolean;
+    canvas: MapCanvas;
+
     constructor(options) {
         options.classList = ["map-window"];
         options.size = Parameter(options.size, new Vector2(800, 600));
@@ -101,20 +112,20 @@ export class MapWindow extends CanvasWindow {
             return;
         }
 
-        const localMapData = GetLocalStorageObject(`map.${this.mapId}`);
-        if (localMapData.x) {
+        const localMapData: MapData = LocalPersist.load(`map.${this.mapId}`, { x: null, y: null, scale: null });
+        if (localMapData.x !== null) {
             this.translation.x = localMapData.x;
         }
-        if (localMapData.y) {
+        if (localMapData.y !== null) {
             this.translation.y = localMapData.y;
         }
-        if (localMapData.scale) {
+        if (localMapData.scale !== null) {
             this.scale = localMapData.scale;
         }
 
         this.repeatFunction(() => {
             if (this.viewChangesMade) {
-                SetLocalStorageObject(`map.${this.mapId}`, {
+                LocalPersist.save(`map.${this.mapId}`, {
                     x: this.translation.x,
                     y: this.translation.y,
                     scale: this.scale,

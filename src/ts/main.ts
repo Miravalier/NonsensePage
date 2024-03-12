@@ -7,7 +7,6 @@ import { FileWindow } from "./file_window.js";
 import { ApiRequest, Session, WsConnect } from "./requests.js";
 import { CharacterListWindow } from "./character_list_window.js";
 import { CheckUpdates } from "./pending_updates.js";
-import { Roll } from "./dice.js";
 import { MapListWindow } from "./map_list_window.js";
 import { windows, InputDialog, loadFormat } from "./window.js";
 import { ErrorToast } from "./notifications.js";
@@ -19,19 +18,15 @@ window.addEventListener("load", async () => {
 });
 
 
+export function LogOut() {
+    localStorage.removeItem("token");
+    Session.token = null;
+    console.log("Logged out, redirecting to /login");
+    window.location.href = "/login";
+}
+
+
 async function OnLoad() {
-    window.Session = Session;
-    window.Database = Database;
-    window.ApiRequest = ApiRequest;
-    window.Roll = Roll;
-
-    window.LogOut = () => {
-        localStorage.removeItem("token");
-        Session.token = null;
-        console.log("Logged out, redirecting to /login");
-        window.location.href = "/login";
-    };
-
     Session.token = localStorage.getItem("token");
     if (!Session.token) {
         console.error("No token found in local storage, redirecting to /login");
@@ -60,7 +55,7 @@ async function Main() {
     await Database.init();
     await ContextMenu.init();
 
-    ContextMenu.set(document, {
+    ContextMenu.set(document.body, {
         "Open": {
             "Characters": async (ev) => {
                 const characterListWindow = new CharacterListWindow({
@@ -176,7 +171,7 @@ async function Main() {
     else {
         const chatWindow = new ChatWindow({
             size: new Vector2(400, window.innerHeight), // Might want 90% height
-            position: new Vector2(window.innerWidth-400, 0),
+            position: new Vector2(window.innerWidth - 400, 0),
         });
         await chatWindow.load();
     }

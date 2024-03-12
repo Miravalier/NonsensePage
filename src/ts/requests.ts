@@ -2,16 +2,16 @@ import { ErrorToast } from "./notifications.js";
 
 
 export class Session {
-    static token = null;
+    static token: string = null;
     static gm = false;
     static username = "<Invalid>";
-    static id = null;
-    static ws;
-    static subscriptions = {};
+    static id: string = null;
+    static ws: WebSocket;
+    static subscriptions: { [pool: string]: Set<Subscription> } = {};
 }
 
 
-export function HandleWsMessage(data) {
+export function HandleWsMessage(data: any) {
     const pool = Session.subscriptions[data.pool];
     if (!pool) {
         console.warn(`Ignoring message bound for pool: ${data.pool}`)
@@ -50,7 +50,10 @@ export async function WsConnect() {
 
 
 export class Subscription {
-    constructor(pool, callback) {
+    pool: string;
+    callback: CallableFunction;
+
+    constructor(pool: string, callback: CallableFunction) {
         this.pool = pool;
         this.callback = callback;
     }
@@ -65,7 +68,7 @@ export class Subscription {
 }
 
 
-export async function Subscribe(pool, callback) {
+export async function Subscribe(pool: string, callback: CallableFunction): Promise<Subscription> {
     let subscription_set = Session.subscriptions[pool];
     if (!subscription_set) {
         subscription_set = new Set();
@@ -80,16 +83,21 @@ export async function Subscribe(pool, callback) {
 }
 
 
-export async function FetchHtml(url) {
+export async function FetchHtml(url: string): Promise<Document> {
     const response = await fetch(url);
     const text = await response.text();
     return new DOMParser().parseFromString(text, 'text/html');
 }
 
 
-export async function LoginRequest(username, password) {
+export async function LoginRequest(username: string, password: string) {
     Session.token = null;
-    const response = await ApiRequest("/login", { username, password });
+    const response: {
+        status: string;
+        token: string;
+        gm: boolean;
+        id: string;
+    } = await ApiRequest("/login", { username, password });
     if (response.status === "success") {
         localStorage.setItem("token", response.token);
         Session.token = response.token;
@@ -101,8 +109,8 @@ export async function LoginRequest(username, password) {
 }
 
 
-export async function ApiRequest(endpoint, data) {
-    if (!data) data = {};
+export async function ApiRequest(endpoint: string, data: any = null): Promise<any> {
+    if (data == null) data = {};
     if (Session.token !== null) {
         data.token = Session.token;
     }
@@ -134,7 +142,7 @@ export async function ApiRequest(endpoint, data) {
 }
 
 
-export async function FileUpload(file, path) {
+export async function FileUpload(file: File, path: string) {
     const formData = new FormData();
     formData.append('token', Session.token);
     formData.append('path', path)

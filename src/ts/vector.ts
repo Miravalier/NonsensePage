@@ -1,14 +1,13 @@
 export class Vector2 {
-    /**
-     * @param {number} x
-     * @param {number} y
-     */
-    constructor(x, y) {
+    x: number;
+    y: number;
+
+    constructor(x: number, y: number) {
         this.x = x;
         this.y = y;
     }
 
-    static from(obj) {
+    static from(obj: [number, number] | { x: number, y: number }): Vector2 {
         if (Array.isArray(obj)) {
             return new Vector2(obj[0], obj[1]);
         }
@@ -17,42 +16,42 @@ export class Vector2 {
         }
     }
 
-    copy() {
+    copy(): Vector2 {
         return new Vector2(this.x, this.y);
     }
 
-    add(point) {
+    add(point: Vector2): Vector2 {
         return new Vector2(this.x + point.x, this.y + point.y);
     }
 
-    applyAdd(point) {
+    applyAdd(point: Vector2) {
         this.x += point.x;
         this.y += point.y;
     }
 
-    subtract(point) {
+    subtract(point: Vector2): Vector2 {
         return new Vector2(this.x - point.x, this.y - point.y);
     }
 
-    applySubtract(point) {
+    applySubtract(point: Vector2) {
         this.x -= point.x;
         this.y -= point.y;
     }
 
-    multiply(value) {
+    multiply(value: number): Vector2 {
         return new Vector2(this.x * value, this.y * value);
     }
 
-    applyMultiply(value) {
+    applyMultiply(value: number) {
         this.x *= value;
         this.y *= value;
     }
 
-    divide(value) {
+    divide(value: number): Vector2 {
         return new Vector2(this.x / value, this.y / value);
     }
 
-    applyDivide(value) {
+    applyDivide(value: number) {
         this.x /= value;
         this.y /= value;
     }

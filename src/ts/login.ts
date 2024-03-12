@@ -1,13 +1,13 @@
 import { ApiRequest, LoginRequest, Session } from "./requests.js"
-import { InfoToast, WarningToast, ErrorToast } from "./notifications.js";
+import { ErrorToast } from "./notifications.js";
 
 async function AttemptLogin() {
-    const username = document.querySelector("#login .username").value;
+    const username = document.querySelector<HTMLInputElement>("#login .username").value;
     if (!username) {
         ErrorToast("You must enter a username.");
         return;
     }
-    const password = document.querySelector("#login .password").value;
+    const password = document.querySelector<HTMLInputElement>("#login .password").value;
     if (!password) {
         ErrorToast("You must enter a password.");
         return;
@@ -23,10 +23,6 @@ async function AttemptLogin() {
 }
 
 window.addEventListener("load", async () => {
-    window.InfoToast = InfoToast;
-    window.ErrorToast = ErrorToast;
-    window.WarningToast = WarningToast;
-
     Session.token = localStorage.getItem("token");
     if (Session.token) {
         const response = await ApiRequest("/status");
@@ -39,9 +35,7 @@ window.addEventListener("load", async () => {
         }
     }
 
-    window.LoginRequest = LoginRequest;
-
-    for (let inputElement of document.querySelectorAll("#login input")) {
+    for (let inputElement of document.querySelectorAll<HTMLInputElement>("#login input")) {
         inputElement.addEventListener("keypress", ev => {
             if (ev.key == "Enter") {
                 ev.preventDefault();

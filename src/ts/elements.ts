@@ -1,15 +1,11 @@
-/**
- * @param {string} html
- * @returns {Element}
- */
-export function Html(html) {
+export function Html(html: string): HTMLElement {
     const div = document.createElement("div");
     div.innerHTML = html;
-    return div.children.item(0);
+    return div.children.item(0) as HTMLElement;
 }
 
 
-export function Button(name, style) {
+export function Button(name: string, style: string = "solid"): HTMLButtonElement {
     const button = document.createElement("button");
     button.type = "button";
     button.appendChild(Icon(name, style));
@@ -17,11 +13,11 @@ export function Button(name, style) {
 }
 
 
-export function Icon(name, style) {
+export function Icon(name: string, style: string = "solid"): HTMLElement {
     if (style === undefined) {
         style = "solid";
     }
     const icon = document.createElement("i");
-    icon.classList = `fa-${style} fa-${name} button`;
+    icon.className = `fa-${style} fa-${name} button`;
     return icon;
 }

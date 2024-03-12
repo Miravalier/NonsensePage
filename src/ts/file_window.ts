@@ -23,6 +23,14 @@ const FILE_ICONS = {
 
 
 export class FileWindow extends ContentWindow {
+    fileNames: Set<string>;
+    files: HTMLDivElement;
+    buttons: HTMLDivElement;
+    uploadFileButton: HTMLButtonElement;
+    createFolderButton: HTMLButtonElement;
+    filePicker: HTMLInputElement;
+    path: string;
+
     constructor(options) {
         options.classList = ["file"];
         options.size = Parameter(options.size, new Vector2(400, 400));
@@ -83,7 +91,7 @@ export class FileWindow extends ContentWindow {
         this.load(this.path);
     }
 
-    async load(path) {
+    async load(path: string) {
         await super.load();
         this.files.innerHTML = "";
         this.fileNames = new Set();
@@ -118,7 +126,7 @@ export class FileWindow extends ContentWindow {
     }
 
     serialize() {
-        return {path: this.path};
+        return { path: this.path };
     }
 
     async deserialize(data) {
@@ -128,7 +136,7 @@ export class FileWindow extends ContentWindow {
     addFolder(img, name, path) {
         this.fileNames.add(name);
         const icon = document.createElement("i");
-        icon.classList = `fa-solid fa-${img}`;
+        icon.className = `fa-solid fa-${img}`;
 
         const item = this.files.appendChild(document.createElement("div"));
         item.className = "item directory";

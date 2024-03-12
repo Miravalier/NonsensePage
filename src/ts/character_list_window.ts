@@ -5,10 +5,13 @@ import { ApiRequest, Session } from "./requests.js";
 import { ErrorToast } from "./notifications.js";
 import { CharacterSheetWindow } from "./character_sheet_window.js";
 import { Parameter, AddDragListener } from "./utils.js";
-import { Html } from "./elements.js";
+import { Combat } from "./models.js";
 
 
 export class CharacterListWindow extends ContentWindow {
+    characters: HTMLDivElement;
+    createCharacterButton: HTMLButtonElement;
+
     constructor(options) {
         options.classList = ["character-list"];
         options.refreshable = Parameter(options.refreshable, true);
@@ -26,11 +29,11 @@ export class CharacterListWindow extends ContentWindow {
         });
     }
 
-    async addCharacter(id, name) {
+    async addCharacter(id: string, name: string) {
         const element = this.characters.appendChild(document.createElement("div"));
         element.dataset.character = id;
         element.className = "character";
-        element.appendChild(document.createTextNode(name));
+        element.innerText = name;
         element.addEventListener("click", async () => {
             const characterSheetWindow = new CharacterSheetWindow({
                 title: "Character Sheet",
