@@ -5,6 +5,7 @@ import { ApiRequest, Session } from "./requests.js";
 import { ErrorToast } from "./notifications.js";
 import { CharacterSheetWindow } from "./character_sheet_window.js";
 import { Parameter, AddDragListener } from "./utils.js";
+import { Combat } from "./models.js";
 
 
 export class CharacterListWindow extends ContentWindow {

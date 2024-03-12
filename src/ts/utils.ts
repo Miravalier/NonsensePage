@@ -2,6 +2,7 @@ import { Session } from "./requests.js";
 import { PcgEngine } from "./pcg-random.js";
 import { Vector2 } from "./vector.js";
 import { Permissions } from "./enums.js";
+import { Entry } from "./models.js";
 
 
 export function ColorIntToVec3(value: number): [number, number, number] {
@@ -89,7 +90,7 @@ export function ResolvePath(object: any, path: string) {
 }
 
 
-export function GetPermissions(document: any, id: string = "*", field: string = "*"): number {
+export function GetPermissions(document: Entry, id: string = "*", field: string = "*"): number {
     if (Session.gm) {
         return Permissions.OWNER;
     }
@@ -137,7 +138,7 @@ export function GetPermissions(document: any, id: string = "*", field: string = 
 }
 
 
-export function HasPermission(document: any, id: string, field: string, level: number = Permissions.READ): boolean {
+export function HasPermission(document: Entry, id: string, field: string, level: number = Permissions.READ): boolean {
     return GetPermissions(document, id, field) >= level;
 }
 

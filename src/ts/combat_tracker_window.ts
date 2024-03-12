@@ -8,6 +8,7 @@ import { ErrorToast } from "./notifications.js";
 import { Html } from "./elements.js";
 import { Roll } from "./dice.js";
 import { Permissions } from "./enums.js";
+import { Combat, Combatant } from "./models.js";
 
 
 export class CombatTrackerWindow extends ContentWindow {
@@ -36,8 +37,8 @@ export class CombatTrackerWindow extends ContentWindow {
         if (Session.gm) {
             const announceButton = buttonContainer.appendChild(Html(`
                 <button type="button" class="announce">Announce</button>
-            `));
-            announceButton.addEventListener("click", async (ev) => {
+            `) as HTMLButtonElement);
+            announceButton.addEventListener("click", async () => {
                 await ApiRequest("/combat/announce-turn", {
                     id: this.combatId,
                 });
@@ -45,8 +46,8 @@ export class CombatTrackerWindow extends ContentWindow {
 
             const reverseButton = buttonContainer.appendChild(Html(`
                 <button type="button" class="reverse-turn">◀</button>
-            `));
-            reverseButton.addEventListener("click", async (ev) => {
+            `) as HTMLButtonElement);
+            reverseButton.addEventListener("click", async () => {
                 await ApiRequest("/combat/reverse-turn", {
                     id: this.combatId,
                 });
@@ -56,7 +57,7 @@ export class CombatTrackerWindow extends ContentWindow {
         this.endTurnButton = buttonContainer.appendChild(Html(`
             <button type="button" class="end-turn">End Turn ▶</button>
         `) as HTMLButtonElement);
-        this.endTurnButton.addEventListener("click", async (ev) => {
+        this.endTurnButton.addEventListener("click", async () => {
             await ApiRequest("/combat/end-turn", {
                 id: this.combatId,
             });
@@ -86,11 +87,14 @@ export class CombatTrackerWindow extends ContentWindow {
         }
     }
 
-    AddCombatant(index, combatant) {
+    AddCombatant(index: number, combatant: Combatant) {
         this.combatantIndexes[combatant.id] = index;
-        let initiative = combatant.initiative;
-        if (initiative === null || initiative === undefined) {
+        let initiative: string;
+        if (combatant.initiative === null) {
             initiative = "";
+        }
+        else {
+            initiative = combatant.initiative.toString();
         }
         let combatantElement = this.combatantElements[combatant.id];
         if (combatantElement) {
@@ -185,7 +189,7 @@ export class CombatTrackerWindow extends ContentWindow {
         await super.load();
         this.setTitle("Combat Tracker");
 
-        let combat;
+        let combat: Combat;
         if (id === null) {
             let response = await ApiRequest("/combat/get", { id });
             combat = response.combat;
