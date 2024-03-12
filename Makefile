@@ -1,6 +1,4 @@
 DOMAIN = nonsense.local
-USER_UID ?= $(shell id -u)
-USER_GID ?= $(shell id -g)
 
 .PHONY: help frontend backend nginx
 
