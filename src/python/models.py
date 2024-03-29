@@ -167,7 +167,7 @@ class Character(Entity, Container):
 
 class User(Entry):
     type: str = "user"
-    hashed_password: bytes = b""
+    hashed_password: bytes = Field(exclude=True, default=b"")
     is_gm: bool = False
     character_id: Optional[str] = None
     languages: List[Language] = Field(default_factory=list)
@@ -178,9 +178,6 @@ class User(Entry):
             return FILES_ROOT
         else:
             return FILES_ROOT / "users" / self.name
-
-    def dict(self):
-        return super().dict(exclude={"hashed_password"})
 
 
 class Combatant(Entry):
@@ -226,6 +223,6 @@ class Message(BaseModel):
         return hash(self.id)
 
     def foreign_dict(self) -> Dict[str, Any]:
-        result = self.dict(exclude={"content": True})
+        result = self.model_dump(exclude={"content": True})
         result["length"] = len(self.content)
         return result

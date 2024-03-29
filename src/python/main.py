@@ -89,7 +89,7 @@ async def send_message(content: str, *, user: User, speaker: str = "System", cha
         "timestamp": current_timestamp(),
     })
     # Inform subscribers
-    full_broadcast = jsonable_encoder(message.dict())
+    full_broadcast = jsonable_encoder(message.model_dump())
     full_broadcast["type"] = "send"
     full_broadcast["pool"] = "messages"
     foreign_broadcast = jsonable_encoder(message.foreign_dict())
@@ -121,7 +121,7 @@ class CreateAdminRequest(AdminConsoleRequest):
 
 @app.post("/admin/create")
 async def admin_create_request(request: CreateAdminRequest):
-    if database.users.get({"name": request.username}):
+    if database.users.find_one({"name": request.username}):
         raise JsonError("username taken")
     user: User = database.users.create({"name": request.username, "hashed_password": hash_password(request.password), "is_gm": True})
     return {"status": "success", "id": user.id}
@@ -140,7 +140,7 @@ class LoginRequest(BaseModel):
 @app.post("/api/login")
 async def login(request: LoginRequest):
     # Find the requested user by username
-    user: User = database.users.get({"name": request.username})
+    user: User = database.users.find_one({"name": request.username})
     if user is None:
         raise AuthError("invalid username or password")
 
@@ -163,10 +163,10 @@ class AuthRequest(BaseModel):
 
     @validator('requester', pre=True)
     def resolve_requester(cls, value):
-        session: Session = database.sessions.get({"auth_token": value})
+        session: Session = database.sessions.find_one({"auth_token": value})
         auth_require(session is not None, "invalid token")
 
-        user: User = database.users.get(session.user_id)
+        user: User = database.users.find_one(session.user_id)
         auth_require(user is not None, "valid token for deleted user")
 
         return user
@@ -177,10 +177,10 @@ class GMRequest(BaseModel):
 
     @validator('requester', pre=True)
     def resolve_requester(cls, value):
-        session: Session = database.sessions.get({"auth_token": value})
+        session: Session = database.sessions.find_one({"auth_token": value})
         auth_require(session is not None, "invalid token")
 
-        user: User = database.users.get(session.user_id)
+        user: User = database.users.find_one(session.user_id)
         auth_require(user is not None, "valid token for deleted user")
         auth_require(user.is_gm, "insufficient permission, requires GM")
 
@@ -194,13 +194,13 @@ class UserCreateRequest(GMRequest):
 
 @app.post("/api/user/create")
 async def user_create(request: UserCreateRequest):
-    if database.users.get({"name": request.username}):
+    if database.users.find_one({"name": request.username}):
         raise JsonError("username taken")
     user: User = database.users.create({"name": request.username, "hashed_password": hash_password(request.password)})
     user.file_root.mkdir(parents=True, exist_ok=True)
     await get_pool("users").broadcast({
         "type": "create",
-        "user": user.dict(),
+        "user": user.model_dump(),
     })
     return {"status": "success", "id": user.id}
 
@@ -211,7 +211,7 @@ class UserDeleteRequest(GMRequest):
 
 @app.post("/api/user/delete")
 async def user_delete(request: UserDeleteRequest):
-    if not database.users.delete(request.id):
+    if not database.users.delete_one(request.id):
         raise JsonError("No user exists with that id")
 
     await get_pool("users").broadcast({
@@ -224,7 +224,7 @@ async def user_delete(request: UserDeleteRequest):
 
 @app.post("/api/user/list")
 async def user_list(request: AuthRequest):
-    return {"status": "success", "users": [user.dict() for user in database.users.find()]}
+    return {"status": "success", "users": [user.model_dump() for user in database.users.find()]}
 
 
 class ItemDeleteRequest(AuthRequest):
@@ -233,12 +233,12 @@ class ItemDeleteRequest(AuthRequest):
 
 @app.post("/api/item/delete")
 async def item_delete(request: ItemDeleteRequest):
-    item: Item = database.items.get(request.id)
+    item: Item = database.items.find_one(request.id)
     if item is None:
         raise JsonError("Invalid item id")
     if not request.requester.is_gm:
         auth_require(item.has_permission(request.requester.id, "*", Permissions.OWNER))
-    database.items.delete(item.id)
+    database.items.delete_one(item.id)
     return {"status": "success"}
 
 
@@ -265,10 +265,10 @@ async def character_create(request: CharacterCreateRequest):
     character = database.characters.create(options)
 
     if request.requester.character_id is None and character.alignment == Alignment.PLAYER:
-        user = database.users.update(request.requester.id, {"$set": {"character_id": character.id}})
+        user = database.users.find_one_and_update(request.requester.id, {"$set": {"character_id": character.id}})
         await get_pool("users").broadcast({
             "type": "update",
-            "user": user.dict(),
+            "user": user.model_dump(),
         })
 
     await get_pool("characters").broadcast({
@@ -285,10 +285,10 @@ class CharacterDeleteRequest(AuthRequest):
 
 @app.post("/api/character/delete")
 async def character_delete(request: CharacterDeleteRequest):
-    character = require(database.characters.get(request.id), "invalid character id")
+    character = require(database.characters.find_one(request.id), "invalid character id")
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
-    database.characters.delete(character.id)
+    database.characters.delete_one(character.id)
     await character.pool.broadcast({
         "type": "delete",
     })
@@ -306,11 +306,11 @@ class CharacterUpdateRequest(AuthRequest):
 
 @app.post("/api/character/update")
 async def character_update(request: CharacterUpdateRequest):
-    character = require(database.characters.get(request.id), "invalid character id")
+    character = require(database.characters.find_one(request.id), "invalid character id")
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.WRITE))
 
-    database.characters.update(request.id, request.changes)
+    database.characters.find_one_and_update(request.id, request.changes)
 
     await character.broadcast_changes(request.changes)
 
@@ -330,10 +330,10 @@ class CharacterGetRequest(AuthRequest):
 
 @app.post("/api/character/get")
 async def character_get(request: CharacterGetRequest):
-    character = require(database.characters.get(request.id), "invalid character id")
+    character = require(database.characters.find_one(request.id), "invalid character id")
     permission = request.requester.is_gm or character.has_permission(request.requester.id, "*", Permissions.READ)
     if permission:
-        return {"status": "success", "character": character.dict()}
+        return {"status": "success", "character": character.model_dump()}
     else:
         return {
             "status": "partial",
@@ -377,11 +377,11 @@ class MapGetRequest(AuthRequest):
 
 @app.post("/api/map/get")
 async def map_get(request: MapGetRequest):
-    map = require(database.maps.get(request.id), "invalid map id")
+    map = require(database.maps.find_one(request.id), "invalid map id")
     auth_require(request.requester.is_gm or map.has_permission(request.requester.id, "*", Permissions.READ))
     return {
         "status": "success",
-        "map": map.dict()
+        "map": map.model_dump()
     }
 
 
@@ -391,10 +391,10 @@ class MapDeleteRequest(AuthRequest):
 
 @app.post("/api/map/delete")
 async def map_delete(request: MapDeleteRequest):
-    map = require(database.maps.get(request.id), "invalid map id")
+    map = require(database.maps.find_one(request.id), "invalid map id")
     if not request.requester.is_gm:
         auth_require(map.has_permission(request.requester.id, "*", Permissions.OWNER))
-    database.maps.delete(map.id)
+    database.maps.delete_one(map.id)
     await get_pool("maps").broadcast({
         "type": "delete",
         "id": map.id,
@@ -409,11 +409,11 @@ class MapUpdateRequest(AuthRequest):
 
 @app.post("/api/map/update")
 async def map_update(request: MapUpdateRequest):
-    map = require(database.maps.get(request.id), "invalid map id")
+    map = require(database.maps.find_one(request.id), "invalid map id")
     if not request.requester.is_gm:
         auth_require(map.has_permission(request.requester.id, "*", Permissions.WRITE))
 
-    database.maps.update(request.id, request.changes)
+    database.maps.find_one_and_update(request.id, request.changes)
 
     await map.broadcast_changes(request.changes)
     return {"status": "success"}
@@ -441,7 +441,7 @@ async def combat_new(request: NewCombatRequest):
     combat: Combat = database.combats.create({"name": request.name})
     return {
         "status": "success",
-        "combat": combat.dict()
+        "combat": combat.model_dump()
     }
 
 
@@ -451,14 +451,14 @@ class GetCombatRequest(AuthRequest):
 
 @app.post("/api/combat/get")
 async def combat_get(request: GetCombatRequest):
-    combat = database.combats.get(request.id)
+    combat = database.combats.find_one(request.id)
 
     if combat is None:
         raise JsonError("invalid combat id")
 
     return {
         "status": "success",
-        "combat": combat.dict(),
+        "combat": combat.model_dump(),
     }
 
 
@@ -469,11 +469,11 @@ class CombatUpdateRequest(AuthRequest):
 
 @app.post("/api/combat/update")
 async def combat_update(request: CombatUpdateRequest):
-    combat = require(database.combats.get(request.id), "invalid combat id")
+    combat = require(database.combats.find_one(request.id), "invalid combat id")
     if not request.requester.is_gm:
         auth_require(combat.has_permission(request.requester.id, "*", Permissions.WRITE))
 
-    database.combats.update(request.id, request.changes)
+    database.combats.find_one_and_update(request.id, request.changes)
 
     await combat.broadcast_changes(request.changes)
     return {"status": "success"}
@@ -485,7 +485,7 @@ class CombatSortRequest(AuthRequest):
 
 @app.post("/api/combat/sort")
 async def combat_sort(request: CombatSortRequest):
-    combat = require(database.combats.get(request.id), "invalid combat id")
+    combat = require(database.combats.find_one(request.id), "invalid combat id")
     require(len(combat.combatants) > 0, "not enough combatants")
     if not request.requester.is_gm:
         auth_require(combat.has_permission(request.requester.id, "*", Permissions.WRITE))
@@ -494,10 +494,10 @@ async def combat_sort(request: CombatSortRequest):
     combatants.sort(key=lambda c: c.initiative if c.initiative else 0, reverse=True)
 
     update = {"$set": {
-        "combatants": [c.dict() for c in combatants],
+        "combatants": [c.model_dump() for c in combatants],
     }}
 
-    database.combats.update(request.id, update)
+    database.combats.find_one_and_update(request.id, update)
     await combat.broadcast_changes(update)
 
     return {"status": "success"}
@@ -509,7 +509,7 @@ class CombatClearRequest(AuthRequest):
 
 @app.post("/api/combat/clear")
 async def combat_clear(request: CombatClearRequest):
-    combat = require(database.combats.get(request.id), "invalid combat id")
+    combat = require(database.combats.find_one(request.id), "invalid combat id")
     require(len(combat.combatants) > 0, "not enough combatants")
     if not request.requester.is_gm:
         auth_require(combat.has_permission(request.requester.id, "*", Permissions.WRITE))
@@ -518,7 +518,7 @@ async def combat_clear(request: CombatClearRequest):
         "combatants": [],
     }}
 
-    database.combats.update(request.id, update)
+    database.combats.find_one_and_update(request.id, update)
     await combat.broadcast_changes(update)
 
     return {"status": "success"}
@@ -530,7 +530,7 @@ class AnnounceTurnRequest(AuthRequest):
 
 @app.post("/api/combat/announce-turn")
 async def combat_announce_turn(request: AnnounceTurnRequest):
-    combat = require(database.combats.get(request.id), "invalid combat id")
+    combat = require(database.combats.find_one(request.id), "invalid combat id")
     require(len(combat.combatants) > 0, "not enough combatants")
     combatant = combat.combatants[0]
     await send_message(
@@ -548,28 +548,28 @@ class ReverseTurnRequest(AuthRequest):
 
 @app.post("/api/combat/reverse-turn")
 async def combat_end_turn(request: ReverseTurnRequest):
-    combat = require(database.combats.get(request.id), "invalid combat id")
+    combat = require(database.combats.find_one(request.id), "invalid combat id")
     require(len(combat.combatants) > 1, "not enough combatants")
     combatant = combat.combatants[-1]
     if not request.requester.is_gm:
-        character = require(database.characters.get(combatant.character_id), "invalid character id")
+        character = require(database.characters.find_one(combatant.character_id), "invalid character id")
         auth_require(
             character.has_permission(request.requester.id, "*", Permissions.OWNER)
             or
             combat.has_permission(request.requester.id, "*", Permissions.WRITE)
         )
 
-    database.combats.update(request.id, {
+    database.combats.find_one_and_update(request.id, {
         "$pull": {
             "combatants": {
                 "id": combatant.id,
             },
         },
     })
-    database.combats.update(request.id, {
+    database.combats.find_one_and_update(request.id, {
         "$push": {
             "combatants": {
-                "$each": [combatant.dict()],
+                "$each": [combatant.model_dump()],
                 "$position": 0,
             }
         }
@@ -591,27 +591,27 @@ class EndTurnRequest(AuthRequest):
 
 @app.post("/api/combat/end-turn")
 async def combat_end_turn(request: EndTurnRequest):
-    combat = require(database.combats.get(request.id), "invalid combat id")
+    combat = require(database.combats.find_one(request.id), "invalid combat id")
     require(len(combat.combatants) > 1, "not enough combatants")
     combatant = combat.combatants[0]
     if not request.requester.is_gm:
-        character = require(database.characters.get(combatant.character_id), "invalid character id")
+        character = require(database.characters.find_one(combatant.character_id), "invalid character id")
         auth_require(
             character.has_permission(request.requester.id, "*", Permissions.OWNER)
             or
             combat.has_permission(request.requester.id, "*", Permissions.WRITE)
         )
 
-    database.combats.update(request.id, {
+    database.combats.find_one_and_update(request.id, {
         "$pull": {
             "combatants": {
                 "id": combatant.id,
             },
         },
     })
-    database.combats.update(request.id, {
+    database.combats.find_one_and_update(request.id, {
         "$push": {
-            "combatants": combatant.dict()
+            "combatants": combatant.model_dump()
         }
     })
 
@@ -630,7 +630,7 @@ async def combat_list(request: AuthRequest):
     return {
         "status": "success",
         "combats": [
-            combat.dict()
+            combat.model_dump()
             for combat in database.combats.find()
         ],
     }
@@ -643,8 +643,8 @@ class AddCombatantRequest(AuthRequest):
 
 @app.post("/api/combat/add-combatant")
 async def add_combatant(request: AddCombatantRequest):
-    combat = require(database.combats.get(request.combat_id), "invalid combat id")
-    character = require(database.characters.get(request.character_id), "invalid character id")
+    combat = require(database.combats.find_one(request.combat_id), "invalid combat id")
+    character = require(database.characters.find_one(request.character_id), "invalid character id")
 
     if not request.requester.is_gm:
         auth_require(
@@ -660,7 +660,7 @@ async def add_combatant(request: AddCombatantRequest):
         "name": character.name,
         "permissions": character.permissions,
     }}}
-    database.combats.update(combat.id, update)
+    database.combats.find_one_and_update(combat.id, update)
     await combat.broadcast_changes(update)
     return {"status": "success", "id": combatant_id}
 
@@ -677,7 +677,7 @@ async def send_roll(request: RollRequest):
 
     character: Optional[Character] = None
     if request.character_id is not None:
-        character = require(database.characters.get(request.character_id), "character does not exist")
+        character = require(database.characters.find_one(request.character_id), "character does not exist")
 
     # Permissions checks
     if not request.requester.is_gm and character is not None:
@@ -713,7 +713,7 @@ async def messages_save(request: SaveMessagesRequest):
         json.dump(
             {
                 "timestamp": current_timestamp(),
-                "messages": [message.dict() for message in database.messages.find()],
+                "messages": [message.model_dump() for message in database.messages.find()],
             },
             fp
         )
@@ -723,7 +723,7 @@ async def messages_save(request: SaveMessagesRequest):
 
 @app.post("/api/messages/clear")
 async def messages_clear(request: GMRequest):
-    database.messages.multiple_delete()
+    database.messages.delete_many()
     await get_pool("messages").broadcast({"type": "clear"})
     return {"status": "success"}
 
@@ -740,7 +740,7 @@ async def messages_speak(request: SendMessageRequest):
     # Permissions checks
     if not request.requester.is_gm:
         if request.character_id is not None:
-            character = require(database.characters.get(request.character_id), "character does not exist")
+            character = require(database.characters.find_one(request.character_id), "character does not exist")
             auth_require(character.has_permission(request.requester.id, field="speak", level=Permissions.WRITE))
             auth_require(request.speaker == character.name)
         else:
@@ -764,7 +764,7 @@ async def recent_messages(request: AuthRequest):
         "status": "success",
         "messages": [
             (
-                message.dict()
+                message.model_dump()
                 if message.language == Language.COMMON or message.language in languages else
                 message.foreign_dict()
             )
@@ -780,7 +780,7 @@ class EditMessageRequest(GMRequest):
 
 @app.post("/api/messages/edit")
 async def edit_message(request: EditMessageRequest):
-    database.messages.update(request.id, {"$set": {"content": request.content}})
+    database.messages.find_one_and_update(request.id, {"$set": {"content": request.content}})
     await get_pool("messages").broadcast({"type": "edit", "id": request.id, "content": request.content})
     return {"status": "success"}
 
@@ -791,7 +791,7 @@ class DeleteMessageRequest(GMRequest):
 
 @app.post("/api/messages/delete")
 async def delete_message(request: DeleteMessageRequest):
-    database.messages.delete(request.id)
+    database.messages.delete_one(request.id)
     await get_pool("messages").broadcast({"type": "delete", "id": request.id})
     return {"status": "success"}
 
@@ -831,12 +831,12 @@ async def live_connection(websocket: WebSocket):
         if request.get("token"):
             break
 
-    session: Session = database.sessions.get({"auth_token": request["token"]})
+    session: Session = database.sessions.find_one({"auth_token": request["token"]})
     if session is None:
         await websocket.close()
         return
 
-    user: User = database.users.get(session.user_id)
+    user: User = database.users.find_one(session.user_id)
     if user is None:
         await websocket.close()
         return
@@ -947,11 +947,11 @@ async def delete_file(request: DeleteFileRequest):
 
 @app.post("/api/files/upload")
 async def upload_file(token: str = Form(...), path: str = Form(...), file: UploadFile = File(...)):
-    session: Session = database.sessions.get({"auth_token": token})
+    session: Session = database.sessions.find_one({"auth_token": token})
     if session is None:
         raise AuthError("invalid token")
 
-    requester: User = database.users.get(session.user_id)
+    requester: User = database.users.find_one(session.user_id)
     if requester is None:
         raise AuthError("valid token for deleted user")
 

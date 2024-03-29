@@ -37,14 +37,14 @@ def _prepare_filter(obj: Union[dict, str, None]):
 
 class DocumentCollection(Generic[M]):
     def __init__(self, collection: Collection, model: Type[M]):
-        self.collection: Collection = collection
-        self.model: M = model
-        self.name: str = collection.name
+        self.collection = collection
+        self.model = model
+        self.name = collection.name
         self.collection.create_index("name")
 
     def create(self, obj):
-        obj["id"] = self.insert(obj)
-        return self.model.validate(obj)
+        obj["id"] = self.insert_one(obj)
+        return self.model.model_validate(obj)
 
     def pre_process_filter(self, filter: dict):
         return _prepare_filter(filter)
@@ -52,24 +52,24 @@ class DocumentCollection(Generic[M]):
     def post_process_result(self, document: dict) -> M:
         if document is None:
             return None
-        return self.model.validate(_jsonify_oid(document))
+        return self.model.model_validate(_jsonify_oid(document))
 
     def create_index(self, *args, **kwargs):
         self.collection.create_index(*args, **kwargs)
 
-    def get(self, filter: Union[dict, str]) -> M:
+    def find_one(self, filter: Union[dict, str]) -> M:
         return self.post_process_result(self.collection.find_one(self.pre_process_filter(filter)))
 
     def find(self, filter: dict = None, *args, **kwargs) -> List[M]:
         return [self.post_process_result(document) for document in self.collection.find(self.pre_process_filter(filter), *args, **kwargs)]
 
-    def delete(self, filter: dict = None, *args, **kwargs):
+    def delete_one(self, filter: dict = None, *args, **kwargs):
         return self.collection.delete_one(self.pre_process_filter(filter), *args, **kwargs).deleted_count != 0
 
-    def multiple_delete(self, filter: dict = None, *args, **kwargs):
+    def delete_many(self, filter: dict = None, *args, **kwargs):
         return self.collection.delete_many(self.pre_process_filter(filter), *args, **kwargs).deleted_count
 
-    def update(self, filter: dict, update: dict, *args, **kwargs) -> M:
+    def find_one_and_update(self, filter: dict, update: dict, *args, **kwargs) -> M:
         return self.post_process_result(
             self.collection.find_one_and_update(
                 self.pre_process_filter(filter),
@@ -80,16 +80,16 @@ class DocumentCollection(Generic[M]):
             )
         )
 
-    def multiple_update(self, filter: dict, update: dict, *args, **kwargs):
+    def update_many(self, filter: dict, update: dict, *args, **kwargs):
         self.collection.update_many(self.pre_process_filter(filter), update, *args, **kwargs)
 
     def upsert(self, filter: dict, update: dict, *args, **kwargs):
         return _jsonify_oid(self.collection.update_one(self.pre_process_filter(filter), update, *args, **kwargs, upsert=True).upserted_id)
 
-    def insert(self, *args, **kwargs) -> str:
+    def insert_one(self, *args, **kwargs) -> str:
         return _jsonify_oid(self.collection.insert_one(*args, **kwargs).inserted_id)
 
-    def multiple_insert(self, *args, **kwargs) -> List[str]:
+    def insert_many(self, *args, **kwargs) -> List[str]:
         return [_jsonify_oid(id) for id in self.collection.insert_many(*args, **kwargs).inserted_ids]
 
 
