@@ -8,11 +8,11 @@ Nonsense Page is a self-hosted tabletop RPG server written in vanilla JS and Pyt
   - nginx
 - Create .env file
   - Copy example.env to .env and edit it, pick a random admin key
-- Build the TSC container (needed for `make frontend`)
-  - `tools/tsc-image/build.sh`
+- Build the frontend compiler container (needed for `make frontend`)
+  - `tools/nonsense-frontend-compiler/build.sh`
 - Start services
   - `sudo make nginx`
-  - `sudo make frontend`
+  - `make frontend`
   - `make backend`
 - Create an admin user: `python3 tools/admin.py -h`
 - Open http://nonsense.local/ in a browser

@@ -1,13 +1,16 @@
 DOMAIN = nonsense.local
 
-.PHONY: help frontend backend nginx
+.PHONY: help frontend frontend-deps backend nginx
 
 help:
 	@echo "make help"
 	@echo "  Display this message"
 	@echo
+	@echo "make frontend-deps"
+	@echo "  Download frontend dependencies and build frontend compiler container"
+	@echo
 	@echo "make frontend"
-	@echo "  Copy the front-end files into nginx"
+	@echo "  Compile the front-end and deploy dist files"
 	@echo
 	@echo "make backend"
 	@echo "  Start the backend in DEBUG mode (requires docker and docker-compose)"
@@ -15,18 +18,20 @@ help:
 	@echo "sudo make nginx"
 	@echo "  Serve the application on the provided DOMAIN."
 
+
+frontend-deps:
+	./tools/nonsense-frontend-compiler/build.sh
+	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler npm install
+
 frontend:
 	@if [ ! -f .env ]; then \
 		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
 		exit 1; \
 	fi
-	mkdir -p /var/www/nonsense/ /var/www/nonsense/files/ /var/www/nonsense/thumbnails/
-	docker run --rm -w $(CURDIR) -v $(CURDIR):$(CURDIR) tsc
-	cp -r build/* /var/www/nonsense
-	rm -rf build
-	cp $$(find src/ -name '*.css' -or -name '*.html') /var/www/nonsense
-	cp $$(find deps/toastify -type f) /var/www/nonsense/
-	cp -r assets/* /var/www/nonsense/
+	sudo mkdir -p /var/www/nonsense/ /var/www/nonsense/files/ /var/www/nonsense/thumbnails/
+	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler npx vite build
+	sudo cp -r frontend/dist/* /var/www/nonsense
+	rm -rf frontend/dist
 
 backend:
 	@if [ ! -f .env ]; then \
