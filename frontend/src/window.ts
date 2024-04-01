@@ -113,7 +113,7 @@ export class BaseWindow {
                 this.container.style.top = `${this.position.y}px`;
             }
 
-            const onDragEnd = ev => {
+            const onDragEnd = () => {
                 document.removeEventListener("mousemove", onDrag);
             }
 
@@ -122,7 +122,7 @@ export class BaseWindow {
         });
 
         if (resizable) {
-            titleBar.addEventListener("dblclick", ev => {
+            titleBar.addEventListener("dblclick", () => {
                 this.toggleMinimize();
             });
         }
@@ -226,7 +226,7 @@ export class BaseWindow {
         return {};
     }
 
-    async deserialize(data: any) {
+    async deserialize(_data: any) {
         await this.load();
     }
 
