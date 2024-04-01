@@ -1,3 +1,4 @@
+import * as Notifications from "./notifications.ts";
 import { ApiRequest, LoginRequest, Session } from "./requests.ts"
 import { ErrorToast } from "./notifications.ts";
 
@@ -23,6 +24,8 @@ async function AttemptLogin() {
 }
 
 window.addEventListener("load", async () => {
+    await Notifications.init();
+
     Session.token = localStorage.getItem("token");
     if (Session.token) {
         const response = await ApiRequest("/status");

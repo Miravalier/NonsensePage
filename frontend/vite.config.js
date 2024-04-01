@@ -7,5 +7,7 @@ export default {
                 login: '/login.html',
             },
         },
+        sourcemap: true,
+        target: "ES2022",
     },
 }

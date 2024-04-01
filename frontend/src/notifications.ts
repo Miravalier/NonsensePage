@@ -1,3 +1,8 @@
+export async function init() {
+    // Add notifications container to web page
+}
+
+
 export function InfoToast(message: string) {
     console.info(message);
 }

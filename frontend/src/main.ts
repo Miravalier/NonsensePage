@@ -1,5 +1,6 @@
 import * as ContextMenu from "./contextmenu.ts";
 import * as Database from "./database.ts";
+import * as Notifications from "./notifications.ts";
 import { Vector2 } from "./vector.ts";
 import { CombatTrackerWindow } from "./combat_tracker_window.ts";
 import { ChatWindow } from "./chat_window.ts";
@@ -8,173 +9,167 @@ import { ApiRequest, Session, WsConnect } from "./requests.ts";
 import { CharacterListWindow } from "./character_list_window.ts";
 import { CheckUpdates } from "./pending_updates.ts";
 import { MapListWindow } from "./map_list_window.ts";
-import { windows, InputDialog, loadFormat } from "./window.ts";
+import { windows, InputDialog, applyLayout, SerializedWindow } from "./window.ts";
 import { ErrorToast } from "./notifications.ts";
 
 
 window.addEventListener("load", async () => {
-  await OnLoad();
-  await Main();
+    await OnLoad();
+    await Main();
 });
 
 
 export function LogOut() {
-  localStorage.removeItem("token");
-  Session.token = null as any;
-  console.log("Logged out, redirecting to /login");
-  window.location.href = "/login";
+    localStorage.removeItem("token");
+    Session.token = null as any;
+    console.log("Logged out, redirecting to /login");
+    window.location.href = "/login";
 }
 
 
 async function OnLoad() {
-  const token = localStorage.getItem("token");
-  if (token === null) {
-    console.error("No token found in local storage, redirecting to /login");
-    window.location.href = "/login";
-    return;
-  }
-  Session.token = token;
+    const token = localStorage.getItem("token");
+    if (token === null) {
+        console.error("No token found in local storage, redirecting to /login");
+        window.location.href = "/login";
+        return;
+    }
+    Session.token = token;
 
-  const response = await ApiRequest("/status");
-  if (response.status !== "success") {
-    console.error(response.reason);
-    window.location.href = "/login";
-  }
+    const response = await ApiRequest("/status");
+    if (response.status !== "success") {
+        console.error(response.reason);
+        window.location.href = "/login";
+    }
 
-  Session.gm = response.gm;
-  Session.username = response.username;
-  Session.id = response.id;
+    Session.gm = response.gm;
+    Session.username = response.username;
+    Session.id = response.id;
 }
 
 
 async function Main() {
-  await WsConnect();
-  setInterval(() => {
-    Session.ws.send(JSON.stringify({ type: "heartbeat" }));
-  }, 5000);
-  setInterval(CheckUpdates, 1000);
+    await WsConnect();
+    setInterval(() => {
+        Session.ws.send(JSON.stringify({ type: "heartbeat" }));
+    }, 5000);
+    setInterval(CheckUpdates, 1000);
 
-  await Database.init();
-  await ContextMenu.init();
+    await Database.init();
+    await ContextMenu.init();
+    await Notifications.init();
 
-  ContextMenu.set(document.body, {
-    "Open": {
-      "Characters": async (ev) => {
-        const characterListWindow = new CharacterListWindow({
-          position: new Vector2(ev.clientX, ev.clientY),
-        });
-        await characterListWindow.load();
-      },
-      "Chat": async (ev) => {
+    ContextMenu.set(document.body, {
+        "Open": {
+            "Characters": async (ev) => {
+                const characterListWindow = new CharacterListWindow({
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await characterListWindow.load();
+            },
+            "Chat": async (ev) => {
+                const chatWindow = new ChatWindow({
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await chatWindow.load();
+            },
+            "Combat Tracker": async (ev) => {
+                const combatTrackerWindow = new CombatTrackerWindow({
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await combatTrackerWindow.load();
+            },
+            "Files": async (ev) => {
+                const fileWindow = new FileWindow({
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await fileWindow.load("/");
+            },
+            "Maps": async (ev) => {
+                const mapListWindow = new MapListWindow({
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await mapListWindow.load();
+            },
+        },
+        "Layout": {
+            "Save": async () => {
+                const selection = await InputDialog("Save Layout", { "Name": "text", "Default": "checkbox" }, "Create");
+                if (!selection || !selection.Name) {
+                    return;
+                }
+
+                const layout: SerializedWindow[] = [];
+                for (const openWindow of Object.values(windows)) {
+                    const serializedWindow: SerializedWindow = {
+                        type: openWindow.constructor.name,
+                        data: openWindow.serialize(),
+                        left: openWindow.position.x / window.innerWidth,
+                        right: (window.innerWidth - openWindow.position.x - openWindow.size.x) / window.innerWidth,
+                        top: openWindow.position.y / window.innerHeight,
+                        bottom: (window.innerHeight - openWindow.position.y - openWindow.size.y) / window.innerHeight,
+                    };
+                    layout.push(serializedWindow);
+                }
+
+                if (selection.Default) {
+                    window.localStorage.setItem("defaultLayout", selection.Name);
+                }
+                let layouts = JSON.parse(window.localStorage.getItem("layouts"));
+                if (layouts === null) {
+                    layouts = {};
+                }
+                layouts[selection.Name] = layout;
+                window.localStorage.setItem("layouts", JSON.stringify(layouts));
+            },
+            "Load": async () => {
+                const layouts = JSON.parse(window.localStorage.getItem("layouts"));
+                if (layouts === null) {
+                    ErrorToast(`No layouts saved.`);
+                    return;
+                }
+                const selection = await InputDialog("Load Layout", { "Name": ["select", Object.keys(layouts)] }, "Load");
+                if (selection == null) {
+                    return;
+                }
+                const selectedLayout = layouts[selection.Name];
+
+                for (const openWindow of Object.values(windows)) {
+                    openWindow.close();
+                }
+
+                await applyLayout(selectedLayout);
+            },
+            "Delete": async () => {
+                const layouts = JSON.parse(window.localStorage.getItem("layouts"));
+                if (null == layouts || Object.keys(layouts).length == 0) {
+                    ErrorToast(`No layouts saved.`);
+                    return;
+                }
+                const selection = await InputDialog("Delete Layout", { "Name": ["select", Object.keys(layouts)] }, "Delete");
+                if (selection == null) {
+                    return;
+                }
+                const selectionName = selection.Name;
+                delete layouts[selectionName];
+                if (window.localStorage.getItem("defaultLayout") == selectionName) {
+                    window.localStorage.removeItem("defaultLayout");
+                }
+                window.localStorage.setItem("layouts", JSON.stringify(layouts));
+            },
+        },
+    });
+
+    const defaultLayout = window.localStorage.getItem("defaultLayout");
+    if (defaultLayout != null) {
+        const layouts = JSON.parse(window.localStorage.getItem("layouts"));
+        await applyLayout(layouts[defaultLayout]);
+    }
+    else {
         const chatWindow = new ChatWindow({
-          position: new Vector2(ev.clientX, ev.clientY),
+            size: new Vector2(400, window.innerHeight - 64),
+            position: new Vector2(window.innerWidth - 400, 0),
         });
         await chatWindow.load();
-      },
-      "Combat Tracker": async (ev) => {
-        const combatTrackerWindow = new CombatTrackerWindow({
-          position: new Vector2(ev.clientX, ev.clientY),
-        });
-        await combatTrackerWindow.load();
-      },
-      "Files": async (ev) => {
-        const fileWindow = new FileWindow({
-          position: new Vector2(ev.clientX, ev.clientY),
-        });
-        await fileWindow.load("/");
-      },
-      "Maps": async (ev) => {
-        const mapListWindow = new MapListWindow({
-          position: new Vector2(ev.clientX, ev.clientY),
-        });
-        await mapListWindow.load();
-      },
-    },
-    "Layout": {
-      "Save": async () => {
-        const selection = await InputDialog("Save Layout", { "Name": "text", "Default": "checkbox" }, "Create");
-        if (!selection || !selection.Name) {
-          return;
-        }
-
-        const windowArray = [];
-        for (const openWindow of Object.values(windows)) {
-          const windowMap = {
-            type: openWindow.constructor.name,
-            data: openWindow.serialize(),
-            left: openWindow.position.x / window.innerWidth,
-            right: (window.innerWidth - openWindow.position.x - openWindow.size.x) / window.innerWidth,
-            top: openWindow.position.y / window.innerHeight,
-            bottom: (window.innerHeight - openWindow.position.y - openWindow.size.y) / window.innerHeight,
-          };
-          windowArray.push(windowMap);
-        }
-
-        if (selection.Default) {
-          window.localStorage.setItem("defaultFormat", selection.Name);
-        }
-        let allFormatsString = window.localStorage.getItem("formats");
-        if (allFormatsString == null) {
-          allFormatsString = "{}";
-        }
-        let allFormatsMap = JSON.parse(allFormatsString);
-        allFormatsMap[selection.Name] = windowArray;
-        allFormatsString = JSON.stringify(allFormatsMap);
-        window.localStorage.setItem("formats", allFormatsString);
-      },
-      "Load": async () => {
-        const allFormatsString = window.localStorage.getItem("formats");
-        if (null == allFormatsString) {
-          ErrorToast(`No formats saved.`);
-          return;
-        }
-        const allFormatsMap = JSON.parse(allFormatsString);
-        const selection = await InputDialog("Load Format", { "Name": ["select", Object.keys(allFormatsMap)] }, "Load");
-        if (selection == null) {
-          return;
-        }
-        const selectedFormat = allFormatsMap[selection.Name];
-
-        for (const openWindow of Object.values(windows)) {
-          openWindow.close();
-        }
-
-        await loadFormat(selectedFormat);
-
-      },
-      "Delete": async () => {
-        let allFormatsString = window.localStorage.getItem("formats");
-        if (null == allFormatsString) {
-          ErrorToast(`No formats saved.`);
-          return;
-        }
-        const allFormatsMap = JSON.parse(allFormatsString);
-        const selection = await InputDialog("Delete Format", { "Name": ["select", Object.keys(allFormatsMap)] }, "Delete");
-        if (selection == null) {
-          return;
-        }
-        const selectionName = selection.Name;
-        delete allFormatsMap[selectionName];
-        if (window.localStorage.getItem("defaultFormat") == selectionName) {
-          window.localStorage.removeItem("defaultFormat");
-        }
-        allFormatsString = JSON.stringify(allFormatsMap);
-        window.localStorage.setItem("formats", allFormatsString);
-      },
-    },
-  });
-  const defaultFormatName = window.localStorage.getItem("defaultFormat");
-  const allFormatsString = window.localStorage.getItem("formats");
-  if ((defaultFormatName != null) && (allFormatsString != null)) {
-    const allFormatsMap = JSON.parse(allFormatsString);
-    const defaultFormat = allFormatsMap[defaultFormatName];
-    await loadFormat(defaultFormat);
-  }
-  else {
-    const chatWindow = new ChatWindow({
-      size: new Vector2(400, window.innerHeight), // Might want 90% height
-      position: new Vector2(window.innerWidth - 400, 0),
-    });
-    await chatWindow.load();
-  }
+    }
 }

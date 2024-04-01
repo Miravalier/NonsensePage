@@ -173,11 +173,11 @@ export class BaseWindow {
             this.resizeHandle = resizeHandle;
             resizeHandle.className = "resizeHandle";
 
-            resizeHandle.addEventListener("mousedown", ev => {
+            resizeHandle.addEventListener("mousedown", () => {
                 const xMax = window.innerWidth - (this.container.offsetLeft + this.viewPort.offsetLeft + 1);
                 const yMax = window.innerHeight - (this.container.offsetTop + this.viewPort.offsetTop + 1);
 
-                const onDrag = ev => {
+                const onDrag = (ev: MouseEvent) => {
                     const xOffset = ev.clientX - this.container.offsetLeft;
                     const yOffset = ev.clientY - this.container.offsetTop;
                     let minWidth = 10;
@@ -193,7 +193,7 @@ export class BaseWindow {
                     }
                 }
 
-                const onDragEnd = ev => {
+                const onDragEnd = () => {
                     document.removeEventListener("mousemove", onDrag);
                     if (this.canvas) {
                         this.canvas.view.style.display = null;
@@ -563,9 +563,9 @@ export function ImageSelectDialog(prompt: string): Promise<string> {
 }
 
 
-export async function loadFormat(format: SerializedWindow[]) {
+export async function applyLayout(layout: SerializedWindow[]) {
     const promises: Promise<void>[] = [];
-    for (const windowMap of format) {
+    for (const windowMap of layout) {
         const position = {
             x: windowMap.left * window.innerWidth,
             y: windowMap.top * window.innerHeight,
