@@ -9,12 +9,11 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@types/toastify-js": "^1.12.3",
     "typescript": "^5.2.2",
     "vite": "^5.2.0"
   },
   "dependencies": {
     "pixi.js": "^8.0.4",
-    "toastify": "^2.0.1"
+    "squirrelly": "^9.0.0"
   }
 }
