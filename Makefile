@@ -22,7 +22,7 @@ frontend:
 	fi
 	mkdir -p /var/www/nonsense/ /var/www/nonsense/files/ /var/www/nonsense/thumbnails/
 	docker run --rm -w $(CURDIR) -v $(CURDIR):$(CURDIR) tsc
-	cp $$(find build -type f) /var/www/nonsense
+	cp -r build/* /var/www/nonsense
 	rm -rf build
 	cp $$(find src/ -name '*.css' -or -name '*.html') /var/www/nonsense
 	cp $$(find deps/toastify -type f) /var/www/nonsense/
