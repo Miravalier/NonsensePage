@@ -1,9 +1,9 @@
-import * as ContextMenu from "./contextmenu.ts";
+import * as ContextMenu from "../lib/contextmenu.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./window.ts";
-import { ApiRequest, Session, FileUpload } from "./requests.ts";
-import { Vector2 } from "./vector.ts";
-import { Parameter, AddDragListener } from "./utils.ts";
-import { ErrorToast } from "./notifications.ts";
+import { ApiRequest, Session, FileUpload } from "../lib/requests.ts";
+import { Vector2 } from "../vector.ts";
+import { Parameter, AddDragListener } from "../lib/utils.ts";
+import { ErrorToast } from "../lib/notifications.ts";
 
 
 const FILE_ICONS = {

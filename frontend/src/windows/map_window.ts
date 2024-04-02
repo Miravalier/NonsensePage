@@ -1,12 +1,12 @@
 import * as PIXI from "pixi.js";
 
-import * as ContextMenu from "./contextmenu.ts";
+import * as ContextMenu from "../lib/contextmenu.ts";
 import { CanvasWindow, registerWindowType } from "./window.ts";
-import { Parameter, GenerateId, LocalPersist } from "./utils.ts";
-import { Vector2 } from "./vector.ts";
-import { ApiRequest } from "./requests.ts";
-import { MapCanvas } from "./canvas.ts";
-import { ErrorToast } from "./notifications.ts";
+import { Parameter, GenerateId, LocalPersist } from "../lib/utils.ts";
+import { Vector2 } from "../vector.ts";
+import { ApiRequest } from "../lib/requests.ts";
+import { MapCanvas } from "../lib/canvas.ts";
+import { ErrorToast } from "../lib/notifications.ts";
 
 
 type MapData = { x: number, y: number, scale: number };

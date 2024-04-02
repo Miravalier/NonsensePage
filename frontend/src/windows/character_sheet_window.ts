@@ -1,9 +1,9 @@
+import * as Templates from "../lib/templates.ts";
 import { ContentWindow, registerWindowType } from "./window.ts";
-import { Vector2 } from "./vector.ts";
-import { ApiRequest } from "./requests.ts";
-import { Templates } from "./templates.ts";
-import { ErrorToast } from "./notifications.ts";
-import { Parameter } from "./utils.ts";
+import { Vector2 } from "../vector.ts";
+import { ApiRequest } from "../lib/requests.ts";
+import { ErrorToast } from "../lib/notifications.ts";
+import { Parameter } from "../lib/utils.ts";
 
 
 export class CharacterSheetWindow extends ContentWindow {

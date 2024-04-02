@@ -1,16 +1,17 @@
-import * as ContextMenu from "./contextmenu.ts";
-import * as Database from "./database.ts";
-import * as Notifications from "./notifications.ts";
-import { Vector2 } from "./vector.ts";
-import { CombatTrackerWindow } from "./combat_tracker_window.ts";
-import { ChatWindow } from "./chat_window.ts";
-import { FileWindow } from "./file_window.ts";
-import { ApiRequest, Session, WsConnect } from "./requests.ts";
-import { CharacterListWindow } from "./character_list_window.ts";
-import { CheckUpdates } from "./pending_updates.ts";
-import { MapListWindow } from "./map_list_window.ts";
-import { windows, InputDialog, applyLayout, SerializedWindow } from "./window.ts";
-import { ErrorToast } from "./notifications.ts";
+import * as ContextMenu from "../lib/contextmenu.ts";
+import * as Database from "../lib/database.ts";
+import * as Notifications from "../lib/notifications.ts";
+import * as Templates from "../lib/templates.ts";
+import { Vector2 } from "../vector.ts";
+import { CombatTrackerWindow } from "../windows/combat_tracker_window.ts";
+import { ChatWindow } from "../windows/chat_window.ts";
+import { FileWindow } from "../windows/file_window.ts";
+import { ApiRequest, Session, WsConnect } from "../lib/requests.ts";
+import { CharacterListWindow } from "../windows/character_list_window.ts";
+import { CheckUpdates } from "../lib/pending_updates.ts";
+import { MapListWindow } from "../windows/map_list_window.ts";
+import { windows, InputDialog, applyLayout, SerializedWindow } from "../windows/window.ts";
+import { ErrorToast } from "../lib/notifications.ts";
 
 
 window.addEventListener("load", async () => {
@@ -58,6 +59,7 @@ async function Main() {
     await Database.init();
     await ContextMenu.init();
     await Notifications.init();
+    await Templates.init();
 
     ContextMenu.set(document.body, {
         "Open": {

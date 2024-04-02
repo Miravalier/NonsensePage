@@ -1,6 +1,6 @@
-import * as Notifications from "./notifications.ts";
-import { ApiRequest, LoginRequest, Session } from "./requests.ts"
-import { ErrorToast } from "./notifications.ts";
+import * as Notifications from "../lib/notifications.ts";
+import { ApiRequest, LoginRequest, Session } from "../lib/requests.ts"
+import { ErrorToast } from "../lib/notifications.ts";
 
 async function AttemptLogin() {
     const username = document.querySelector<HTMLInputElement>("#login .username").value;

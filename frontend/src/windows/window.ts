@@ -1,7 +1,7 @@
-import { Button } from "./elements.ts";
-import { Vector2 } from "./vector.ts";
-import { Canvas } from "./canvas.ts";
-import { Subscribe, Subscription } from "./requests.ts";
+import { Button } from "../lib/elements.ts";
+import { Vector2 } from "../vector.ts";
+import { Canvas } from "../lib/canvas.ts";
+import { Subscribe, Subscription } from "../lib/requests.ts";
 import {
     PageCenter,
     Parameter,
@@ -9,7 +9,7 @@ import {
     StringBound,
     AddDropListener,
     GenerateId,
-} from "./utils.js";
+} from "../lib/utils.js";
 
 
 export type SerializedWindow = {

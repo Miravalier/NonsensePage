@@ -1,10 +1,10 @@
-import * as ContextMenu from "./contextmenu.ts";
-import { Vector2 } from "./vector.ts";
+import * as ContextMenu from "../lib/contextmenu.ts";
+import { Vector2 } from "../vector.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./window.ts";
-import { ApiRequest, Session } from "./requests.ts";
-import { ErrorToast } from "./notifications.ts";
+import { ApiRequest, Session } from "../lib/requests.ts";
+import { ErrorToast } from "../lib/notifications.ts";
 import { CharacterSheetWindow } from "./character_sheet_window.ts";
-import { Parameter, AddDragListener } from "./utils.ts";
+import { Parameter, AddDragListener } from "../lib/utils.ts";
 
 
 export class CharacterListWindow extends ContentWindow {

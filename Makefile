@@ -1,4 +1,4 @@
-DOMAIN = nonsense.local
+DOMAIN = nonsense.localhost
 
 .PHONY: help frontend frontend-deps backend nginx
 

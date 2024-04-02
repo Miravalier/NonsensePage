@@ -1,14 +1,14 @@
-import * as ContextMenu from "./contextmenu.ts";
-import { Vector2 } from "./vector.ts";
+import * as ContextMenu from "../lib/contextmenu.ts";
+import { Vector2 } from "../vector.ts";
 import { CharacterSheetWindow } from "./character_sheet_window.ts";
 import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from "./window.ts";
-import { ApiRequest, Session } from "./requests.ts";
-import { Parameter, HasPermission } from "./utils.ts";
-import { ErrorToast } from "./notifications.ts";
-import { Html } from "./elements.ts";
-import { Roll } from "./dice.ts";
-import { Permissions } from "./enums.ts";
-import { Combat, Combatant } from "./models.ts";
+import { ApiRequest, Session } from "../lib/requests.ts";
+import { Parameter, HasPermission } from "../lib/utils.ts";
+import { ErrorToast } from "../lib/notifications.ts";
+import { Html } from "../lib/elements.ts";
+import { Roll } from "../lib/dice.ts";
+import { Permissions } from "../lib/enums.ts";
+import { Combat, Combatant } from "../lib/models.ts";
 
 
 export class CombatTrackerWindow extends ContentWindow {
@@ -190,7 +190,7 @@ export class CombatTrackerWindow extends ContentWindow {
         this.setTitle("Combat Tracker");
 
         let combat: Combat;
-        if (id === null) {
+        if (id !== null) {
             let response = await ApiRequest("/combat/get", { id });
             combat = response.combat;
         }

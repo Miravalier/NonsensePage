@@ -1,6 +1,6 @@
 import { Session } from "./requests.ts";
 import { PcgEngine } from "./pcg-random.ts";
-import { Vector2 } from "./vector.ts";
+import { Vector2 } from "../vector.ts";
 import { Permissions } from "./enums.ts";
 import { Entry } from "./models.ts";
 

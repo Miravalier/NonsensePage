@@ -1,11 +1,11 @@
-import * as Database from "./database.ts";
-import * as ContextMenu from "./contextmenu.ts";
-import { Vector2 } from "./vector.ts";
+import * as Database from "../lib/database.ts";
+import * as ContextMenu from "../lib/contextmenu.ts";
+import { Vector2 } from "../vector.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./window.ts";
-import { ApiRequest, Session, HandleWsMessage } from "./requests.ts";
-import { Parameter, DerivePcgEngine, RandomText, GenerateId } from "./utils.ts";
-import { ErrorToast } from "./notifications.ts";
-import { Language } from "./enums.ts";
+import { ApiRequest, Session, HandleWsMessage } from "../lib/requests.ts";
+import { Parameter, DerivePcgEngine, RandomText, GenerateId } from "../lib/utils.ts";
+import { ErrorToast } from "../lib/notifications.ts";
+import { Language } from "../lib/enums.ts";
 
 
 const LANGUAGES = [
