@@ -1,6 +1,6 @@
 import * as Database from "../lib/database.ts";
 import * as ContextMenu from "../lib/contextmenu.ts";
-import { Vector2 } from "../vector.ts";
+import { Vector2 } from "../lib/vector.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./window.ts";
 import { ApiRequest, Session, HandleWsMessage } from "../lib/requests.ts";
 import { Parameter, DerivePcgEngine, RandomText, GenerateId } from "../lib/utils.ts";

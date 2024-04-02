@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 
 import * as ContextMenu from "./contextmenu.ts";
 import { Parameter, Require, IsDefined } from "./utils.ts";
-import { Vector2 } from "../vector.ts";
+import { Vector2 } from "./vector.ts";
 import { Layer } from "./enums.ts";
 import { ApiRequest } from "./requests.ts";
 

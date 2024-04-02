@@ -1,5 +1,5 @@
 import { Button } from "../lib/elements.ts";
-import { Vector2 } from "../vector.ts";
+import { Vector2 } from "../lib/vector.ts";
 import { Canvas } from "../lib/canvas.ts";
 import { Subscribe, Subscription } from "../lib/requests.ts";
 import {

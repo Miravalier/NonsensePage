@@ -2,7 +2,7 @@ import * as ContextMenu from "../lib/contextmenu.ts";
 import * as Database from "../lib/database.ts";
 import * as Notifications from "../lib/notifications.ts";
 import * as Templates from "../lib/templates.ts";
-import { Vector2 } from "../vector.ts";
+import { Vector2 } from "../lib/vector.ts";
 import { CombatTrackerWindow } from "../windows/combat_tracker_window.ts";
 import { ChatWindow } from "../windows/chat_window.ts";
 import { FileWindow } from "../windows/file_window.ts";

@@ -1,6 +1,6 @@
 import * as Templates from "../lib/templates.ts";
 import { ContentWindow, registerWindowType } from "./window.ts";
-import { Vector2 } from "../vector.ts";
+import { Vector2 } from "../lib/vector.ts";
 import { ApiRequest } from "../lib/requests.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { Parameter } from "../lib/utils.ts";

@@ -2,7 +2,7 @@ import * as ContextMenu from "../lib/contextmenu.ts";
 import { ApiRequest, Session } from "../lib/requests.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./window.ts";
 import { Parameter, AddDragListener } from "../lib/utils.ts";
-import { Vector2 } from "../vector.ts";
+import { Vector2 } from "../lib/vector.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { Html } from "../lib/elements.ts";
 import { MapWindow } from "./map_window.ts";
