@@ -1,7 +1,5 @@
+import * as math from 'mathjs';
 import { PCG } from "./pcg-random.ts";
-
-
-declare const math: any;
 
 
 export function Roll(formula: string, data = null, results = null) {
