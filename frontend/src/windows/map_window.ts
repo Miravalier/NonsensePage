@@ -7,6 +7,7 @@ import { Vector2 } from "../lib/vector.ts";
 import { ApiRequest } from "../lib/requests.ts";
 import { MapCanvas } from "../lib/canvas.ts";
 import { ErrorToast } from "../lib/notifications.ts";
+import { GridFilter } from "../filters/grid.ts";
 
 
 type MapData = { x: number, y: number, scale: number };
@@ -43,7 +44,7 @@ export class MapWindow extends CanvasWindow {
             }
         });
 
-        this.viewPort.addEventListener("mousedown", ev => {
+        this.viewPort.addEventListener("mousedown", (ev: MouseEvent) => {
             if (ev.button != 2) {
                 return;
             }
@@ -53,7 +54,7 @@ export class MapWindow extends CanvasWindow {
             let previousX = ev.clientX - xOffset;
             let previousY = ev.clientY - yOffset;
 
-            const onDrag = ev => {
+            const onDrag = (ev: MouseEvent) => {
                 const x = ev.clientX - xOffset;
                 const y = ev.clientY - yOffset;
                 const deltaX = x - previousX;
@@ -65,7 +66,7 @@ export class MapWindow extends CanvasWindow {
                 this.applyTranslation();
             }
 
-            const onDragEnd = ev => {
+            const onDragEnd = () => {
                 document.removeEventListener("mousemove", onDrag);
             }
 
@@ -88,19 +89,19 @@ export class MapWindow extends CanvasWindow {
         this.canvas.tokenContainer.node.x = this.translation.x;
         this.canvas.tokenContainer.node.y = this.translation.y;
         this.viewChangesMade = true;
-        const gridFilter = this.canvas.grid.filters[0];
-        gridFilter.uniforms.translation = [this.translation.x, this.translation.y];
+        const gridFilter = this.canvas.grid.filters[0] as GridFilter;
+        gridFilter.uniforms.uTranslation = new PIXI.Point(this.translation.x, this.translation.y);
     }
 
     applyScale() {
         this.canvas.tokenContainer.node.scale.x = this.scale;
         this.canvas.tokenContainer.node.scale.y = this.scale;
         this.viewChangesMade = true;
-        const gridFilter = this.canvas.grid.filters[0];
-        gridFilter.uniforms.scale = [this.scale, this.scale];
+        const gridFilter = this.canvas.grid.filters[0] as GridFilter;
+        gridFilter.uniforms.uScale = new PIXI.Point(this.scale, this.scale);
     }
 
-    async load(id) {
+    async load(id: string = null) {
         await super.load();
         if (id) {
             this.mapId = id;
@@ -183,8 +184,8 @@ export class MapWindow extends CanvasWindow {
                         }
                     }
                     else if (key == "squareSize") {
-                        const gridFilter = this.canvas.grid.filters[0];
-                        gridFilter.uniforms.pitch = [value, value];
+                        const gridFilter = this.canvas.grid.filters[0] as GridFilter;
+                        gridFilter.uniforms.uPitch = new PIXI.Point(value as number, value as number);
                     }
                     else {
                         simpleChanges = false;

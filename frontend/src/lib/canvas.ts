@@ -5,6 +5,7 @@ import { Parameter, Require, IsDefined } from "./utils.ts";
 import { Vector2 } from "./vector.ts";
 import { Layer } from "./enums.ts";
 import { ApiRequest } from "./requests.ts";
+import { GridFilter } from "../filters/grid.ts";
 
 
 export const NO_GRID = 0
@@ -13,10 +14,9 @@ export const BLACK_GRID = 2
 
 
 export class CanvasContainer {
-    node: any;
-    grid: any;
+    node: PIXI.Container;
 
-    constructor(node) {
+    constructor(node: PIXI.Container) {
         this.node = node;
     }
 
@@ -39,41 +39,11 @@ export class CanvasContainer {
             color = [0.0, 0.0, 0.0, 0.0];
         }
 
-        const fragmentShader = `
-            precision mediump float;
-
-            uniform vec2 viewport;      // e.g. [800 600] Size of the canvas
-            uniform vec2 pitch;         // e.g. [512 512] Size of the grid squares
-            uniform vec2 translation;   // e.g. [0 0] Shifts the grid by x, y pixels
-            uniform vec2 scale;         // e.g. [1.0 1.0] 0.0 - 1.0, Scale percentage in x and y
-            uniform vec4 color;         // e.g. [0.1, 0.1, 0.1, 0.2] Color of the  grid
-
-            void main() {
-                float offX = (gl_FragCoord.x - translation.x);
-                float offY = (1.0 - (viewport.y - (gl_FragCoord.y + translation.y)));
-
-                if (int(mod(offX, pitch[0] * scale[0])) == 0 ||
-                    int(mod(offY, pitch[1] * scale[1])) == 0) {
-                    gl_FragColor = color;
-                } else {
-                    gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
-                }
-            }
-        `;
-
-        const uniforms = {
-            viewport: [width, height],
-            pitch: [squareSize, squareSize],
-            translation: [translation.x, translation.y],
-            scale: [scale, scale],
-            color: [0.1, 0.1, 0.1, 0.2],
-        };
-
-        const gridFilter = new PIXI.Filter(undefined, fragmentShader, uniforms);
+        const gridFilter = new GridFilter(width, height, squareSize, translation, scale, new PIXI.Color(color));
         const maskContainer = new PIXI.Container();
         const maskBackground = new PIXI.Graphics();
-        maskBackground.beginFill(0xFFFFFF, 1);
-        maskBackground.drawRect(0, 0, width, height);
+        maskBackground.rect(0, 0, width, height);
+        maskBackground.fill({ color: new PIXI.Color(0xFFFFFF), alpha: 1.0 });
         maskContainer.addChild(maskBackground);
         maskContainer.filters = [gridFilter];
 
@@ -81,9 +51,7 @@ export class CanvasContainer {
         return maskContainer;
     }
 
-    AddContainer(position, scale) {
-        position = Parameter(position, new Vector2(0, 0));
-        scale = Parameter(scale, 1);
+    AddContainer(position: Vector2 = new Vector2(0, 0), scale: number = 1) {
         const container = new PIXI.Container();
         container.x = position.x;
         container.y = position.y;
@@ -103,10 +71,10 @@ export class CanvasContainer {
 
         let texture;
         try {
-            texture = await PIXI.Texture.fromURL(src);
+            texture = await PIXI.Assets.load(src);
         } catch (error) {
             console.error(`Failed to load texture: ${src}`);
-            texture = await PIXI.Texture.fromURL("/unknown.png");
+            texture = await PIXI.Assets.load("/unknown.png");
         }
         const sprite = new PIXI.Sprite(texture);
         sprite.width = width;
@@ -133,18 +101,16 @@ export class CanvasContainer {
 
         // Create PIXI object
         const rect = new PIXI.Graphics();
-        if (IsDefined(options.borderColor)) {
-            rect.lineStyle({ color: borderColor, alpha: borderAlpha, width: borderWidth });
-        }
-        if (IsDefined(options.fillColor)) {
-            rect.beginFill(fillColor, fillAlpha);
-        }
 
         if (cornerRadius === null) {
-            rect.drawRect(position.x, position.y, size.x, size.y);
+            rect.rect(position.x, position.y, size.x, size.y);
         }
         else {
-            rect.drawRoundedRect(position.x, position.y, size.x, size.y, cornerRadius);
+            rect.roundRect(position.x, position.y, size.x, size.y, cornerRadius);
+        }
+        rect.fill({ color: fillColor, alpha: fillAlpha });
+        if (IsDefined(options.borderColor)) {
+            rect.stroke({ width: borderWidth, color: borderColor, alpha: borderAlpha });
         }
 
         // Display the object and return
@@ -165,14 +131,13 @@ export class CanvasContainer {
 
         // Create PIXI object
         const circle = new PIXI.Graphics();
+        circle.circle(position.x, position.y, radius);
         if (IsDefined(options.borderColor)) {
-            circle.lineStyle({ color: borderColor, alpha: borderAlpha, width: borderWidth });
+            circle.stroke({ color: borderColor, alpha: borderAlpha, width: borderWidth });
         }
         if (IsDefined(options.fillColor)) {
-            circle.beginFill(fillColor, fillAlpha);
+            circle.fill({ color: fillColor, alpha: fillAlpha });
         }
-
-        circle.drawCircle(position.x, position.y, radius);
 
         // Display the object and return
         this.node.addChild(circle);
@@ -181,35 +146,42 @@ export class CanvasContainer {
 }
 
 
-export class Canvas extends CanvasContainer {
+export class Canvas {
     htmlContainer: HTMLDivElement;
-    app: any;
-    view: any;
-    stage: any;
-    renderer: any;
+    app: PIXI.Application;
+    stage: PIXI.Container;
+    renderer: PIXI.Renderer;
+    view: HTMLCanvasElement;
 
-    constructor(options) {
+    constructor() {
+        this.app = new PIXI.Application();
+    }
+
+    async init(options) {
         const htmlContainer = Parameter(options.container, document.body);
         const backgroundColor = Parameter(options.backgroundColor, 0x2d2d2d);
-        const app = new PIXI.Application({
-            transparent: true,
+        await this.app.init({
+            preference: 'webgl',
+            backgroundAlpha: 1,
             resizeTo: htmlContainer,
             backgroundColor,
         });
-        super(app.stage);
 
         /* Uncomment the next line to enable PixiJS debugging */
         // globalThis.__PIXI_APP__ = app;
 
         this.htmlContainer = htmlContainer;
-        this.app = app;
-        this.view = app.view;
-        this.stage = app.stage;
-        this.renderer = app.renderer;
-        this.htmlContainer.appendChild(this.app.view);
+        this.stage = this.app.stage;
+        this.renderer = this.app.renderer;
+        this.view = this.app.canvas;
+        this.htmlContainer.appendChild(this.app.canvas);
     }
 
-    onResize(x, y) {
+    rootContainer() {
+        return new CanvasContainer(this.app.stage)
+    }
+
+    onResize(x: number, y: number) {
         this.renderer.resize(x, y);
     }
 }
@@ -218,24 +190,25 @@ export class Canvas extends CanvasContainer {
 export class MapCanvas extends Canvas {
     id: string;
     tokenNodes: { [id: string]: any };
-    tokenContainer: any;
-    backgroundContainer: any;
-    detailContainer: any;
-    characterContainer: any;
-    effectContainer: any;
+    grid: PIXI.Container;
+    tokenContainer: CanvasContainer;
+    backgroundContainer: CanvasContainer;
+    detailContainer: CanvasContainer;
+    characterContainer: CanvasContainer;
+    effectContainer: CanvasContainer;
 
-    constructor(options) {
-        super(options);
+    constructor() {
+        super();
         this.id = null;
         this.tokenNodes = {};
     }
 
-    onResize(x, y) {
+    onResize(x: number, y: number) {
         super.onResize(x, y);
         this.grid.width = x;
         this.grid.height = y;
-        const gridFilter = this.grid.filters[0];
-        gridFilter.uniforms.viewport = [x, y];
+        const gridFilter = this.grid.filters[0] as GridFilter;
+        gridFilter.uniforms.uViewport = new PIXI.Point(x, y);
     }
 
     /**
@@ -262,7 +235,7 @@ export class MapCanvas extends Canvas {
     }
 
     async AddToken(token) {
-        let container;
+        let container: CanvasContainer;
         if (token.layer == Layer.BACKGROUND) {
             container = this.backgroundContainer;
         }
@@ -282,14 +255,13 @@ export class MapCanvas extends Canvas {
             position: new Vector2(token.x, token.y),
         });
         sprite.interactive = true;
-        sprite.buttonMode = true;
 
         this.tokenNodes[token.id] = sprite;
 
         sprite.on("mousedown", ev => {
             let spriteMoved = false;
             const dragOffset = this.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
-            dragOffset.applySubtract(sprite.position);
+            dragOffset.applySubtract(new Vector2(sprite.position.x, sprite.position.y));
 
             const onDrag = ev => {
                 spriteMoved = true;
@@ -318,7 +290,7 @@ export class MapCanvas extends Canvas {
             document.addEventListener("mouseup", onDragEnd, { once: true });
         });
 
-        ContextMenu.set(sprite, {
+        ContextMenu.set(sprite as any, {
             "Edit Token": {
                 "Delete Token": async () => {
                     await ApiRequest("/map/update", {
@@ -349,12 +321,13 @@ export class MapCanvas extends Canvas {
             this.grid.destroy();
         }
 
-        this.tokenContainer = this.AddContainer(translation, scale);
+        const root = this.rootContainer();
+        this.tokenContainer = root.AddContainer(translation, scale);
         this.backgroundContainer = this.tokenContainer.AddContainer();
         this.detailContainer = this.tokenContainer.AddContainer();
         this.characterContainer = this.tokenContainer.AddContainer();
         this.effectContainer = this.tokenContainer.AddContainer();
-        this.grid = this.AddGrid({
+        this.grid = root.AddGrid({
             width: this.htmlContainer.offsetWidth,
             height: this.htmlContainer.offsetHeight,
             squareSize: map.squareSize,

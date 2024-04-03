@@ -339,12 +339,25 @@ registerWindowType(BaseWindow);
 
 
 export class CanvasWindow extends BaseWindow {
+    options: any;
+    canvasInitialized: boolean;
+
     constructor(options) {
         super(options);
         const canvasClass = Parameter(options.canvasClass, Canvas);
         this.viewPort.className = "canvasViewPort";
         options.container = this.viewPort;
         this.canvas = new canvasClass(options);
+        this.canvasInitialized = false;
+        this.options = options;
+    }
+
+    async load() {
+        await super.load();
+        if (!this.canvasInitialized) {
+            await this.canvas.init(this.options);
+            this.canvasInitialized = true;
+        }
     }
 }
 registerWindowType(CanvasWindow);

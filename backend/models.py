@@ -205,7 +205,7 @@ class Token(Entry):
 class Map(Entry):
     type: str = "map"
     tokens: Dict[str, Token] = Field(default_factory=dict)
-    squareSize: int = 512
+    squareSize: int = 150
     color: GridColor = GridColor.WHITE
 
 
