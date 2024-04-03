@@ -35,7 +35,7 @@ export class CharacterSheetWindow extends ContentWindow {
         const version = "1";
         //const sheetClass = (await import(`./${sheetType}-sheet.js?v=${version}`)).default;
         await Templates.loadCss(`${sheetType}-sheet.css?v=${version}`);
-        this.content.appendChild(await Templates.loadHtml(`${sheetType}-sheet.html?v=${version}`));
+        //this.content.appendChild(await Templates.loadHtml(`${sheetType}-sheet.html?v=${version}`));
         //const sheet = new sheetClass(characterData.id, this);
         // sheet.onLoad(characterData);
         // sheet.addListeners();

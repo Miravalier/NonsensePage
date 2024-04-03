@@ -126,7 +126,7 @@ async function Main() {
             },
             "Load": async () => {
                 const layouts = JSON.parse(window.localStorage.getItem("layouts"));
-                if (layouts === null) {
+                if (layouts === null || Object.keys(layouts).length == 0) {
                     ErrorToast(`No layouts saved.`);
                     return;
                 }
