@@ -22,7 +22,7 @@ export async function init() {
 
 
 export function set(element: HTMLElement, options: { [category: string]: { [choice: string]: (ev: MouseEvent) => void } }) {
-    element.addEventListener("contextmenu", async (ev) => {
+    element.addEventListener("contextmenu", async (ev: MouseEvent) => {
         ev.preventDefault();
         ev.stopPropagation();
 

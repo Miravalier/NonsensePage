@@ -34,14 +34,6 @@ export class MapWindow extends CanvasWindow {
         this.viewPort.addEventListener("contextmenu", ev => {
             ev.preventDefault();
             ev.stopPropagation();
-            ContextMenu.close();
-            const boundary = new PIXI.EventBoundary(this.canvas.app.stage);
-            const xOffset = this.container.offsetLeft + this.viewPort.offsetLeft;
-            const yOffset = this.container.offsetTop + this.viewPort.offsetTop;
-            const element = boundary.hitTest(ev.clientX - xOffset, ev.clientY - yOffset);
-            if (element) {
-                element.emit("contextmenu", ev);
-            }
         });
 
         this.viewPort.addEventListener("mousedown", (ev: MouseEvent) => {
@@ -49,8 +41,13 @@ export class MapWindow extends CanvasWindow {
                 return;
             }
 
+            ContextMenu.close();
+            const boundary = new PIXI.EventBoundary(this.canvas.app.stage);
             const xOffset = this.container.offsetLeft + this.viewPort.offsetLeft;
             const yOffset = this.container.offsetTop + this.viewPort.offsetTop;
+            const element = boundary.hitTest(ev.clientX - xOffset, ev.clientY - yOffset);
+            let elementDragged = false;
+
             let previousX = ev.clientX - xOffset;
             let previousY = ev.clientY - yOffset;
 
@@ -64,10 +61,14 @@ export class MapWindow extends CanvasWindow {
                 this.translation.x += deltaX;
                 this.translation.y += deltaY;
                 this.applyTranslation();
+                elementDragged = true;
             }
 
             const onDragEnd = () => {
                 document.removeEventListener("mousemove", onDrag);
+                if (element && !elementDragged) {
+                    element.emit("contextmenu", ev);
+                }
             }
 
             document.addEventListener("mousemove", onDrag);
