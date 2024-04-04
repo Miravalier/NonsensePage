@@ -268,6 +268,8 @@ export class BaseWindow {
             this.viewPort.style.width = `${this.storedWidth}px`;
             this.viewPort.style.height = `${this.storedHeight}px`;
             this.resizeHandle.style.display = null;
+            this.size.x = this.storedWidth;
+            this.size.y = this.storedHeight;
         }
         // Become fullscreen
         else {
@@ -280,6 +282,8 @@ export class BaseWindow {
             this.viewPort.style.width = "100%";
             this.viewPort.style.height = "100%";
             this.resizeHandle.style.display = "none";
+            this.size.x = window.innerWidth;
+            this.size.y = window.innerHeight;
         }
         this.fullscreen = !this.fullscreen;
     }
