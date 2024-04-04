@@ -4,10 +4,12 @@ import * as ContextMenu from "../lib/contextmenu.ts";
 import { CanvasWindow, registerWindowType } from "./window.ts";
 import { Parameter, GenerateId, LocalPersist } from "../lib/utils.ts";
 import { Vector2 } from "../lib/vector.ts";
-import { ApiRequest } from "../lib/requests.ts";
+import { ApiRequest, Session } from "../lib/requests.ts";
 import { MapCanvas } from "../lib/canvas.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { GridFilter } from "../filters/grid.ts";
+import { Button } from "../lib/elements.ts";
+import { Layer } from "../lib/enums.ts";
 
 
 type MapData = { x: number, y: number, scale: number };
@@ -18,6 +20,9 @@ export class MapWindow extends CanvasWindow {
     translation: Vector2;
     scale: number;
     viewChangesMade: boolean;
+    buttonTray: HTMLDivElement;
+    activeLayer: number;
+    layerButtons: { [layer: number]: HTMLButtonElement };
     declare canvas: MapCanvas;
 
     constructor(options) {
@@ -26,10 +31,42 @@ export class MapWindow extends CanvasWindow {
         options.refreshable = Parameter(options.refreshable, true);
         options.canvasClass = Parameter(options.canvasClass, MapCanvas);
         super(options);
+        this.activeLayer = null;
         this.mapId = null;
         this.translation = new Vector2(0, 0);
         this.scale = 1;
         this.viewChangesMade = false;
+
+        this.buttonTray = this.container.appendChild(document.createElement("div"));
+        this.buttonTray.className = "buttonTray";
+        if (!Session.gm) {
+            this.buttonTray.style.display = "none";
+        }
+
+        const backgroundLayerButton = Button("map");
+        backgroundLayerButton.dataset.id = Layer.BACKGROUND.toString();
+        this.buttonTray.appendChild(backgroundLayerButton);
+
+        const detailLayerButton = Button("flag");
+        detailLayerButton.dataset.id = Layer.DETAILS.toString();
+        this.buttonTray.appendChild(detailLayerButton);
+
+        const characterLayerButton = Button("person");
+        characterLayerButton.dataset.id = Layer.CHARACTERS.toString();
+        this.buttonTray.appendChild(characterLayerButton);
+
+        const effectsLayerButton = Button("sparkles");
+        effectsLayerButton.dataset.id = Layer.EFFECTS.toString();
+        this.buttonTray.appendChild(effectsLayerButton);
+
+        this.layerButtons = {};
+        for (const button of this.buttonTray.children as HTMLCollectionOf<HTMLButtonElement>) {
+            const layer = parseInt(button.dataset.id);
+            this.layerButtons[layer] = button;
+            button.addEventListener("click", () => {
+                this.setActiveLayer(layer);
+            });
+        }
 
         this.viewPort.addEventListener("contextmenu", ev => {
             ev.preventDefault();
@@ -86,6 +123,31 @@ export class MapWindow extends CanvasWindow {
         });
     }
 
+    setActiveLayer(layer: number) {
+        console.log(`Setting Layer ${this.activeLayer} -> ${layer}`);
+        if (this.activeLayer !== null) {
+            const oldContainer = this.canvas.containerFromLayerId(this.activeLayer);
+            oldContainer.node.eventMode = "none";
+            const oldActiveButton = this.layerButtons[this.activeLayer];
+            oldActiveButton.classList.remove("active");
+        }
+        const newContainer = this.canvas.containerFromLayerId(layer);
+        newContainer.node.eventMode = "static";
+        const newActiveButton = this.layerButtons[layer];
+        newActiveButton.classList.add("active");
+        this.activeLayer = layer;
+    }
+
+    toggleMinimize(): void {
+        super.toggleMinimize();
+        if (this.minimized) {
+            this.buttonTray.style.display = "none";
+        }
+        else {
+            this.buttonTray.style.display = null;
+        }
+    }
+
     applyTranslation() {
         this.canvas.tokenContainer.node.x = this.translation.x;
         this.canvas.tokenContainer.node.y = this.translation.y;
@@ -102,9 +164,18 @@ export class MapWindow extends CanvasWindow {
         gridFilter.uniforms.uScale = new PIXI.Point(this.scale, this.scale);
     }
 
-    async load(id: string = null) {
+    serialize() {
+        return { mapId: this.mapId, activeLayer: this.activeLayer };
+    }
+
+    async deserialize(data) {
+        await this.load(data.mapId, data.activeLayer);
+    }
+
+    async load(id: string = null, activeLayer: number = null) {
         await super.load();
-        if (id) {
+
+        if (id !== null) {
             this.mapId = id;
         }
 
@@ -140,6 +211,16 @@ export class MapWindow extends CanvasWindow {
         this.setTitle(`Map: ${response.map.name}`);
         await this.canvas.render(response.map, this.translation, this.scale);
 
+        if (activeLayer !== null) {
+            this.setActiveLayer(activeLayer);
+        }
+        else if (this.activeLayer === null) {
+            this.setActiveLayer(Layer.CHARACTERS);
+        }
+        else {
+            this.setActiveLayer(this.activeLayer);
+        }
+
         this.addDropListener(this.viewPort, async (data, ev) => {
             if (data.type != "file") {
                 return;
@@ -155,6 +236,8 @@ export class MapWindow extends CanvasWindow {
                             src: data.path,
                             x: worldCoords.x,
                             y: worldCoords.y,
+                            z: ++this.canvas.highestZIndex,
+                            layer: this.activeLayer,
                         },
                     },
                 }
@@ -176,8 +259,17 @@ export class MapWindow extends CanvasWindow {
                             simpleChanges = false;
                             break;
                         }
+                        const sprite = this.canvas.tokenNodes[tokenId];
+                        const numericValue = value as number;
                         if (attribute == "x" || attribute == "y") {
-                            this.canvas.tokenNodes[tokenId][attribute] = value;
+                            sprite.parent.addChild(sprite);
+                            sprite[attribute] = numericValue;
+                        }
+                        else if (attribute == "z") {
+                            sprite.zIndex = numericValue;
+                            if (numericValue > this.canvas.highestZIndex) {
+                                this.canvas.highestZIndex = numericValue;
+                            }
                         }
                         else {
                             simpleChanges = false;

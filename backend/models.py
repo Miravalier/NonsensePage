@@ -193,10 +193,11 @@ class Combat(Entry):
 
 class Token(Entry):
     type: str = "token"
-    layer: Layer = Layer.DETAILS
+    layer: Layer = Layer.CHARACTERS
     src: str = ""
     x: float = 0.0
     y: float = 0.0
+    z: int = 0
     width: float = 1.0
     height: float = 1.0
     scale: float = 1.0

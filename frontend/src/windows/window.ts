@@ -51,7 +51,6 @@ export class BaseWindow {
     closeButton: HTMLButtonElement;
     viewPort: HTMLDivElement;
     resizeHandle: HTMLDivElement;
-    canvas: Canvas;
     storedWidth: number;
     storedHeight: number;
 
@@ -188,19 +187,12 @@ export class BaseWindow {
                     this.size.y = Bound(40, yOffset, yMax);
                     this.viewPort.style.width = `${this.size.x}px`;
                     this.viewPort.style.height = `${this.size.y}px`;
-                    if (this.canvas) {
-                        this.canvas.view.style.display = "none";
-                    }
+                    this.onResizeStart();
                 }
 
                 const onDragEnd = () => {
                     document.removeEventListener("mousemove", onDrag);
-                    if (this.canvas) {
-                        this.canvas.view.style.display = null;
-                        this.canvas.view.width = this.viewPort.offsetWidth;
-                        this.canvas.view.height = this.viewPort.offsetHeight;
-                        this.canvas.onResize(this.viewPort.offsetWidth, this.viewPort.offsetHeight);
-                    }
+                    this.onResizeStop();
                 }
 
                 document.addEventListener("mousemove", onDrag);
@@ -211,6 +203,10 @@ export class BaseWindow {
         const windowElements = document.querySelector("#windows");
         windowElements.appendChild(this.container);
     }
+
+    onResizeStart() { }
+
+    onResizeStop() { }
 
     repeatFunction(func: CallableFunction, delay: number): number {
         const intervalId = setInterval(func, delay);
@@ -271,14 +267,7 @@ export class BaseWindow {
             this.container.style.height = null;
             this.viewPort.style.width = `${this.storedWidth}px`;
             this.viewPort.style.height = `${this.storedHeight}px`;
-            if (this.canvas) {
-                this.canvas.view.width = this.viewPort.offsetWidth;
-                this.canvas.view.height = this.viewPort.offsetHeight;
-            }
             this.resizeHandle.style.display = null;
-            if (this.canvas) {
-                this.canvas.onResize(this.viewPort.offsetWidth, this.viewPort.offsetHeight);
-            }
         }
         // Become fullscreen
         else {
@@ -290,14 +279,7 @@ export class BaseWindow {
             this.container.style.height = "100%";
             this.viewPort.style.width = "100%";
             this.viewPort.style.height = "100%";
-            if (this.canvas) {
-                this.canvas.view.width = this.viewPort.offsetWidth;
-                this.canvas.view.height = this.viewPort.offsetHeight;
-            }
             this.resizeHandle.style.display = "none";
-            if (this.canvas) {
-                this.canvas.onResize(this.viewPort.offsetWidth, this.viewPort.offsetHeight);
-            }
         }
         this.fullscreen = !this.fullscreen;
     }
@@ -339,8 +321,10 @@ registerWindowType(BaseWindow);
 
 
 export class CanvasWindow extends BaseWindow {
+    canvas: Canvas;
     options: any;
     canvasInitialized: boolean;
+    loadingText: HTMLDivElement;
 
     constructor(options) {
         super(options);
@@ -350,6 +334,9 @@ export class CanvasWindow extends BaseWindow {
         this.canvas = new canvasClass(options);
         this.canvasInitialized = false;
         this.options = options;
+        this.loadingText = this.viewPort.appendChild(document.createElement("div"));
+        this.loadingText.className = "loadingText";
+        this.loadingText.innerText = "Map Loading ...";
     }
 
     async load() {
@@ -358,6 +345,28 @@ export class CanvasWindow extends BaseWindow {
             await this.canvas.init(this.options);
             this.canvasInitialized = true;
         }
+    }
+
+    toggleFullscreen() {
+        super.toggleFullscreen();
+        this.canvas.view.width = this.viewPort.offsetWidth;
+        this.canvas.view.height = this.viewPort.offsetHeight;
+        this.canvas.onResize(this.viewPort.offsetWidth, this.viewPort.offsetHeight);
+    }
+
+    onResizeStart() {
+        super.onResizeStart();
+        this.canvas.view.style.display = "none";
+        this.loadingText.style.display = "block";
+    }
+
+    onResizeStop() {
+        super.onResizeStop();
+        this.canvas.view.style.display = null;
+        this.loadingText.style.display = null;
+        this.canvas.view.width = this.viewPort.offsetWidth;
+        this.canvas.view.height = this.viewPort.offsetHeight;
+        this.canvas.onResize(this.viewPort.offsetWidth, this.viewPort.offsetHeight);
     }
 }
 registerWindowType(CanvasWindow);

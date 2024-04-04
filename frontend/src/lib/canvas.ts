@@ -52,7 +52,7 @@ export class CanvasContainer {
     }
 
     AddContainer(position: Vector2 = new Vector2(0, 0), scale: number = 1) {
-        const container = new PIXI.Container();
+        const container = new PIXI.Container({ sortableChildren: true });
         container.x = position.x;
         container.y = position.y;
         container.scale.x = scale;
@@ -68,6 +68,7 @@ export class CanvasContainer {
         const height = Parameter(options.height, 256);
         const scale = Parameter(options.scale, new Vector2(1, 1));
         const position = Parameter(options.position, new Vector2(0, 0));
+        const z = Parameter(options.z, 0);
 
         let texture;
         try {
@@ -83,6 +84,7 @@ export class CanvasContainer {
         sprite.scale.y = scale.y;
         sprite.x = position.x;
         sprite.y = position.y;
+        sprite.zIndex = z;
         this.node.addChild(sprite);
         return sprite;
     }
@@ -168,7 +170,7 @@ export class Canvas {
         });
 
         /* Uncomment the next line to enable PixiJS debugging */
-        // globalThis.__PIXI_APP__ = app;
+        //globalThis.__PIXI_APP__ = this.app;
 
         this.htmlContainer = htmlContainer;
         this.stage = this.app.stage;
@@ -189,18 +191,20 @@ export class Canvas {
 
 export class MapCanvas extends Canvas {
     id: string;
-    tokenNodes: { [id: string]: any };
+    tokenNodes: { [id: string]: PIXI.Sprite };
     grid: PIXI.Container;
     tokenContainer: CanvasContainer;
     backgroundContainer: CanvasContainer;
     detailContainer: CanvasContainer;
     characterContainer: CanvasContainer;
     effectContainer: CanvasContainer;
+    highestZIndex: number;
 
     constructor() {
         super();
         this.id = null;
         this.tokenNodes = {};
+        this.highestZIndex = 0;
     }
 
     onResize(x: number, y: number) {
@@ -234,36 +238,49 @@ export class MapCanvas extends Canvas {
         );
     }
 
-    async AddToken(token) {
+    containerFromLayerId(layer: number): CanvasContainer {
         let container: CanvasContainer;
-        if (token.layer == Layer.BACKGROUND) {
+        if (layer == Layer.BACKGROUND) {
             container = this.backgroundContainer;
         }
-        else if (token.layer == Layer.DETAILS) {
+        else if (layer == Layer.DETAILS) {
             container = this.detailContainer;
         }
-        else if (token.layer == Layer.CHARACTERS) {
+        else if (layer == Layer.CHARACTERS) {
             container = this.characterContainer;
         }
-        else if (token.layer == Layer.EFFECTS) {
+        else if (layer == Layer.EFFECTS) {
             container = this.effectContainer;
         }
+        else {
+            throw new Error(`invalid layer ID: ${layer}`);
+        }
+        return container;
+    }
+
+    async AddToken(token) {
+        const container = this.containerFromLayerId(token.layer);
         const sprite = await container.DrawSprite({
             src: token.src,
             width: token.width,
             height: token.height,
             position: new Vector2(token.x, token.y),
+            z: token.z,
         });
-        sprite.interactive = true;
+        if (token.z > this.highestZIndex) {
+            this.highestZIndex = token.z;
+        }
+        sprite.eventMode = 'static';
 
         this.tokenNodes[token.id] = sprite;
 
-        sprite.on("mousedown", ev => {
+        sprite.on("mousedown", (ev: MouseEvent) => {
             let spriteMoved = false;
             const dragOffset = this.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
             dragOffset.applySubtract(new Vector2(sprite.position.x, sprite.position.y));
+            sprite.zIndex = (++this.highestZIndex);
 
-            const onDrag = ev => {
+            const onDrag = (ev: MouseEvent) => {
                 spriteMoved = true;
                 const worldCoords = this.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
                 worldCoords.applySubtract(dragOffset);
@@ -280,6 +297,7 @@ export class MapCanvas extends Canvas {
                             "$set": {
                                 [`tokens.${token.id}.x`]: sprite.x,
                                 [`tokens.${token.id}.y`]: sprite.y,
+                                [`tokens.${token.id}.z`]: sprite.zIndex,
                             },
                         },
                     });
@@ -289,6 +307,17 @@ export class MapCanvas extends Canvas {
             document.addEventListener("mousemove", onDrag);
             document.addEventListener("mouseup", onDragEnd, { once: true });
         });
+
+        const setTokenLayer = async (layer: number) => {
+            await ApiRequest("/map/update", {
+                id: this.id,
+                changes: {
+                    "$set": {
+                        [`tokens.${token.id}.layer`]: layer,
+                    },
+                },
+            });
+        }
 
         ContextMenu.set(sprite as any, {
             "Edit Token": {
@@ -302,6 +331,12 @@ export class MapCanvas extends Canvas {
                         },
                     });
                 }
+            },
+            "Change Layer": {
+                "Background": () => { setTokenLayer(Layer.BACKGROUND); },
+                "Details": () => { setTokenLayer(Layer.DETAILS); },
+                "Characters": () => { setTokenLayer(Layer.CHARACTERS); },
+                "Effects": () => { setTokenLayer(Layer.EFFECTS); },
             }
         });
     }
@@ -321,12 +356,17 @@ export class MapCanvas extends Canvas {
             this.grid.destroy();
         }
 
+        console.log("Rendering A MapCanvas (Setting EventModes to None)");
         const root = this.rootContainer();
         this.tokenContainer = root.AddContainer(translation, scale);
         this.backgroundContainer = this.tokenContainer.AddContainer();
+        this.backgroundContainer.node.eventMode = "none";
         this.detailContainer = this.tokenContainer.AddContainer();
+        this.detailContainer.node.eventMode = "none";
         this.characterContainer = this.tokenContainer.AddContainer();
+        this.characterContainer.node.eventMode = "none";
         this.effectContainer = this.tokenContainer.AddContainer();
+        this.effectContainer.node.eventMode = "none";
         this.grid = root.AddGrid({
             width: this.htmlContainer.offsetWidth,
             height: this.htmlContainer.offsetHeight,

@@ -40,6 +40,35 @@
     justify-content: stretch;
 }
 
+.window .canvasViewPort .loadingText {
+    display: none;
+    text-align: center;
+    font-size: 18px;
+    margin: 12px;
+}
+
+.window .buttonTray {
+    position: absolute;
+    top: 30px;
+    left: 0;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.window .buttonTray button {
+    width: 24px;
+    height: 24px;
+    margin: 2px;
+    opacity: 50%;
+}
+
+.window .buttonTray button.active {
+    opacity: 100%;
+    margin: 2px;
+}
+
 .window .titleBar {
     width: 100%;
     display: flex;
