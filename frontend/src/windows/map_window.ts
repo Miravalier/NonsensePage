@@ -113,18 +113,22 @@ export class MapWindow extends CanvasWindow {
         });
 
         this.viewPort.addEventListener("wheel", ev => {
+            this.translation.applySubtract(this.size.divide(2));
             if (ev.deltaY > 0) {
                 this.scale *= 0.9;
+                this.translation.applyMultiply(0.9);
             }
             else {
                 this.scale *= 1.1;
+                this.translation.applyMultiply(1.1);
             }
+            this.translation.applyAdd(this.size.divide(2));
             this.applyScale();
+            this.applyTranslation();
         });
     }
 
     setActiveLayer(layer: number) {
-        console.log(`Setting Layer ${this.activeLayer} -> ${layer}`);
         if (this.activeLayer !== null) {
             const oldContainer = this.canvas.containerFromLayerId(this.activeLayer);
             oldContainer.node.eventMode = "none";

@@ -16,6 +16,10 @@ export class Vector2 {
         }
     }
 
+    get magnitude(): number {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
     copy(): Vector2 {
         return new Vector2(this.x, this.y);
     }
@@ -54,5 +58,14 @@ export class Vector2 {
     applyDivide(value: number) {
         this.x /= value;
         this.y /= value;
+    }
+
+    invert() {
+        return new Vector2(-this.x, -this.y);
+    }
+
+    applyInvert() {
+        this.x = -this.x;
+        this.y = -this.y;
     }
 }

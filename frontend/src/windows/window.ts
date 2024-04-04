@@ -588,16 +588,16 @@ export function ImageSelectDialog(prompt: string): Promise<string> {
 export async function applyLayout(layout: SerializedWindow[]) {
     const promises: Promise<void>[] = [];
     for (const windowMap of layout) {
-        const position = {
-            x: windowMap.left * window.innerWidth,
-            y: windowMap.top * window.innerHeight,
-        }
+        const position = new Vector2(
+            windowMap.left * window.innerWidth,
+            windowMap.top * window.innerHeight,
+        )
         const windowType = windowTypes[windowMap.type];
         const newWindow = new windowType({
-            size: {
-                x: window.innerWidth - position.x - (windowMap.right * window.innerWidth),
-                y: window.innerHeight - position.y - (windowMap.bottom * window.innerHeight),
-            },
+            size: new Vector2(
+                window.innerWidth - position.x - (windowMap.right * window.innerWidth),
+                window.innerHeight - position.y - (windowMap.bottom * window.innerHeight),
+            ),
             position,
         });
         promises.push(newWindow.deserialize(windowMap.data));
