@@ -225,7 +225,7 @@ export class MapWindow extends CanvasWindow {
             this.setActiveLayer(this.activeLayer);
         }
 
-        this.addDropListener(this.viewPort, async (data, ev) => {
+        this.addDropListener(this.viewPort, async (data, ev: MouseEvent) => {
             if (data.type != "file") {
                 return;
             }
@@ -237,7 +237,7 @@ export class MapWindow extends CanvasWindow {
                     "$set": {
                         [`tokens.${newId}`]: {
                             id: newId,
-                            src: data.path,
+                            src: data.urlPath,
                             x: worldCoords.x,
                             y: worldCoords.y,
                             z: ++this.canvas.highestZIndex,

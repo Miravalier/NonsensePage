@@ -969,6 +969,26 @@ async def upload_file(token: str = Form(...), path: str = Form(...), file: Uploa
     return {"status": "success"}
 
 
+class MoveFileRequest(AuthRequest):
+    src: str
+    dst: str
+
+
+@app.post("/api/files/move")
+async def move_file(request: MoveFileRequest):
+    # Validate paths
+    src = validate_path(request.requester, request.src)
+    dst = validate_path(request.requester, request.dst)
+    src.rename(dst)
+    await get_pool("files").broadcast({
+        "type": "rename",
+        "user": request.requester.id,
+        "src": str(src),
+        "dst": str(dst),
+    })
+    return {"status": "success"}
+
+
 class ListFilesRequest(AuthRequest):
     path: str
 

@@ -213,6 +213,36 @@ export function DerivePcgEngine(id: string) {
 }
 
 
+export function PathConcat(a: string, b: string): string {
+    if (a.endsWith("/")) {
+        return a + b;
+    }
+    else {
+        return a + "/" + b;
+    }
+}
+
+
+export function Parent(path: string): string {
+    const lastSlashIndex = path.lastIndexOf("/");
+    if (lastSlashIndex == -1) {
+        return path;
+    }
+
+    return path.substring(0, lastSlashIndex + 1);
+}
+
+
+export function Leaf(path: string): string {
+    const lastSlashIndex = path.lastIndexOf("/");
+    if (lastSlashIndex == -1) {
+        return path;
+    }
+
+    return path.substring(lastSlashIndex + 1);
+}
+
+
 export function Bound(min: number, value: number, max: number): number {
     return Math.min(Math.max(min, value), max);
 }

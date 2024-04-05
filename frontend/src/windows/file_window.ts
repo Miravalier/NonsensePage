@@ -2,7 +2,7 @@ import * as ContextMenu from "../lib/contextmenu.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./window.ts";
 import { ApiRequest, Session, FileUpload } from "../lib/requests.ts";
 import { Vector2 } from "../lib/vector.ts";
-import { Parameter, AddDragListener } from "../lib/utils.ts";
+import { Parameter, AddDragListener, Leaf, Parent, PathConcat } from "../lib/utils.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 
 
@@ -120,7 +120,7 @@ export class FileWindow extends ContentWindow {
             }
         }
 
-        await this.subscribe("files", updateData => {
+        await this.subscribe("files", () => {
             this.refresh();
         });
     }
@@ -146,12 +146,31 @@ export class FileWindow extends ContentWindow {
         nameElement.appendChild(icon);
         nameElement.appendChild(document.createTextNode(name));
 
+        this.addDropListener(item, async (data) => {
+            if (data.type != "file") {
+                return;
+            }
+            console.log(data.path, path + Leaf(data.path));
+            await ApiRequest("/files/move", {
+                src: data.path,
+                dst: PathConcat(path, Leaf(data.path)),
+            });
+            console.log(data);
+        });
+
         if (name != "..") {
             ContextMenu.set(nameElement, {
                 "Edit Directory": {
-                    "Delete": async ev => {
+                    "Delete": async () => {
                         await ApiRequest("/files/delete", { path });
-                    }
+                    },
+                    "Rename": async () => {
+                        const response = await InputDialog(`Rename ${path}`, { "New Name": "text" }, "Rename");
+                        await ApiRequest("/files/move", {
+                            src: path,
+                            dst: PathConcat(Parent(path), response["New Name"]),
+                        });
+                    },
                 }
             });
         }
@@ -161,21 +180,21 @@ export class FileWindow extends ContentWindow {
         });
     }
 
-    async addFile(filetype, img, name, path) {
+    async addFile(filetype: string, img: string, name: string, path: string) {
         this.fileNames.add(name);
-        let url_path = null;
+        let urlPath = null;
         if (Session.gm) {
-            url_path = `/files${path}`;
+            urlPath = `/files${path}`;
         }
         else {
-            url_path = `/files/users/${Session.username}${path}`;
+            urlPath = `/files/users/${Session.username}${path}`;
         }
 
         let icon;
         if (filetype.startsWith("image/")) {
             const encoder = new TextEncoder();
             let thumbnail = "/thumbnails/";
-            for (let byte of new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(url_path)))) {
+            for (let byte of new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(urlPath)))) {
                 thumbnail += byte.toString(16).padStart(2, '0');
             }
             thumbnail += ".png";
@@ -196,17 +215,24 @@ export class FileWindow extends ContentWindow {
         nameElement.appendChild(icon);
         nameElement.appendChild(document.createTextNode(name));
 
-        AddDragListener(nameElement, { type: "file", filetype, path: url_path });
+        AddDragListener(nameElement, { type: "file", filetype, urlPath, path });
 
         nameElement.addEventListener("click", () => {
-            window.open(url_path, path);
+            window.open(urlPath, path);
         });
 
         ContextMenu.set(nameElement, {
             "Edit File": {
-                "Delete": async ev => {
+                "Delete": async () => {
                     await ApiRequest("/files/delete", { path });
-                }
+                },
+                "Rename": async () => {
+                    const response = await InputDialog(`Rename ${path}`, { "New Name": "text" }, "Rename");
+                    await ApiRequest("/files/move", {
+                        src: path,
+                        dst: PathConcat(Parent(path), response["New Name"]),
+                    });
+                },
             }
         });
     }
