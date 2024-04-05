@@ -356,7 +356,6 @@ export class MapCanvas extends Canvas {
             this.grid.destroy();
         }
 
-        console.log("Rendering A MapCanvas (Setting EventModes to None)");
         const root = this.rootContainer();
         this.tokenContainer = root.AddContainer(translation, scale);
         this.backgroundContainer = this.tokenContainer.AddContainer();

@@ -1,9 +1,10 @@
-import * as Templates from "../lib/templates.ts";
 import { ContentWindow, registerWindowType } from "./window.ts";
 import { Vector2 } from "../lib/vector.ts";
 import { ApiRequest } from "../lib/requests.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { Parameter } from "../lib/utils.ts";
+import * as Sheets from "../sheets";
+import { Character } from "../lib/models.ts";
 
 
 export class CharacterSheetWindow extends ContentWindow {
@@ -22,28 +23,25 @@ export class CharacterSheetWindow extends ContentWindow {
         this.characterId = id;
 
         // Get character data
-        const response = await ApiRequest("/character/get", { id });
+        const response: {
+            status: string;
+            character: Character;
+        } = await ApiRequest("/character/get", { id });
         if (response.status != "success") {
             ErrorToast("Character loading failed!");
             return;
         }
-        const characterData = response.character;
-        this.setTitle(characterData.name);
-        const sheetType = characterData.sheet_type;
+        const character = response.character;
+        this.setTitle(character.name);
 
         // Load sheet content
-        const version = "1";
-        //const sheetClass = (await import(`./${sheetType}-sheet.js?v=${version}`)).default;
-        await Templates.loadCss(`${sheetType}-sheet.css?v=${version}`);
-        //this.content.appendChild(await Templates.loadHtml(`${sheetType}-sheet.html?v=${version}`));
-        //const sheet = new sheetClass(characterData.id, this);
-        // sheet.onLoad(characterData);
-        // sheet.addListeners();
-        // sheet.update(characterData);
+        const SheetType = Sheets.SheetTypes[character.sheet_type + "Sheet"];
+        const sheet = new SheetType(character);
+        await sheet.render(this.content);
 
         // Set up update watcher
-        await this.subscribe(id, async updateData => {
-            // sheet.update(updateData.changes);
+        await this.subscribe(id, async update => {
+            sheet.update(update.changes);
         });
     }
 

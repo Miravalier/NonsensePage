@@ -34,7 +34,7 @@ export class MapListWindow extends ContentWindow {
         const element = this.maps.appendChild(Html(`
             <div class="map" data-id="${id}">${name}</div>
         `));
-        element.addEventListener("click", async (ev) => {
+        element.addEventListener("click", async () => {
             const mapWindow = new MapWindow({
                 title: `Map: ${name}`,
             });
@@ -43,7 +43,7 @@ export class MapListWindow extends ContentWindow {
         AddDragListener(element, { type: "map", id });
         ContextMenu.set(element, {
             "Edit Map": {
-                "Rename": async (ev) => {
+                "Rename": async () => {
                     const selection = await InputDialog("Rename Map", { "Name": "text" }, "Rename");
                     if (!selection || !selection.Name) {
                         return;
@@ -58,7 +58,7 @@ export class MapListWindow extends ContentWindow {
                     });
                     element.textContent = selection.Name;
                 },
-                "Delete": async (ev) => {
+                "Delete": async () => {
                     await ApiRequest("/map/delete", { id });
                     element.remove();
                 },

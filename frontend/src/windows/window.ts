@@ -25,10 +25,10 @@ export type SerializedWindow = {
 let nextZIndex = 0;
 
 export const windows: { [id: string]: BaseWindow } = {};
-export const windowTypes: { [name: string]: { new(options: any): BaseWindow } } = {};
+export const WindowTypes: { [name: string]: { new(options: any): BaseWindow } } = {};
 
 export function registerWindowType(type: { new(options: any): BaseWindow }) {
-    windowTypes[type.name] = type;
+    WindowTypes[type.name] = type;
 }
 
 export class BaseWindow {
@@ -596,7 +596,7 @@ export async function applyLayout(layout: SerializedWindow[]) {
             windowMap.left * window.innerWidth,
             windowMap.top * window.innerHeight,
         )
-        const windowType = windowTypes[windowMap.type];
+        const windowType = WindowTypes[windowMap.type];
         const newWindow = new windowType({
             size: new Vector2(
                 window.innerWidth - position.x - (windowMap.right * window.innerWidth),

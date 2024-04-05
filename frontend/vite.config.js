@@ -7,6 +7,9 @@ export default {
                 login: '/login.html',
             },
         },
+        commonjsOptions: {
+            transformMixedEsModules: true,
+        },
         minify: false,
         sourcemap: true,
         target: "ES2022",

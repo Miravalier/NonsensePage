@@ -1,13 +1,11 @@
-import * as Sqrl from 'squirrelly'
+import * as Sqrl from 'squirrelly';
 import { TemplateFunction } from 'squirrelly/dist/types/compile';
 
 
 const templateCache: { [url: string]: any } = {};
 
 
-export async function init() {
-    Sqrl.defaultConfig.useWith = true;
-}
+export async function init() { }
 
 
 export async function loadCss(url: string) {
