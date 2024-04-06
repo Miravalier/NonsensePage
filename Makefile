@@ -20,7 +20,7 @@ help:
 
 frontend-deps:
 	./tools/nonsense-frontend-compiler/build.sh
-	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler npm install
+	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler yarn
 
 
 frontend:
@@ -29,7 +29,7 @@ frontend:
 		exit 1; \
 	fi
 	sudo mkdir -p /var/www/nonsense/ /var/www/nonsense/files/ /var/www/nonsense/thumbnails/
-	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler npx vite build
+	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler yarn run vite build
 	sudo rm -rf /var/www/nonsense/assets
 	sudo cp -r frontend/dist/* /var/www/nonsense
 	rm -rf frontend/dist

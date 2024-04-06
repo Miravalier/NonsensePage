@@ -1,4 +1,5 @@
 FROM node:latest
-RUN npm install typescript -g
-RUN npm install vite -g
 WORKDIR /workspace
+RUN yarn global add typescript
+RUN yarn global add vite
+
