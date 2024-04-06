@@ -84,7 +84,7 @@ async def send_message(content: str, *, user: User, speaker: str = "System", cha
         "sender_id": user.id,
         "character_id": character_id,
         "speaker": speaker,
-        "content": content,
+        "content": content.strip(),
         "language": language,
         "timestamp": current_timestamp(),
     })
@@ -534,9 +534,7 @@ async def combat_announce_turn(request: AnnounceTurnRequest):
     require(len(combat.combatants) > 0, "not enough combatants")
     combatant = combat.combatants[0]
     await send_message(
-        f"""
-            <div class="turn-start">Turn Start: {combatant.name}</p>
-        """,
+        f'<div class="turn-start">Turn Start: {combatant.name}</div>',
         user=request.requester,
     )
     return {"status": "success"}
@@ -577,9 +575,7 @@ async def combat_end_turn(request: ReverseTurnRequest):
 
     await combat.pool.broadcast({"type": "reverse-turn", "id": combatant.id})
     await send_message(
-        f"""
-            <div class="turn-start">Turn Start: {combatant.name}</p>
-        """,
+        f'<div class="turn-start">Turn Start: {combatant.name}</div>',
         user=request.requester,
     )
     return {"status": "success"}
@@ -617,9 +613,7 @@ async def combat_end_turn(request: EndTurnRequest):
 
     await combat.pool.broadcast({"type": "end-turn", "id": combatant.id})
     await send_message(
-        f"""
-            <div class="turn-start">Turn Start: {combat.combatants[1].name}</p>
-        """,
+        f'<div class="turn-start">Turn Start: {combat.combatants[1].name}</div>',
         user=request.requester,
     )
     return {"status": "success"}

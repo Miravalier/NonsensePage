@@ -1,12 +1,43 @@
 import * as Sqrl from 'squirrelly';
+import { SheetResources } from '../sheets';
+import { Fragments } from '../fragments';
 
 
 const fetchCache: { [url: string]: any } = {};
 const loadCache: { [url: string]: any } = {};
-const config = Sqrl.getConfig({ useWith: true });
+const config = Sqrl.getConfig({ varName: "data" });
 
 
 export async function init() {
+    Sqrl.helpers.define("fragment", function (content, _blocks, _config): string {
+        // Sort out parameters
+        if (content.params.length != 2) {
+            throw Error("@fragment helper requires 2 parameters");
+        }
+        const fragment = content.params[0];
+        const data = content.params[1];
+        // Render output
+        const template = loadTemplate(fragment + ".fragment.html", Fragments[fragment]);
+        return template(data);
+    });
+
+    Sqrl.helpers.define("sheet", function (content, _blocks, _config): string {
+        // Sort out parameters
+        if (content.params.length != 2) {
+            throw Error("@sheet helper requires 2 parameters");
+        }
+        const sheet = content.params[0];
+        const data = content.params[1];
+        // Render output
+        const { html, css } = SheetResources[sheet + "Sheet"];
+        loadCss(sheet + ".css", css);
+        const template = loadTemplate(sheet + ".html", html);
+        if (data.helperData) {
+            data.helperData.sheet.container.classList.add(sheet);
+        }
+        return template(data);
+    });
+
     Sqrl.helpers.define("textarea", function (content, _blocks, _config): string {
         // Sort out parameters
         if (content.params.length != 1) {

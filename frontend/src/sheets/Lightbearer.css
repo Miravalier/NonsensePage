@@ -1,0 +1,43 @@
+.Lightbearer.sheet h1 {
+    text-align: center;
+    font-size: 20px;
+    margin-top: 16px;
+}
+
+.Lightbearer.sheet .abilities {
+    display: flex;
+    flex-flow: column nowrap;
+    background-color: #42484d64;
+    border-radius: 4px;
+    margin: 4px;
+    border: solid 1px #5b6e7978;
+}
+
+.Lightbearer.sheet .ability .bar {
+    display: flex;
+    margin: 4px;
+    padding: 4px;
+    background: #00000024;
+    border-radius: 8px;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.Lightbearer.sheet .ability .details {
+    padding: 4px 16px;
+}
+
+.Lightbearer.sheet .ability .details.hidden {
+    display: none;
+}
+
+.Lightbearer.sheet .watermark {
+    text-align: center;
+    margin: 24px;
+    color: #ffffff4f;
+}
+
+.Lightbearer.sheet i {
+    margin: 2px;
+}

@@ -4,7 +4,7 @@ import { ApiRequest } from "../lib/requests.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { Parameter } from "../lib/utils.ts";
 import { Character } from "../lib/models.ts";
-import { Sheet, SheetTypes } from "../sheets";
+import { Sheet, SheetRegistry } from "../sheets";
 
 
 export class CharacterSheetWindow extends ContentWindow {
@@ -36,7 +36,7 @@ export class CharacterSheetWindow extends ContentWindow {
         this.setTitle(character.name);
 
         // Load sheet content
-        const SheetType = SheetTypes[character.sheet_type + "Sheet"];
+        const SheetType = SheetRegistry[character.sheet_type + "Sheet"];
         const sheet = new SheetType(character.id, this);
         await sheet.init(character);
 

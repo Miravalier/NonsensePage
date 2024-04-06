@@ -1,0 +1,28 @@
+<div data-id="{{data.id}}" class="ability">
+    <div class="bar">
+        <div class="container">
+            <!-- Passive -->
+            {{ @if(data.type == 0) }}
+            {{ /if }}
+            <!-- Free -->
+            {{ @if(data.type == 1) }}
+            <i class="fa-regular fa-circle"></i>
+            {{ /if }}
+            <!-- Action -->
+            {{ @if(data.type == 2) }}
+            <i class="fa-solid fa-circle"></i>
+            {{ /if }}
+            <!-- Reaction -->
+            {{ @if(data.type == 3) }}
+            <i class="fa-solid fa-exclamation-circle"></i>
+            {{ /if }}
+            <div class="name">{{data.name}}</div>
+        </div>
+        <div class="container">
+            <i class="button fa-solid fa-dice-d20"></i>
+        </div>
+    </div>
+    <div data-id="{{data.id}}" class="details hidden">
+        {{data.description}}
+    </div>
+</div>

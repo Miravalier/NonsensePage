@@ -13,6 +13,13 @@ export enum Permission {
     Owner = 4,
 }
 
+export enum AbilityType {
+    Passive = 0,
+    Free = 1,
+    Action = 2,
+    Reaction = 3
+}
+
 export type PermissionTable = {
     [entityId: string]: {
         [field: string]: Permission;
@@ -25,6 +32,14 @@ export interface Stat {
     value: number | string | boolean;
     min: number | null;
     max: number | null;
+}
+
+export interface Ability {
+    id: string;
+    name: string;
+    description: string;
+    type: AbilityType;
+    cooldown: number;
 }
 
 export interface Entry {
@@ -58,6 +73,11 @@ export interface Character extends Entity {
     sheet_type: string;
     item_map: { [id: string]: Item };
     item_order: string[];
+    ability_map: { [id: string]: Ability };
+    ability_order: string[];
+    // Doesn't come over the wire, added before rendering
+    // and used by Sqrl helpers
+    helperData: any;
 }
 
 export interface Combatant extends Entry {

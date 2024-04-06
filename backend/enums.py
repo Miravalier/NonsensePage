@@ -31,3 +31,10 @@ class GridColor(IntEnum):
     NONE = 0
     WHITE = 1
     BLACK = 2
+
+
+class AbilityType(IntEnum):
+    PASSIVE = 0
+    FREE = 1
+    ACTION = 2
+    REACTION = 3

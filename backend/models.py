@@ -8,7 +8,10 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Any, Dict, Iterator, List, Optional, Union, Set
 
-from enums import Alignment, Language, Permissions, Layer, GridColor
+from enums import (
+    Alignment, Language, Permissions,
+    Layer, GridColor, AbilityType
+)
 from utils import current_timestamp
 
 
@@ -70,6 +73,14 @@ def get_pool(request: Union[str, Dict[str, Any]]):
 
 def new_permissions():
     return {"*": {"*": Permissions.NONE}}
+
+
+class Ability(BaseModel):
+    id: str
+    name: str = ""
+    description: str = ""
+    type: AbilityType = AbilityType.PASSIVE
+    cooldown: int = 0
 
 
 class Stat(BaseModel):
@@ -162,7 +173,9 @@ class Character(Entity, Container):
     max_hp: float = 0
     size: float = 1
     scale: float = 1.0
-    sheet_type: str = "Generic"
+    sheet_type: str = "Lightbearer"
+    ability_map: Dict[str, Ability] = Field(default_factory=dict)
+    ability_order: List[str] = Field(default_factory=list)
 
 
 class User(Entry):

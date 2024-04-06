@@ -6,9 +6,18 @@ import { ErrorToast } from "../lib/notifications.ts";
 import { CharacterSheetWindow } from "../windows/character_sheet_window.ts";
 
 
-export const SheetTypes: {
-    [name: string]: {
+export const SheetRegistry: {
+    [name: string]:
+    {
         new(characterId: string, parent: CharacterSheetWindow): Sheet
+    }
+} = {};
+
+export const SheetResources: {
+    [name: string]:
+    {
+        html: string;
+        css: string;
     }
 } = {};
 
@@ -18,10 +27,6 @@ export const SheetTypes: {
  * and register their subclass in index.ts
  */
 export class Sheet {
-    templateString: string;
-    cssString: string;
-    templateUrl: string;
-    cssUrl: string;
     template: (data: any) => string;
     characterId: string;
     parent: CharacterSheetWindow;
@@ -29,10 +34,6 @@ export class Sheet {
     setTriggers: { [key: string]: ((value: any) => void)[] };
 
     constructor(characterId: string, parent: CharacterSheetWindow) {
-        this.templateString = null;
-        this.cssString = null;
-        this.templateUrl = null;
-        this.cssUrl = null;
         this.template = null;
         this.characterId = characterId;
         this.parent = parent;
@@ -163,23 +164,20 @@ export class Sheet {
      */
     async init(data: Character) {
         this.container.className = `sheet ${data.sheet_type}`;
-        if (this.cssString !== null) {
-            Templates.loadCss(data.sheet_type + ".css", this.cssString);
-        }
-        else if (this.cssUrl !== null) {
-            await Templates.fetchCss(this.cssUrl);
-        }
-        if (this.templateString !== null) {
-            this.template = Templates.loadTemplate(data.sheet_type + ".html", this.templateString);
-        }
-        else if (this.templateUrl !== null) {
-            this.template = await Templates.fetchTemplate(this.templateUrl);
-        }
+        const { html, css } = SheetResources[this.constructor.name];
+        Templates.loadCss(data.sheet_type + ".css", css);
+        this.template = Templates.loadTemplate(data.sheet_type + ".html", html);
+        data.helperData = { sheet: this };
         await this.render(data);
     }
 }
 
 
-export function RegisterSheet(type: { new(characterId: string, parent: CharacterSheetWindow): Sheet }) {
-    SheetTypes[type.name] = type;
+export function RegisterSheet(
+    type: { new(characterId: string, parent: CharacterSheetWindow): Sheet },
+    html: string,
+    css: string,
+) {
+    SheetRegistry[type.name] = type;
+    SheetResources[type.name] = { html, css };
 }
