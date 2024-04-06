@@ -27,6 +27,9 @@ export function set(element: HTMLElement, options: { [category: string]: { [choi
         ev.stopPropagation();
 
         close();
+        if (options == null) {
+            return;
+        }
 
         const callbacks: { [choice: string]: (ev: MouseEvent) => void } = {};
         const categoryDivs: string[] = [];

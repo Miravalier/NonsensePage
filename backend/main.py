@@ -1016,3 +1016,18 @@ async def list_files(request: ListFilesRequest):
         "path": returned_path,
         "files": results
     }
+
+
+class ShowWindowRequest(GMRequest):
+    type: str
+    data: Any
+
+
+@app.post("/api/show/window")
+async def show_window(request: ShowWindowRequest):
+    await get_pool("show/window").broadcast({
+        "user": request.requester.id,
+        "type": request.type,
+        "data": request.data,
+    })
+    return {"status": "success"}

@@ -18,7 +18,7 @@ export async function init() {
         const data = content.params[1];
         // Render output
         const [fragmentTemplate, fragmentCallback] = Fragments[fragment];
-        const template = loadTemplate(fragment + ".fragment.html", fragmentTemplate);
+        const template = loadTemplate("fragment-" + fragment, fragmentTemplate);
         if (fragmentCallback && data.helperData) {
             data.helperData.fragmentCallbacks.push(fragmentCallback);
         }
@@ -34,8 +34,8 @@ export async function init() {
         const data = content.params[1];
         // Render output
         const { html, css } = SheetResources[sheet + "Sheet"];
-        loadCss(sheet + ".css", css);
-        const template = loadTemplate(sheet + ".html", html);
+        loadCss(sheet + "Sheet", css);
+        const template = loadTemplate(sheet + "Sheet", html);
         if (data.helperData) {
             data.helperData.sheet.container.classList.add(sheet);
         }
@@ -165,7 +165,7 @@ export async function fetchCss(url: string): Promise<HTMLLinkElement> {
 
 
 export function loadCss(key: string, content: string): HTMLStyleElement {
-    let styleElement: HTMLStyleElement = loadCache[key];
+    let styleElement: HTMLStyleElement = loadCache["css-" + key];
     if (styleElement) {
         return styleElement;
     }
@@ -174,7 +174,7 @@ export function loadCss(key: string, content: string): HTMLStyleElement {
     styleElement.textContent = content;
     document.head.appendChild(styleElement);
 
-    loadCache[key] = styleElement;
+    loadCache["css-" + key] = styleElement;
     return styleElement;
 }
 
@@ -199,7 +199,7 @@ export async function fetchTemplate(url: string): Promise<(data: any) => string>
 
 
 export function loadTemplate(key: string, content: string): (data: any) => string {
-    let template: (data: any) => string = loadCache[key];
+    let template: (data: any) => string = loadCache["html-" + key];
     if (template) {
         return template;
     }
@@ -209,6 +209,6 @@ export function loadTemplate(key: string, content: string): (data: any) => strin
         return rawTemplate(data, config);
     }
 
-    loadCache[key] = template;
+    loadCache["html-" + key] = template;
     return template;
 }

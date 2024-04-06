@@ -153,6 +153,7 @@ export class Sheet {
      * Draw the character sheet to the DOM from scratch.
      */
     async render(data: Character) {
+        data.helperData = { sheet: this, fragmentCallbacks: [] };
         const html = this.template(data);
         this.container.innerHTML = html;
         for (const callback of data.helperData.fragmentCallbacks) {
@@ -168,9 +169,8 @@ export class Sheet {
     async init(data: Character) {
         this.container.className = `sheet ${data.sheet_type}`;
         const { html, css } = SheetResources[this.constructor.name];
-        Templates.loadCss(data.sheet_type + ".css", css);
-        this.template = Templates.loadTemplate(data.sheet_type + ".html", html);
-        data.helperData = { sheet: this, fragmentCallbacks: [] };
+        Templates.loadCss(this.constructor.name, css);
+        this.template = Templates.loadTemplate(this.constructor.name, html);
         await this.render(data);
     }
 }

@@ -6,12 +6,16 @@ import { Vector2 } from "../lib/vector.ts";
 import { CombatTrackerWindow } from "../windows/combat_tracker_window.ts";
 import { ChatWindow } from "../windows/chat_window.ts";
 import { FileWindow } from "../windows/file_window.ts";
-import { ApiRequest, Session, WsConnect } from "../lib/requests.ts";
+import { ApiRequest, Session, Subscribe, WsConnect } from "../lib/requests.ts";
 import { CharacterListWindow } from "../windows/character_list_window.ts";
 import { CheckUpdates } from "../lib/pending_updates.ts";
 import { MapListWindow } from "../windows/map_list_window.ts";
-import { windows, InputDialog, applyLayout, SerializedWindow } from "../windows/window.ts";
+import {
+    launchWindow, windows, InputDialog,
+    applyLayout, SerializedWindow,
+} from "../windows/window.ts";
 import { ErrorToast } from "../lib/notifications.ts";
+import * as Sheets from "../sheets";
 
 
 window.addEventListener("load", async () => {
@@ -49,6 +53,13 @@ async function OnLoad() {
 }
 
 
+function PreloadRuleset(ruleset: string) {
+    const { html, css } = Sheets.SheetResources[ruleset + "Sheet"];
+    Templates.loadCss(ruleset + "Sheet", css);
+    Templates.loadTemplate(ruleset + "Sheet", html);
+}
+
+
 async function Main() {
     await WsConnect();
     setInterval(() => {
@@ -60,6 +71,16 @@ async function Main() {
     await ContextMenu.init();
     await Notifications.init();
     await Templates.init();
+
+    PreloadRuleset("Generic");
+    PreloadRuleset("Lightbearer");
+
+    Subscribe("show/window", (data: { user: string; type: string; data: any; }) => {
+        if (Session.id == data.user) {
+            return;
+        }
+        launchWindow(data.type, data.data);
+    });
 
     ContextMenu.set(document.body, {
         "Open": {

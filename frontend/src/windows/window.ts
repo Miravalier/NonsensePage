@@ -1,8 +1,9 @@
+import * as ContextMenu from "../lib/contextmenu.ts";
 import * as Templates from "../lib/templates.ts";
 import { Button } from "../lib/elements.ts";
 import { Vector2 } from "../lib/vector.ts";
 import { Canvas } from "../lib/canvas.ts";
-import { Subscribe, Subscription } from "../lib/requests.ts";
+import { ApiRequest, Session, Subscribe, Subscription } from "../lib/requests.ts";
 import {
     PageCenter,
     Parameter,
@@ -168,6 +169,7 @@ export class BaseWindow {
             this.viewPort.style.width = `${this.size.x}px`;
             this.viewPort.style.height = `${this.size.y}px`;
         }
+        ContextMenu.set(this.viewPort, null);
 
         if (resizable) {
             const resizeHandle = this.container.appendChild(document.createElement("div"));
@@ -202,9 +204,26 @@ export class BaseWindow {
             });
         }
 
+        const contextOptions = {
+            "Window": {
+                "Close": () => {
+                    this.close();
+                }
+            }
+        }
+        if (Session.gm && register) {
+            contextOptions["Window"]["Show to Players"] = async () => {
+                await this.onShare();
+                await ApiRequest("/show/window", { type: this.constructor.name, data: this.serialize() });
+            };
+        }
+        ContextMenu.set(titleBar, contextOptions);
+
         const windowElements = document.querySelector("#windows");
         windowElements.appendChild(this.container);
     }
+
+    async onShare() { }
 
     onResizeStart() { }
 
@@ -481,7 +500,7 @@ export function InputDialog(title: string, inputs: { [label: string]: any }, acc
             const fragment = inputValue;
             const data = secondaryValue;
             const [fragmentTemplate, fragmentCallback] = Fragments[inputValue];
-            const template = Templates.loadTemplate(fragment + ".fragment.html", fragmentTemplate);
+            const template = Templates.loadTemplate("fragment-" + fragment, fragmentTemplate);
             inputElement.innerHTML = template(data);
             fragmentCallback(inputElement, data);
         }
@@ -629,6 +648,14 @@ export function ImageSelectDialog(prompt: string): Promise<string> {
             resolve(result);
         });
     });
+}
+
+
+export async function launchWindow(type: string, data: any): Promise<BaseWindow> {
+    const windowType = WindowTypes[type];
+    const newWindow = new windowType({});
+    await newWindow.deserialize(data);
+    return newWindow;
 }
 
 
