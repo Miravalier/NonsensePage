@@ -270,6 +270,11 @@ select {
     border: solid 1px #5b6e7978;
 }
 
+option {
+    color: #d5dde2;
+    background: #52585d;
+}
+
 button {
     background-color: #17202780;
     border-radius: 4px;

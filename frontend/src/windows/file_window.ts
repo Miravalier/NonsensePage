@@ -150,12 +150,10 @@ export class FileWindow extends ContentWindow {
             if (data.type != "file") {
                 return;
             }
-            console.log(data.path, path + Leaf(data.path));
             await ApiRequest("/files/move", {
                 src: data.path,
                 dst: PathConcat(path, Leaf(data.path)),
             });
-            console.log(data);
         });
 
         if (name != "..") {

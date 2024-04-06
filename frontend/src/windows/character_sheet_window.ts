@@ -3,12 +3,13 @@ import { Vector2 } from "../lib/vector.ts";
 import { ApiRequest } from "../lib/requests.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { Parameter } from "../lib/utils.ts";
-import * as Sheets from "../sheets";
 import { Character } from "../lib/models.ts";
+import { Sheet, SheetTypes } from "../sheets";
 
 
 export class CharacterSheetWindow extends ContentWindow {
     characterId: string;
+    sheet: Sheet
 
     constructor(options) {
         options.classList = ["character"];
@@ -35,13 +36,13 @@ export class CharacterSheetWindow extends ContentWindow {
         this.setTitle(character.name);
 
         // Load sheet content
-        const SheetType = Sheets.SheetTypes[character.sheet_type + "Sheet"];
-        const sheet = new SheetType(character);
-        await sheet.render(this.content);
+        const SheetType = SheetTypes[character.sheet_type + "Sheet"];
+        const sheet = new SheetType(character.id, this);
+        await sheet.init(character);
 
         // Set up update watcher
         await this.subscribe(id, async update => {
-            sheet.update(update.changes);
+            sheet.onUpdate(update.changes);
         });
     }
 
