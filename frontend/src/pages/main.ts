@@ -82,33 +82,33 @@ async function Main() {
         launchWindow(data.type, data.data);
     });
 
-    ContextMenu.set(document.body, {
+    const contextOptions = {
         "Open": {
-            "Characters": async (ev) => {
+            "Characters": async (ev: MouseEvent) => {
                 const characterListWindow = new CharacterListWindow({
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await characterListWindow.load();
             },
-            "Chat": async (ev) => {
+            "Chat": async (ev: MouseEvent) => {
                 const chatWindow = new ChatWindow({
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await chatWindow.load();
             },
-            "Combat Tracker": async (ev) => {
+            "Combat Tracker": async (ev: MouseEvent) => {
                 const combatTrackerWindow = new CombatTrackerWindow({
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await combatTrackerWindow.load();
             },
-            "Files": async (ev) => {
+            "Files": async (ev: MouseEvent) => {
                 const fileWindow = new FileWindow({
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await fileWindow.load("/");
             },
-            "Maps": async (ev) => {
+            "Maps": async (ev: MouseEvent) => {
                 const mapListWindow = new MapListWindow({
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
@@ -181,7 +181,27 @@ async function Main() {
                 window.localStorage.setItem("layouts", JSON.stringify(layouts));
             },
         },
-    });
+    };
+
+    if (Session.gm) {
+        contextOptions["Admin"] = {
+            "Create User": async () => {
+                const selection = await InputDialog("Create User", {
+                    "Username": "text",
+                    "Password": "text",
+                }, "Create");
+                await ApiRequest(
+                    "/user/create",
+                    {
+                        username: selection.Username,
+                        password: selection.Password,
+                    }
+                );
+            }
+        }
+    }
+
+    ContextMenu.set(document.body, contextOptions);
 
     const defaultLayout = window.localStorage.getItem("defaultLayout");
     if (defaultLayout != null) {
