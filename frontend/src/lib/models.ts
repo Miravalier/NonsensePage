@@ -5,6 +5,10 @@ export enum Alignment {
     Player = 3,
 }
 
+export enum Language {
+    Common = 0,
+}
+
 export enum Permission {
     Inherit = 0,
     None = 1,
@@ -18,6 +22,12 @@ export enum AbilityType {
     Free = 1,
     Action = 2,
     Reaction = 3
+}
+
+export enum RollType {
+    Text = "text",
+    Dice = "dice",
+    Table = "table",
 }
 
 export type PermissionTable = {
@@ -34,12 +44,19 @@ export interface Stat {
     max: number | null;
 }
 
+export interface Roll {
+    type: RollType;
+    label: string;
+    formula: string;
+}
+
 export interface Ability {
     id: string;
     name: string;
     description: string;
     type: AbilityType;
     cooldown: number;
+    rolls: Roll[];
 }
 
 export interface Entry {
@@ -47,6 +64,20 @@ export interface Entry {
     name: string;
     permissions: PermissionTable;
     data: any;
+}
+
+export interface Message {
+    type: "message";
+    id: string;
+    sender_id: string;
+    character_id: string;
+    timestamp: number;
+    language: Language;
+    speaker: string;
+    /** Mutually exclusive with length */
+    content: string;
+    /** Mutually exclusive with content */
+    length: number;
 }
 
 export interface Entity extends Entry {

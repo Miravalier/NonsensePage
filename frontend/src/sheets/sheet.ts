@@ -155,6 +155,9 @@ export class Sheet {
     async render(data: Character) {
         const html = this.template(data);
         this.container.innerHTML = html;
+        for (const callback of data.helperData.fragmentCallbacks) {
+            callback(this.container, data);
+        }
         this.onRender(data);
     }
 
@@ -167,7 +170,7 @@ export class Sheet {
         const { html, css } = SheetResources[this.constructor.name];
         Templates.loadCss(data.sheet_type + ".css", css);
         this.template = Templates.loadTemplate(data.sheet_type + ".html", html);
-        data.helperData = { sheet: this };
+        data.helperData = { sheet: this, fragmentCallbacks: [] };
         await this.render(data);
     }
 }

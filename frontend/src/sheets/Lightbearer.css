@@ -13,7 +13,14 @@
     border: solid 1px #5b6e7978;
 }
 
-.Lightbearer.sheet .ability .bar {
+.Lightbearer.template {
+    background: #d0e9ff14;
+    padding: 2px;
+    margin: 4px;
+    border-radius: 4px;
+}
+
+.Lightbearer .ability .bar {
     display: flex;
     margin: 4px;
     padding: 4px;
@@ -24,20 +31,68 @@
     cursor: pointer;
 }
 
-.Lightbearer.sheet .ability .details {
+.Lightbearer .ability .name.passive {
+    font-style: italic;
+}
+
+.Lightbearer .ability .icons {
+    display: flex;
+    flex-flow: row nowrap;
+    margin-right: 2px;
+}
+
+.Lightbearer .ability .icons .icon {
+    margin: 0 2px;
+}
+
+.Lightbearer .ability .details {
+    display: flex;
+    flex-flow: column nowrap;
     padding: 4px 16px;
 }
 
-.Lightbearer.sheet .ability .details.hidden {
+.Lightbearer .ability .details.hidden {
     display: none;
 }
 
-.Lightbearer.sheet .watermark {
+.Lightbearer .watermark {
     text-align: center;
     margin: 24px;
     color: #ffffff4f;
 }
 
-.Lightbearer.sheet i {
+.Lightbearer.rolls-fragment {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.Lightbearer .rolls {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.Lightbearer .rolls .roll {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    align-items: center;
+    background: #00000024;
+    border-radius: 8px;
+    padding: 2px;
     margin: 2px;
+}
+
+.Lightbearer .rolls .roll .label {
+    margin: 2px;
+    padding: 4px;
+    background: #00000024;
+    border-radius: 8px;
+}
+
+.Lightbearer .rolls .roll .result {
+    margin: 4px;
 }

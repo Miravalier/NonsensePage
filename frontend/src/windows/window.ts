@@ -1,3 +1,4 @@
+import * as Templates from "../lib/templates.ts";
 import { Button } from "../lib/elements.ts";
 import { Vector2 } from "../lib/vector.ts";
 import { Canvas } from "../lib/canvas.ts";
@@ -10,6 +11,7 @@ import {
     AddDropListener,
     GenerateId,
 } from "../lib/utils.js";
+import { Fragments } from "../fragments";
 
 
 export type SerializedWindow = {
@@ -443,28 +445,66 @@ export function InputDialog(title: string, inputs: { [label: string]: any }, acc
     for (const [labelText, inputData] of Object.entries(inputs)) {
         let inputType;
         let inputValue = "";
+        let secondaryValue = null;
         if (Array.isArray(inputData)) {
-            [inputType, inputValue] = inputData;
+            if (inputData.length == 1) {
+                inputType = inputData[0];
+            }
+            if (inputData.length == 2) {
+                [inputType, inputValue] = inputData;
+            }
+            else if (inputData.length == 3) {
+                [inputType, inputValue, secondaryValue] = inputData;
+            }
         }
         else {
             inputType = inputData;
         }
 
         const inputLabel = document.createElement("span");
-        inputLabel.classList.add("label");
-        inputLabel.textContent = labelText;
+        if (inputType !== "fragment") {
+            inputLabel.classList.add("label");
+            inputLabel.textContent = labelText;
+        }
         let inputElement;
         if (inputType == "paragraph") {
             inputElement = document.createElement("textarea");
             inputElement.maxLength = 10000;
             inputElement.value = inputValue;
         }
+        else if (inputType == "fragment") {
+            inputElement = document.createElement("div");
+            inputElement.classList.add("fragment");
+            if (!inputValue || !secondaryValue) {
+                throw Error("not enough parameters to InputDialog fragment");
+            }
+            const fragment = inputValue;
+            const data = secondaryValue;
+            const [fragmentTemplate, fragmentCallback] = Fragments[inputValue];
+            const template = Templates.loadTemplate(fragment + ".fragment.html", fragmentTemplate);
+            inputElement.innerHTML = template(data);
+            fragmentCallback(inputElement, data);
+        }
         else if (inputType == "select") {
             inputElement = document.createElement("select");
-            for (const option of inputValue) {
-                const optionElement = inputElement.appendChild(document.createElement("option"));
-                optionElement.value = option;
-                optionElement.innerText = option;
+
+            if (Array.isArray(inputValue)) {
+                for (const option of inputValue) {
+                    const optionElement = inputElement.appendChild(document.createElement("option"));
+                    optionElement.value = option;
+                    optionElement.innerText = option;
+                }
+            }
+            else {
+                for (const [option, optionLabel] of Object.entries(inputValue)) {
+                    const optionElement = inputElement.appendChild(document.createElement("option"));
+                    optionElement.value = option;
+                    optionElement.innerText = optionLabel;
+                }
+            }
+
+            if (secondaryValue) {
+                inputElement.value = secondaryValue;
             }
         }
         else {
@@ -501,6 +541,9 @@ export function InputDialog(title: string, inputs: { [label: string]: any }, acc
             results = {};
             for (const [label, inputElement] of inputElements) {
                 let value;
+                if (inputElement.classList.contains("fragment")) {
+                    continue;
+                }
                 if (inputElement.type == "number") {
                     value = parseInt(inputElement.value);
                 }

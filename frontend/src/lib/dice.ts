@@ -1,8 +1,18 @@
 import * as math from 'mathjs';
 import { PCG } from "./pcg-random.ts";
 
+export interface DieResult {
+    result: number;
+    sides: number;
+}
 
-export function Roll(formula: string, data = null, results = null) {
+export interface RollResults {
+    total: number;
+    rolls: DieResult[];
+}
+
+
+export function Roll(formula: string, data = null, results = null): RollResults {
     if (data === null) {
         data = {};
     }

@@ -75,12 +75,19 @@ def new_permissions():
     return {"*": {"*": Permissions.NONE}}
 
 
+class Roll(BaseModel):
+    type: str
+    label: str
+    formula: str
+
+
 class Ability(BaseModel):
     id: str
     name: str = ""
     description: str = ""
     type: AbilityType = AbilityType.PASSIVE
     cooldown: int = 0
+    rolls: list[Roll] = Field(default_factory=list)
 
 
 class Stat(BaseModel):

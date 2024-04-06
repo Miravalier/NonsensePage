@@ -17,7 +17,11 @@ export async function init() {
         const fragment = content.params[0];
         const data = content.params[1];
         // Render output
-        const template = loadTemplate(fragment + ".fragment.html", Fragments[fragment]);
+        const [fragmentTemplate, fragmentCallback] = Fragments[fragment];
+        const template = loadTemplate(fragment + ".fragment.html", fragmentTemplate);
+        if (fragmentCallback && data.helperData) {
+            data.helperData.fragmentCallbacks.push(fragmentCallback);
+        }
         return template(data);
     });
 

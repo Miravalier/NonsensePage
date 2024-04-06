@@ -1,11 +1,15 @@
-import * as Database from "../lib/database.ts";
+import * as Events from "../lib/events.ts";
 import * as ContextMenu from "../lib/contextmenu.ts";
 import { Vector2 } from "../lib/vector.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./window.ts";
 import { ApiRequest, Session, HandleWsMessage } from "../lib/requests.ts";
-import { Parameter, DerivePcgEngine, RandomText, GenerateId } from "../lib/utils.ts";
+import {
+    Parameter, DerivePcgEngine, RandomText,
+    GenerateId, EscapeHtml, GetSpeaker,
+} from "../lib/utils.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { Language } from "../lib/enums.ts";
+import { Message } from "../lib/models.ts";
 
 
 const LANGUAGES = [
@@ -52,24 +56,6 @@ function spongebobCase(s) {
 }
 
 
-function getSpeaker() {
-    const user = Database.users[Session.id];
-    if (user.character) {
-        return user.character;
-    }
-    else {
-        return user;
-    }
-}
-
-
-function escapeHtml(message) {
-    const div = document.createElement("div");
-    div.textContent = message;
-    return div.innerHTML;
-}
-
-
 function sendSystemMessage(message: string) {
     HandleWsMessage({
         pool: "messages",
@@ -103,7 +89,7 @@ async function helpCommand() {
 
 async function rollCommand(formula) {
     let characterId = null;
-    const speaker = getSpeaker();
+    const speaker = GetSpeaker();
     if (speaker.type == "character") {
         characterId = speaker.id;
     }
@@ -117,13 +103,13 @@ async function rollCommand(formula) {
 
 
 async function memoteCommand(message) {
-    const speaker = getSpeaker();
+    const speaker = GetSpeaker();
     await ApiRequest("/messages/speak", {
         speaker: Session.username,
         content: `
             <div class="emote">
                 <img class="inline-img" src="/spongebob.png" width=36 height=36/>
-                ${spongebobCase(speaker.name)} ${spongebobCase(escapeHtml(message))}
+                ${spongebobCase(speaker.name)} ${spongebobCase(EscapeHtml(message))}
             </div>
         `,
     });
@@ -133,16 +119,16 @@ async function memoteCommand(message) {
 async function oocCommand(message) {
     await ApiRequest("/messages/speak", {
         speaker: Session.username,
-        content: `<div class="ooc">${escapeHtml(message)}</div>`,
+        content: `<div class="ooc">${EscapeHtml(message)}</div>`,
     });
 }
 
 
 async function emoteCommand(message) {
-    const speaker = getSpeaker();
+    const speaker = GetSpeaker();
     await ApiRequest("/messages/speak", {
         speaker: Session.username,
-        content: `<div class="emote">${speaker.name} ${escapeHtml(message)}</div>`
+        content: `<div class="emote">${speaker.name} ${EscapeHtml(message)}</div>`
     });
 }
 
@@ -150,7 +136,7 @@ async function emoteCommand(message) {
 async function storyCommand(message) {
     await ApiRequest("/messages/speak", {
         speaker: Session.username,
-        content: `<div class="story">${escapeHtml(message)}</div>`
+        content: `<div class="story">${EscapeHtml(message)}</div>`
     });
 }
 
@@ -158,21 +144,21 @@ async function storyCommand(message) {
 async function narrateCommand(message) {
     await ApiRequest("/messages/speak", {
         speaker: Session.username,
-        content: `<div class="narrate">${escapeHtml(message)}</div>`
+        content: `<div class="narrate">${EscapeHtml(message)}</div>`
     });
 }
 
 
 async function speakCommand(message) {
     let characterId = null;
-    const speaker = getSpeaker();
+    const speaker = GetSpeaker();
     if (speaker.type == "character") {
         characterId = speaker.id;
     }
     await ApiRequest("/messages/speak", {
         speaker: speaker.name,
         character_id: characterId,
-        content: `<div class="speak">${escapeHtml(message)}</div>`,
+        content: `<div class="speak">${EscapeHtml(message)}</div>`,
     });
 }
 
@@ -228,7 +214,7 @@ export class ChatWindow extends ContentWindow {
 
         if (Session.gm) {
             ContextMenu.set(this.viewPort, {
-                "Edit Chat": {
+                "Chat Log": {
                     "Save": async () => {
                         const selection = await InputDialog("Save Chat", { "Filename": "text" }, "Save");
                         if (!selection || !selection.Filename) {
@@ -288,7 +274,7 @@ export class ChatWindow extends ContentWindow {
         }
     }
 
-    addMessage(message) {
+    addMessage(message: Message) {
         if (this.messages[message.id]) {
             return null;
         }
@@ -299,7 +285,7 @@ export class ChatWindow extends ContentWindow {
 
         if (Session.gm) {
             ContextMenu.set(element, {
-                "Edit Message": {
+                "Message": {
                     "Edit": async () => {
                         const selection = await InputDialog("Edit Message", { "Content": ["paragraph", message.content] }, "Save");
                         if (!selection || !selection.Content) {
@@ -352,6 +338,7 @@ export class ChatWindow extends ContentWindow {
         this.viewPort.scrollTop = this.viewPort.scrollHeight;
 
         this.messages[message.id] = element;
+        Events.dispatch("renderMessage", message, element);
         return element;
     }
 }

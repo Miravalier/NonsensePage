@@ -3,6 +3,7 @@ import { PcgEngine } from "./pcg-random.ts";
 import { Vector2 } from "./vector.ts";
 import { Permissions } from "./enums.ts";
 import { Entry } from "./models.ts";
+import * as Database from "../lib/database.ts";
 
 
 export function ColorIntToVec3(value: number): [number, number, number] {
@@ -240,6 +241,23 @@ export function Leaf(path: string): string {
     }
 
     return path.substring(lastSlashIndex + 1);
+}
+
+export function GetSpeaker() {
+    const user = Database.users[Session.id];
+    if (user.character) {
+        return user.character;
+    }
+    else {
+        return user;
+    }
+}
+
+
+export function EscapeHtml(message) {
+    const div = document.createElement("div");
+    div.textContent = message;
+    return div.innerHTML;
 }
 
 
