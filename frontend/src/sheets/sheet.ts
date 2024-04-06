@@ -1,6 +1,6 @@
 import * as Templates from "../lib/templates.ts";
-import { Character } from "../lib/models.ts";
-import { AddDropListener, ResolvePath } from '../lib/utils.ts';
+import { Character, Permission } from "../lib/models.ts";
+import { AddDropListener, GetPermissions, ResolvePath } from '../lib/utils.ts';
 import { ApiRequest } from "../lib/requests.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { CharacterSheetWindow } from "../windows/character_sheet_window.ts";
@@ -120,6 +120,13 @@ export class Sheet {
      */
     onRender(data: Character) {
         this.setTriggers = {};
+        const permission = GetPermissions(data);
+        if (permission == Permission.Read) {
+            for (const inputElement of this.container.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")) {
+                inputElement.disabled = true;
+            }
+        }
+
         for (const inputElement of this.container.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")) {
             if (!inputElement.dataset.attr) {
                 continue;

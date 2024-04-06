@@ -357,3 +357,9 @@ button:hover i {
 .contextMenu .choice:hover {
     background-color: #ffffff4f;
 }
+
+.watermark {
+    text-align: center;
+    margin: 24px;
+    color: #ffffff4f;
+}

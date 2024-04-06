@@ -181,23 +181,27 @@ async function Main() {
                 window.localStorage.setItem("layouts", JSON.stringify(layouts));
             },
         },
+        "Settings": {
+            "Log Out": () => {
+                localStorage.removeItem("token");
+                location.reload();
+            }
+        }
     };
 
     if (Session.gm) {
-        contextOptions["Admin"] = {
-            "Create User": async () => {
-                const selection = await InputDialog("Create User", {
-                    "Username": "text",
-                    "Password": "text",
-                }, "Create");
-                await ApiRequest(
-                    "/user/create",
-                    {
-                        username: selection.Username,
-                        password: selection.Password,
-                    }
-                );
-            }
+        contextOptions["Settings"]["Create User"] = async () => {
+            const selection = await InputDialog("Create User", {
+                "Username": "text",
+                "Password": "text",
+            }, "Create");
+            await ApiRequest(
+                "/user/create",
+                {
+                    username: selection.Username,
+                    password: selection.Password,
+                }
+            );
         }
     }
 

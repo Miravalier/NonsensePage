@@ -91,9 +91,12 @@ export function ResolvePath(object: any, path: string) {
 }
 
 
-export function GetPermissions(document: Entry, id: string = "*", field: string = "*"): number {
+export function GetPermissions(document: Entry, id: string = null, field: string = "*"): number {
     if (Session.gm) {
         return Permissions.OWNER;
+    }
+    if (id === null) {
+        id = Session.id;
     }
 
     if (!document || !document.permissions) {

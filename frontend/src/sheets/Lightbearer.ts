@@ -5,11 +5,102 @@ import { InputDialog } from "../windows/window.ts";
 import { Ability, AbilityType, Character, Message, RollType } from "../lib/models.ts";
 import { RegisterSheet } from "./sheet.ts";
 import { GenericSheet } from "./Generic.ts";
-import { GenerateId } from "../lib/utils.ts";
+import { GenerateId, GetPermissions } from "../lib/utils.ts";
 import { ApiRequest } from "../lib/requests.ts";
 import { Roll } from "../lib/dice.ts";
 import LightbearerHtml from "./Lightbearer.html?raw";
 import LightbearerCss from "./Lightbearer.css?raw";
+import { Permissions } from "../lib/enums.ts";
+
+
+const attribute_modifiers = {
+    // Classes
+    "Assassin": { "agility": 5, "perception": 2, "charisma": -2, "endurance": -2, "power": -2 },
+    "Bard": { "charisma": 5, "memory": 5, "perception": -2, "agility": -1, "endurance": -3, "power": -3 },
+    "Berserker": { "power": 5, "endurance": 4, "agility": 3, "charisma": -5, "memory": -3, "perception": -3 },
+    "Cleric": { "charisma": 4, "endurance": 3, "agility": -2, "perception": -2, "power": -2 },
+    "Druid": { "memory": 4, "perception": 2, "charisma": -2, "agility": -1, "power": -1, "endurance": -1 },
+    "Elementalist": { "memory": 5, "charisma": -1, "power": -1, "endurance": -1, "agility": -1 },
+    "Guardian": { "endurance": 6, "charisma": 1, "agility": -1, "memory": -1, "perception": -2, "power": -2 },
+    "Necromancer": { "memory": 6, "charisma": -5 },
+    // Races
+    "Aarakocra": { "agility": 3, "perception": 3, "endurance": -2, "memory": -2, "charisma": -1 },
+    "Centaur": { "power": 2, "endurance": 4, "agility": -3, "perception": -2 },
+    "Dragonborn": { "power": 4, "endurance": 2, "agility": -3, "memory": -1, "charisma": -1 },
+    "Dwarf": { "endurance": 4, "agility": -2, "perception": -1 },
+    "Elf": { "agility": 3, "perception": 2, "memory": 2, "power": -3, "endurance": -3 },
+    "Gnome": { "memory": 6, "charisma": 4, "agility": 1, "power": -5, "endurance": -5 },
+    "Goliath": { "endurance": 6, "power": 6, "memory": -4, "charisma": -4, "agility": -3 },
+    "Halfling": { "agility": 2, "charisma": 2, "power": -2, "endurance": -1 },
+    "Human": {},
+    "Orc": { "power": 2, "agility": 2, "endurance": 2, "memory": -2, "perception": -2, "charisma": -1 },
+    "Satyr": { "memory": 4, "agility": 2, "power": -2, "endurance": -2, "perception": -1 },
+    "Tabaxi": { "agility": 6, "perception": 3, "power": -2, "endurance": -4, "memory": -2 },
+    "Tiefling": { "power": 3, "memory": 3, "charisma": -4, "agility": -1 },
+    "Triton": { "perception": 2, "agility": 2, "memory": 2, "power": -3, "endurance": -2 },
+    "Warforged": { "power": 3, "endurance": 3, "memory": 3, "perception": -4, "charisma": -4 },
+};
+
+const skill_modifiers = {
+    // Classes
+    "Assassin": ["stealth", "melee"],
+    "Bard": ["spellwork"],
+    "Berserker": ["melee"],
+    "Cleric": ["spellwork"],
+    "Druid": ["spellwork", "tracking"],
+    "Elementalist": ["spellwork"],
+    "Guardian": ["melee"],
+    "Necromancer": ["spellwork"],
+    // Races
+    "Aarakocra": ["tracking"],
+    "Centaur": ["ranged"],
+    "Dragonborn": ["melee"],
+    "Dwarf": ["artifice"],
+    "Elf": ["ranged"],
+    "Gnome": ["spellwork"],
+    "Goliath": ["melee"],
+    "Halfling": ["stealth"],
+    "Human": ["artifice"],
+    "Orc": ["melee", "melee"],
+    "Satyr": ["spellwork"],
+    "Tabaxi": ["stealth"],
+    "Tiefling": ["spellwork"],
+    "Triton": ["tracking"],
+    "Warforged": ["melee"],
+};
+
+const skill_levels = [
+    "Untrained", "Novice", "Skilled",
+    "Expert", "Master", "Legend"
+]
+
+const descriptions = {
+    // Classes
+    "Assassin": "Stealthy, melee, single-target damage dealer",
+    "Bard": "Team-oriented with large AoE buffs and debuffs",
+    "Berserker": "Frontline brute with risky abilities",
+    "Cleric": "Healer and ranged support",
+    "Druid": "Shapeshifting jack of all trades",
+    "Elementalist": "High-damage ranged powerhouse",
+    "Guardian": "Melee tank that keeps allies out of danger",
+    "Necromancer": "Undead-summoning ranged support",
+    // Races
+    "Aarakocra": "Agile and capable of flight",
+    "Centaur": "Fast and tough",
+    "Dragonborn": "Scaled and breathes fire",
+    "Dwarf": "Short and sturdy",
+    "Elf": "Agile and perceptive",
+    "Gnome": "Small and weak, but intelligent",
+    "Goliath": "Massive and strong",
+    "Halfling": "Small and unassuming",
+    "Human": "Adaptable",
+    "Orc": "Athletic and resilient",
+    "Satyr": "Intelligent and energetic",
+    "Tabaxi": "Nimble feline humanoid",
+    "Tiefling": "Cunning half-demon",
+    "Triton": "Amphibious with natural electricity",
+    "Warforged": "Automaton created by war mages",
+};
 
 
 function getIcons(ability: Ability) {
@@ -60,17 +151,21 @@ function rollAbility(ability: Ability): string {
 export class LightbearerSheet extends GenericSheet {
     onRender(data: Character): void {
         super.onRender(data);
-        ContextMenu.set(this.container.querySelector(".abilities"), {
-            "Create": {
-                "New Ability": () => {
-                    const abilityId = GenerateId();
-                    this.update({
-                        "$set": { [`ability_map.${abilityId}`]: { id: abilityId, name: "New Ability" } },
-                        "$push": { "ability_order": abilityId },
-                    });
+        const permission = GetPermissions(data);
+
+        if (permission >= Permissions.WRITE) {
+            ContextMenu.set(this.container.querySelector(".abilities"), {
+                "Create": {
+                    "New Ability": () => {
+                        const abilityId = GenerateId();
+                        this.update({
+                            "$set": { [`ability_map.${abilityId}`]: { id: abilityId, name: "New Ability" } },
+                            "$push": { "ability_order": abilityId },
+                        });
+                    },
                 },
-            },
-        });
+            });
+        }
         for (const abilityElement of this.container.querySelectorAll<HTMLDivElement>(".ability")) {
             const abilityBar = abilityElement.querySelector(".bar");
             const abilityName = abilityBar.querySelector(".name");
@@ -120,72 +215,74 @@ export class LightbearerSheet extends GenericSheet {
             });
 
             // Add context menu
-            ContextMenu.set(abilityElement, {
-                "Create": {
-                    "New Ability": () => {
-                        const abilityId = GenerateId();
-                        this.update({
-                            "$set": { [`ability_map.${abilityId}`]: { id: abilityId, name: "New Ability" } },
-                            "$push": { "ability_order": abilityId },
-                        });
+            if (permission >= Permissions.WRITE) {
+                ContextMenu.set(abilityElement, {
+                    "Create": {
+                        "New Ability": () => {
+                            const abilityId = GenerateId();
+                            this.update({
+                                "$set": { [`ability_map.${abilityId}`]: { id: abilityId, name: "New Ability" } },
+                                "$push": { "ability_order": abilityId },
+                            });
+                        },
                     },
-                },
-                "Ability": {
-                    "Edit": async () => {
-                        const savedRolls = structuredClone(ability.rolls);
-                        const selection = await InputDialog(
-                            "Edit Ability",
-                            {
-                                "Name": ["text", ability.name],
-                                "Type": [
-                                    "select",
-                                    {
-                                        "0": "Passive",
-                                        "1": "Free",
-                                        "2": "Action",
-                                        "3": "Reaction",
-                                    },
-                                    ability.type,
-                                ],
-                                "Cooldown": [
-                                    "select",
-                                    {
-                                        "0": "None",
-                                        "1": "1 Round",
-                                        "2": "2 Rounds",
-                                        "3": "3 Rounds",
-                                    },
-                                    ability.cooldown,
-                                ],
-                                "Description": ["paragraph", ability.description],
-                                "Rolls": ["fragment", "rolls", ability],
-                            },
-                            "Save"
-                        );
-                        if (!selection) {
-                            ability.rolls = savedRolls;
-                            return;
-                        }
-                        await this.set(
-                            `ability_map.${abilityId}`,
-                            {
-                                id: abilityId,
-                                name: selection.Name,
-                                description: selection.Description,
-                                type: selection.Type,
-                                cooldown: selection.Cooldown,
-                                rolls: ability.rolls,
+                    "Ability": {
+                        "Edit": async () => {
+                            const savedRolls = structuredClone(ability.rolls);
+                            const selection = await InputDialog(
+                                "Edit Ability",
+                                {
+                                    "Name": ["text", ability.name],
+                                    "Type": [
+                                        "select",
+                                        {
+                                            "0": "Passive",
+                                            "1": "Free",
+                                            "2": "Action",
+                                            "3": "Reaction",
+                                        },
+                                        ability.type,
+                                    ],
+                                    "Cooldown": [
+                                        "select",
+                                        {
+                                            "0": "None",
+                                            "1": "1 Round",
+                                            "2": "2 Rounds",
+                                            "3": "3 Rounds",
+                                        },
+                                        ability.cooldown,
+                                    ],
+                                    "Description": ["paragraph", ability.description],
+                                    "Rolls": ["fragment", "rolls", ability],
+                                },
+                                "Save"
+                            );
+                            if (!selection) {
+                                ability.rolls = savedRolls;
+                                return;
                             }
-                        );
+                            await this.set(
+                                `ability_map.${abilityId}`,
+                                {
+                                    id: abilityId,
+                                    name: selection.Name,
+                                    description: selection.Description,
+                                    type: selection.Type,
+                                    cooldown: selection.Cooldown,
+                                    rolls: ability.rolls,
+                                }
+                            );
+                        },
+                        "Delete": () => {
+                            this.update({
+                                "$unset": { [`ability_map.${abilityId}`]: 1 },
+                                "$pull": { "ability_order": abilityId },
+                            });
+                        },
                     },
-                    "Delete": () => {
-                        this.update({
-                            "$unset": { [`ability_map.${abilityId}`]: 1 },
-                            "$pull": { "ability_order": abilityId },
-                        });
-                    },
-                },
-            });
+                });
+            }
 
             // Expand details when the ability is clicked
             abilityBar.addEventListener("click", () => {
@@ -193,12 +290,13 @@ export class LightbearerSheet extends GenericSheet {
             });
 
             // Use the ability when the die is clicked
-            useButton.addEventListener("click", async (ev) => {
-                ev.stopPropagation();
-                await ApiRequest("/messages/speak", {
-                    speaker: data.name,
-                    character_id: data.id,
-                    content: `
+            if (permission >= Permissions.WRITE) {
+                useButton.addEventListener("click", async (ev) => {
+                    ev.stopPropagation();
+                    await ApiRequest("/messages/speak", {
+                        speaker: data.name,
+                        character_id: data.id,
+                        content: `
                         <div class="Lightbearer template">
                             <div class="ability" data-character-id="${data.id}" data-id="${ability.id}">
                                 <div class="bar">
@@ -212,10 +310,9 @@ export class LightbearerSheet extends GenericSheet {
                             </div>
                         </div>
                     `,
+                    });
                 });
-            });
-
-            //
+            }
         }
     }
 }

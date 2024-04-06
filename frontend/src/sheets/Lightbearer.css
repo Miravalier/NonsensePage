@@ -55,12 +55,6 @@
     display: none;
 }
 
-.Lightbearer .watermark {
-    text-align: center;
-    margin: 24px;
-    color: #ffffff4f;
-}
-
 .Lightbearer.rolls-fragment {
     display: flex;
     flex-flow: column nowrap;

@@ -28,6 +28,15 @@ export class CharacterSheetWindow extends ContentWindow {
             status: string;
             character: Character;
         } = await ApiRequest("/character/get", { id });
+
+        if (response.status == "partial") {
+            this.setTitle(response.character.name);
+            const watermark = this.content.appendChild(document.createElement("div"));
+            watermark.classList.add("watermark");
+            watermark.textContent = "Insufficient Permissions";
+            return;
+        }
+
         if (response.status != "success") {
             ErrorToast("Character loading failed!");
             return;
