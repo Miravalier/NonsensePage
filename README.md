@@ -1,19 +1,16 @@
 # Overview
-Nonsense Page is a self-hosted tabletop RPG server written in vanilla JS and Python.
+Nonsense Page is a self-hosted tabletop RPG server written in TS and Python.
 
 # Testing Locally
 - Install dependencies
-  - docker
-  - docker-compose
-  - nginx
+  - Docker Engine (https://docs.docker.com/engine/install/)
 - Create .env file
   - Copy example.env to .env and edit it, pick a random admin key
-- Build the TSC container (needed for `make frontend`)
-  - `tools/tsc-image/build.sh`
+- Build the frontend dependencies (needed for `make frontend`)
+  - `make frontend-deps`
 - Start services
-  - `sudo make nginx`
-  - `sudo make frontend`
+  - `make frontend`
   - `make backend`
 - Create an admin user: `python3 tools/admin.py -h`
-- Open http://nonsense.local/ in a browser
+- Open http://127.0.0.1:8080/ in a browser (or whichever HTTP port you picked in .env)
 - Right click on the background to get a context menu to open windows

@@ -1,0 +1,12 @@
+{{ @sheet("Generic", data) /}}
+
+<h1>Abilities</h1>
+<div class="abilities">
+    {{ @if(data.ability_order.length == 0) }}
+    <div class="watermark">No abilities</div>
+    {{ #else }}
+    {{ @each(data.ability_order) => abilityId, index }}
+    {{ @fragment("ability", data.ability_map[abilityId]) /}}
+    {{ /each }}
+    {{ /if }}
+</div>

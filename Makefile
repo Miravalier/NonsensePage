@@ -1,57 +1,56 @@
-DOMAIN = nonsense.local
+.PHONY: help frontend-deps frontend backend release
 
-.PHONY: help frontend backend nginx
 
 help:
 	@echo "make help"
 	@echo "  Display this message"
 	@echo
+	@echo "make frontend-deps"
+	@echo "  Download frontend dependencies and build frontend compiler container"
+	@echo
 	@echo "make frontend"
-	@echo "  Copy the front-end files into nginx"
+	@echo "  Compile the front-end and deploy dist files"
 	@echo
 	@echo "make backend"
-	@echo "  Start the backend in DEBUG mode (requires docker and docker-compose)"
+	@echo "  Start the backend on localhost"
 	@echo
-	@echo "sudo make nginx"
-	@echo "  Serve the application on the provided DOMAIN."
+	@echo "make release"
+	@echo "  Run the frontend and backend in release configuration"
+
+
+frontend-deps:
+	./tools/nonsense-frontend-compiler/build.sh
+	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler yarn
+
 
 frontend:
 	@if [ ! -f .env ]; then \
 		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
 		exit 1; \
 	fi
-	mkdir -p /var/www/nonsense/ /var/www/nonsense/files/ /var/www/nonsense/thumbnails/
-	docker run --rm -w $(CURDIR) -v $(CURDIR):$(CURDIR) tsc
-	cp $$(find build -type f) /var/www/nonsense
-	rm -rf build
-	cp $$(find src/ -name '*.css' -or -name '*.html') /var/www/nonsense
-	cp $$(find deps/toastify -type f) /var/www/nonsense/
-	cp -r assets/* /var/www/nonsense/
+	sudo mkdir -p /var/www/nonsense/ /var/www/nonsense/files/ /var/www/nonsense/thumbnails/
+	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler yarn run vite build
+	sudo rm -rf /var/www/nonsense/assets
+	sudo cp -r frontend/dist/* /var/www/nonsense
+	rm -rf frontend/dist
+
 
 backend:
 	@if [ ! -f .env ]; then \
 		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
 		exit 1; \
 	fi
-	docker-compose down
-	docker-compose build
-	docker-compose up -d
+	docker compose down
+	docker compose build
+	docker compose up -d
+	@. ./.env; echo "[!] Debug server running on: http://127.0.0.1:$$HTTP_PORT"
 
-SITE_AVAILABLE := /etc/nginx/sites-available/$(DOMAIN)
-SITE_ENABLED := /etc/nginx/sites-enabled/$(DOMAIN)
-RAND_OCTET=$(shell python3 -c 'import secrets; print(secrets.randbelow(256))')
-nginx:
+
+release: frontend
 	@if [ ! -f .env ]; then \
-			echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
-			exit 1; \
-		fi
-	@rm -f "$(SITE_ENABLED)"
-	@if [ -z "$$(grep "$(DOMAIN)" /etc/hosts)" ]; then \
-			echo "127.$(RAND_OCTET).$(RAND_OCTET).$(RAND_OCTET) $(DOMAIN)" >> /etc/hosts; \
-		fi
-	cp nginx.site "$(SITE_AVAILABLE)"
-	. ./.env; sed -i "s/{HTTP_PORT}/$$HTTP_PORT/" "$(SITE_AVAILABLE)"
-	sed -i "s/{DOMAIN}/$(DOMAIN)/" "$(SITE_AVAILABLE)"
-	ln -s "$(SITE_AVAILABLE)" "$(SITE_ENABLED)"
-	service nginx restart
-	@echo "Nonsense Page reachable at http://$(DOMAIN)/"
+		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
+		exit 1; \
+	fi
+	docker compose -f docker-compose.release.yml down
+	docker compose -f docker-compose.release.yml build
+	docker compose -f docker-compose.release.yml up -d
