@@ -6,6 +6,8 @@ import { Vector2 } from "./vector.ts";
 import { Layer } from "./enums.ts";
 import { ApiRequest } from "./requests.ts";
 import { GridFilter } from "../filters/grid.ts";
+import { map, sluDependencies } from "mathjs";
+import { launchWindow } from "../windows/window.ts";
 
 
 export const NO_GRID = 0
@@ -18,6 +20,34 @@ export class CanvasContainer {
 
     constructor(node: PIXI.Container) {
         this.node = node;
+    }
+
+    AddText(options: {
+        position?: Vector2,
+        content?: string,
+        center?: boolean,
+        color?: string,
+        shadow?: boolean,
+    }) {
+        const position = Parameter(options.position, new Vector2(0, 0));
+        const content = Parameter(options.content, "");
+        const center = Parameter(options.center, false);
+        const color = Parameter(options.color, "#ffffff");
+        const shadow = Parameter(options.shadow, true);
+        const label = new PIXI.Text();
+        if (center) {
+            label.style.align = "center";
+            label.anchor.set(0.5, 0);
+        }
+        label.x = position.x;
+        label.y = position.y;
+        label.text = content;
+        if (shadow) {
+            label.style.dropShadow = true;
+        }
+        label.style.fill = color;
+        this.node.addChild(label);
+        return label;
     }
 
     AddGrid(options) {
@@ -64,24 +94,55 @@ export class CanvasContainer {
     async DrawSprite(options) {
         Require(options);
         const src = Require(options.src);
-        const width = Parameter(options.width, 256);
-        const height = Parameter(options.height, 256);
-        const scale = Parameter(options.scale, new Vector2(1, 1));
+        const width: number = Parameter(options.width, null);
+        const height: number = Parameter(options.height, null);
+        const xScale: number = Parameter(options.xScale, null);
+        const yScale: number = Parameter(options.yScale, null);
+        const rotation: number = Parameter(options.rotation, 0);
         const position = Parameter(options.position, new Vector2(0, 0));
         const z = Parameter(options.z, 0);
 
         let texture;
         try {
+            if (!src) {
+                throw Error("no src");
+            }
             texture = await PIXI.Assets.load(src);
         } catch (error) {
             console.error(`Failed to load texture: ${src}`);
             texture = await PIXI.Assets.load("/unknown.png");
         }
-        const sprite = new PIXI.Sprite(texture);
-        sprite.width = width;
-        sprite.height = height
-        sprite.scale.x = scale.x;
-        sprite.scale.y = scale.y;
+        const sprite = PIXI.Sprite.from(texture);
+        sprite.anchor.set(0.5, 0.5);
+        sprite.rotation = rotation;
+
+        if (width !== null && xScale !== null) {
+            throw Error("sprite width and xScale are mutually exclusive");
+        }
+        if (height !== null && yScale !== null) {
+            throw Error("sprite height and yScale are mutually exclusive");
+        }
+
+        if (width !== null) {
+            sprite.width = width;
+        }
+        else if (xScale !== null) {
+            sprite.scale.x = xScale;
+        }
+        else {
+            sprite.scale.x = 1;
+        }
+
+        if (height !== null) {
+            sprite.height = height;
+        }
+        else if (yScale !== null) {
+            sprite.scale.y = yScale;
+        }
+        else {
+            sprite.scale.y = 1;
+        }
+
         sprite.x = position.x;
         sprite.y = position.y;
         sprite.zIndex = z;
@@ -170,7 +231,7 @@ export class Canvas {
         });
 
         /* Uncomment the next line to enable PixiJS debugging */
-        //globalThis.__PIXI_APP__ = this.app;
+        globalThis.__PIXI_APP__ = this.app;
 
         this.htmlContainer = htmlContainer;
         this.stage = this.app.stage;
@@ -179,7 +240,7 @@ export class Canvas {
         this.htmlContainer.appendChild(this.app.canvas);
     }
 
-    rootContainer() {
+    get rootContainer() {
         return new CanvasContainer(this.app.stage)
     }
 
@@ -199,12 +260,14 @@ export class MapCanvas extends Canvas {
     characterContainer: CanvasContainer;
     effectContainer: CanvasContainer;
     highestZIndex: number;
+    squareSize: number;
 
     constructor() {
         super();
         this.id = null;
         this.tokenNodes = {};
         this.highestZIndex = 0;
+        this.squareSize = 1;
     }
 
     onResize(x: number, y: number) {
@@ -258,23 +321,83 @@ export class MapCanvas extends Canvas {
         return container;
     }
 
-    async AddToken(token) {
+    async AddToken(token): Promise<CanvasContainer> {
         const container = this.containerFromLayerId(token.layer);
-        const sprite = await container.DrawSprite({
+        const spriteOptions = {
             src: token.src,
-            width: token.width,
-            height: token.height,
             position: new Vector2(token.x, token.y),
             z: token.z,
-        });
+            width: token.width,
+            height: token.height,
+            rotation: token.rotation,
+        };
+        const sprite = await container.DrawSprite(spriteOptions);
         if (token.z > this.highestZIndex) {
             this.highestZIndex = token.z;
         }
+        const spriteContainer = new CanvasContainer(sprite);
         sprite.eventMode = 'static';
 
         this.tokenNodes[token.id] = sprite;
 
+        let scrollTimeoutHandle: number;
+        sprite.on("rotate", (ev) => {
+            if (ev.deltaY > 0) {
+                sprite.rotation += 0.2;
+            }
+            else {
+                sprite.rotation -= 0.2;
+            }
+
+            clearTimeout(scrollTimeoutHandle);
+            scrollTimeoutHandle = setTimeout(async () => {
+                await ApiRequest("/map/update", {
+                    id: this.id,
+                    changes: {
+                        "$set": {
+                            [`tokens.${token.id}.rotation`]: sprite.rotation,
+                        },
+                    },
+                });
+            }, 250);
+        });
+
+        const spriteState = {
+            dragging: false,
+            hovered: false,
+        }
+        let label: PIXI.Text = null;
+
+        const ClearLabel = () => {
+            if (label !== null) {
+                label.destroy();
+                label = null;
+            }
+        }
+        const DisplayLabel = () => {
+            label = this.tokenContainer.AddText({
+                position: new Vector2(sprite.x, sprite.y).add(new Vector2(0, token.hitbox_height / 2)),
+                content: token.name,
+                center: true,
+            });
+        }
+
+        sprite.on("mouseenter", () => {
+            spriteState.hovered = true;
+            ClearLabel();
+            if (!spriteState.dragging && token.character_id) {
+                DisplayLabel();
+            }
+        });
+
+        sprite.on("mouseleave", () => {
+            spriteState.hovered = false;
+            ClearLabel();
+        });
+
         sprite.on("mousedown", (ev: MouseEvent) => {
+            spriteState.dragging = true;
+            ClearLabel();
             let spriteMoved = false;
             const dragOffset = this.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
             dragOffset.applySubtract(new Vector2(sprite.position.x, sprite.position.y));
@@ -289,6 +412,11 @@ export class MapCanvas extends Canvas {
             }
 
             const onDragEnd = async () => {
+                spriteState.dragging = false;
+                ClearLabel();
+                if (spriteState.hovered && token.character_id) {
+                    DisplayLabel();
+                }
                 document.removeEventListener("mousemove", onDrag);
                 if (spriteMoved) {
                     await ApiRequest("/map/update", {
@@ -301,6 +429,12 @@ export class MapCanvas extends Canvas {
                             },
                         },
                     });
+                }
+                else {
+                    // This sprite was clicked
+                    if (token.character_id) {
+                        await launchWindow("CharacterSheetWindow", { characterId: token.character_id });
+                    }
                 }
             }
 
@@ -339,6 +473,8 @@ export class MapCanvas extends Canvas {
                 "Effects": () => { setTokenLayer(Layer.EFFECTS); },
             }
         });
+
+        return spriteContainer;
     }
 
     DeleteToken(id) {
@@ -348,6 +484,7 @@ export class MapCanvas extends Canvas {
 
     async render(map, translation, scale) {
         this.id = map.id;
+        this.squareSize = map.squareSize;
 
         if (this.tokenContainer) {
             this.tokenContainer.node.destroy();
@@ -356,7 +493,7 @@ export class MapCanvas extends Canvas {
             this.grid.destroy();
         }
 
-        const root = this.rootContainer();
+        const root = this.rootContainer;
         this.tokenContainer = root.AddContainer(translation, scale);
         this.backgroundContainer = this.tokenContainer.AddContainer();
         this.backgroundContainer.node.eventMode = "none";

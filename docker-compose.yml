@@ -10,7 +10,7 @@ services:
             - nonsense
         restart: unless-stopped
         ports:
-            - 27017:27017
+            - 127.0.0.1:27017:27017
         volumes:
             - /var/nonsense/db:/data/db
 
@@ -31,7 +31,7 @@ services:
         image: nginx
         container_name: nonsense_server
         ports:
-            - "${HTTP_PORT}:80"
+            - "127.0.0.1:${HTTP_PORT}:80"
         networks:
             - nonsense
         volumes:

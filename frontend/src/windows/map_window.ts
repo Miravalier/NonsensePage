@@ -10,6 +10,7 @@ import { ErrorToast } from "../lib/notifications.ts";
 import { GridFilter } from "../filters/grid.ts";
 import { Button } from "../lib/elements.ts";
 import { Layer } from "../lib/enums.ts";
+import { Character } from "../lib/models.ts";
 
 
 type MapData = { x: number, y: number, scale: number };
@@ -113,18 +114,28 @@ export class MapWindow extends CanvasWindow {
         });
 
         this.viewPort.addEventListener("wheel", ev => {
-            this.translation.applySubtract(this.size.divide(2));
-            if (ev.deltaY > 0) {
-                this.scale *= 0.9;
-                this.translation.applyMultiply(0.9);
+            const boundary = new PIXI.EventBoundary(this.canvas.app.stage);
+            const xOffset = this.container.offsetLeft + this.viewPort.offsetLeft;
+            const yOffset = this.container.offsetTop + this.viewPort.offsetTop;
+            const element = boundary.hitTest(ev.clientX - xOffset, ev.clientY - yOffset);
+            if (element) {
+                element.emit("rotate", ev);
             }
             else {
-                this.scale *= 1.1;
-                this.translation.applyMultiply(1.1);
+                // Zoom canvas
+                this.translation.applySubtract(this.size.divide(2));
+                if (ev.deltaY > 0) {
+                    this.scale *= 0.9;
+                    this.translation.applyMultiply(0.9);
+                }
+                else {
+                    this.scale *= 1.1;
+                    this.translation.applyMultiply(1.1);
+                }
+                this.translation.applyAdd(this.size.divide(2));
+                this.applyScale();
+                this.applyTranslation();
             }
-            this.translation.applyAdd(this.size.divide(2));
-            this.applyScale();
-            this.applyTranslation();
         });
     }
 
@@ -189,6 +200,7 @@ export class MapWindow extends CanvasWindow {
             this.close();
             return;
         }
+        const map = response.map;
 
         const localMapData: MapData = LocalPersist.load(`map.${this.mapId}`, { x: null, y: null, scale: null });
         if (localMapData.x !== null) {
@@ -212,8 +224,8 @@ export class MapWindow extends CanvasWindow {
             }
         }, 1000);
 
-        this.setTitle(`Map: ${response.map.name}`);
-        await this.canvas.render(response.map, this.translation, this.scale);
+        this.setTitle(`Map: ${map.name}`);
+        await this.canvas.render(map, this.translation, this.scale);
 
         if (activeLayer !== null) {
             this.setActiveLayer(activeLayer);
@@ -226,26 +238,55 @@ export class MapWindow extends CanvasWindow {
         }
 
         this.addDropListener(this.viewPort, async (data, ev: MouseEvent) => {
-            if (data.type != "file") {
-                return;
-            }
-            const worldCoords = this.canvas.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
-            const newId = GenerateId();
-            await ApiRequest("/map/update", {
-                id: this.mapId,
-                changes: {
-                    "$set": {
-                        [`tokens.${newId}`]: {
-                            id: newId,
-                            src: data.urlPath,
-                            x: worldCoords.x,
-                            y: worldCoords.y,
-                            z: ++this.canvas.highestZIndex,
-                            layer: this.activeLayer,
+            if (data.type == "file") {
+                const worldCoords = this.canvas.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
+                const newId = GenerateId();
+                await ApiRequest("/map/update", {
+                    id: this.mapId,
+                    changes: {
+                        "$set": {
+                            [`tokens.${newId}`]: {
+                                id: newId,
+                                src: data.urlPath,
+                                x: worldCoords.x,
+                                y: worldCoords.y,
+                                z: ++this.canvas.highestZIndex,
+                                layer: this.activeLayer,
+                            },
                         },
-                    },
-                }
-            });
+                    }
+                });
+            }
+            else if (data.type == "character") {
+                const response: {
+                    status: string;
+                    character: Character;
+                } = await ApiRequest("/character/get", { id: data.id });
+                const character = response.character;
+                const worldCoords = this.canvas.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
+                const newId = GenerateId();
+                await ApiRequest("/map/update", {
+                    id: this.mapId,
+                    changes: {
+                        "$set": {
+                            [`tokens.${newId}`]: {
+                                id: newId,
+                                src: character.image,
+                                x: worldCoords.x,
+                                y: worldCoords.y,
+                                z: ++this.canvas.highestZIndex,
+                                layer: this.activeLayer,
+                                name: character.name,
+                                width: character.size * map.squareSize * character.scale,
+                                height: character.size * map.squareSize * character.scale,
+                                hitbox_width: character.size * map.squareSize,
+                                hitbox_height: character.size * map.squareSize,
+                                character_id: character.id,
+                            },
+                        },
+                    }
+                });
+            }
         });
 
         await this.subscribe(this.mapId, async update => {
@@ -265,7 +306,7 @@ export class MapWindow extends CanvasWindow {
                         }
                         const sprite = this.canvas.tokenNodes[tokenId];
                         const numericValue = value as number;
-                        if (attribute == "x" || attribute == "y") {
+                        if (attribute == "x" || attribute == "y" || attribute == "rotation") {
                             sprite.parent.addChild(sprite);
                             sprite[attribute] = numericValue;
                         }

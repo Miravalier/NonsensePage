@@ -39,6 +39,7 @@ export class CharacterSheetWindow extends ContentWindow {
 
         if (response.status != "success") {
             ErrorToast("Character loading failed!");
+            this.close();
             return;
         }
         const character = response.character;

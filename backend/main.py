@@ -343,6 +343,8 @@ async def character_get(request: CharacterGetRequest):
                 "image": character.image,
                 "sheet_type": character.sheet_type,
                 "permissions": character.permissions,
+                "size": character.size,
+                "scale": character.scale,
             },
         }
 

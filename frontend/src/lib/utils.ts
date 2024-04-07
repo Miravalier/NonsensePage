@@ -4,6 +4,7 @@ import { Vector2 } from "./vector.ts";
 import { Permissions } from "./enums.ts";
 import { Entry } from "./models.ts";
 import * as Database from "../lib/database.ts";
+import { catalanDependencies } from "mathjs";
 
 
 export function ColorIntToVec3(value: number): [number, number, number] {
@@ -199,7 +200,13 @@ export function AddDropListener(element: HTMLElement, fn: CallableFunction): Abo
     }, { signal: abortController.signal });
 
     element.addEventListener("drop", (ev) => {
-        const dragData = JSON.parse(ev.dataTransfer.getData("application/nonsense"));
+        let dragData;
+        try {
+            dragData = JSON.parse(ev.dataTransfer.getData("application/nonsense"));
+        } catch (error) {
+            dragData = null;
+        }
+
         if (dragData) {
             fn(dragData, ev);
         }

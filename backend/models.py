@@ -218,9 +218,12 @@ class Token(Entry):
     x: float = 0.0
     y: float = 0.0
     z: int = 0
-    width: float = 1.0
-    height: float = 1.0
-    scale: float = 1.0
+    hitbox_width: float = None
+    hitbox_height: float = None
+    width: float = None
+    height: float = None
+    rotation: float = 0.0
+    character_id: str = None
 
 
 class Map(Entry):
