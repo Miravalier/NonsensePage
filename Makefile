@@ -28,11 +28,11 @@ frontend:
 		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
 		exit 1; \
 	fi
-	sudo mkdir -p /var/www/nonsense/ /var/www/nonsense/files/ /var/www/nonsense/thumbnails/
+	@. ./.env; sudo mkdir -p $$WEB_ROOT/files/ $$WEB_ROOT/thumbnails/
 	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler yarn run vite build
-	sudo rm -rf /var/www/nonsense/assets
-	sudo cp -r frontend/dist/* /var/www/nonsense
-	rm -rf frontend/dist
+	@. ./.env; sudo rm -rf $$WEB_ROOT//assets
+	@. ./.env; sudo cp -r frontend/dist/* $$WEB_ROOT/
+	@rm -rf frontend/dist
 
 
 backend:

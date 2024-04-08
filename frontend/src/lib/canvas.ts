@@ -4,7 +4,7 @@ import * as ContextMenu from "./contextmenu.ts";
 import { Parameter, Require, IsDefined } from "./utils.ts";
 import { Vector2 } from "./vector.ts";
 import { Layer } from "./enums.ts";
-import { ApiRequest } from "./requests.ts";
+import { ApiRequest, Session } from "./requests.ts";
 import { GridFilter } from "../filters/grid.ts";
 import { map, sluDependencies } from "mathjs";
 import { launchWindow } from "../windows/window.ts";
@@ -453,7 +453,7 @@ export class MapCanvas extends Canvas {
             });
         }
 
-        ContextMenu.set(sprite as any, {
+        const contextOptions = {
             "Edit Token": {
                 "Delete Token": async () => {
                     await ApiRequest("/map/update", {
@@ -466,13 +466,17 @@ export class MapCanvas extends Canvas {
                     });
                 }
             },
-            "Change Layer": {
+        };
+        if (Session.gm) {
+            contextOptions["Change Layer"] = {
                 "Background": () => { setTokenLayer(Layer.BACKGROUND); },
                 "Details": () => { setTokenLayer(Layer.DETAILS); },
                 "Characters": () => { setTokenLayer(Layer.CHARACTERS); },
                 "Effects": () => { setTokenLayer(Layer.EFFECTS); },
-            }
-        });
+            };
+        }
+
+        ContextMenu.set(sprite as any, contextOptions);
 
         return spriteContainer;
     }

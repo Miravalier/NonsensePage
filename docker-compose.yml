@@ -12,7 +12,7 @@ services:
         ports:
             - 127.0.0.1:27017:27017
         volumes:
-            - /var/nonsense/db:/data/db
+            - ${DATA_ROOT}/db:/data/db
 
     nonsense_api:
         build: .
@@ -21,9 +21,9 @@ services:
         networks:
             - nonsense
         volumes:
-            - /var/nonsense/server:/data
-            - /var/www/nonsense/thumbnails:/thumbnails
-            - /var/www/nonsense/files:/files
+            - ${DATA_ROOT}/server:/data
+            - ${WEB_ROOT}/thumbnails:/thumbnails
+            - ${WEB_ROOT}/files:/files
         environment:
             - ADMIN_TOKEN=${ADMIN_TOKEN}
 
@@ -35,5 +35,5 @@ services:
         networks:
             - nonsense
         volumes:
-            - /var/www/nonsense:/var/www/nonsense
+            - ${WEB_ROOT}:/var/www/nonsense
             - ./nginx.site:/etc/nginx/conf.d/default.conf

@@ -3,7 +3,7 @@ import { Vector2 } from "../lib/vector.ts";
 import { ApiRequest } from "../lib/requests.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { Parameter } from "../lib/utils.ts";
-import { Character } from "../lib/models.ts";
+import { Character, Permission } from "../lib/models.ts";
 import { Sheet, SheetRegistry } from "../sheets";
 
 
@@ -16,6 +16,17 @@ export class CharacterSheetWindow extends ContentWindow {
         options.size = Parameter(options.size, new Vector2(540, 600));
         super(options);
         this.characterId = null;
+    }
+
+    async onShare(){
+        await ApiRequest("/character/update", {
+            id: this.characterId,
+            changes:{
+                "$set": {
+                    "permissions.*.*": Permission.Read,
+                }
+            }
+        });
     }
 
     async load(id: string) {

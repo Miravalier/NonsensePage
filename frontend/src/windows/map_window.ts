@@ -10,7 +10,7 @@ import { ErrorToast } from "../lib/notifications.ts";
 import { GridFilter } from "../filters/grid.ts";
 import { Button } from "../lib/elements.ts";
 import { Layer } from "../lib/enums.ts";
-import { Character } from "../lib/models.ts";
+import { Character, Permission } from "../lib/models.ts";
 
 
 type MapData = { x: number, y: number, scale: number };
@@ -135,6 +135,17 @@ export class MapWindow extends CanvasWindow {
                 this.translation.applyAdd(this.size.divide(2));
                 this.applyScale();
                 this.applyTranslation();
+            }
+        });
+    }
+
+    async onShare(){
+        await ApiRequest("/map/update", {
+            id: this.mapId,
+            changes:{
+                "$set": {
+                    "permissions.*.*": Permission.Write,
+                }
             }
         });
     }
