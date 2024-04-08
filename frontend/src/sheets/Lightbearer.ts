@@ -315,33 +315,34 @@ export class LightbearerSheet extends GenericSheet {
             }
         }
 
-        const statsContainer = this.container.querySelector<HTMLDivElement>(".stats");
-        for (const field of statsContainer.querySelectorAll<HTMLDivElement>(".field")) {
-            const label = field.querySelector<HTMLDivElement>(".label");
-            const statInput = field.querySelector("input");
-            this.addTrigger(statInput.dataset.attr, (value) => {
-                SetPath(data, statInput.dataset.attr, value);
-            });
-            label.addEventListener("click", async () => {
-                const stat = ResolvePath(data, statInput.dataset.attr);
-                const formula = `2d6+${Math.floor(stat/2)}`;
-                await ApiRequest("/messages/speak", {
-                    speaker: data.name,
-                    character_id: data.id,
-                    content: `
-                        <div class="Lightbearer template">
-                            <div class="stat" data-character-id="${data.id}" data-attr="${statInput.dataset.attr}">
-                                <div class="rolls">
-                                    <div class="dice roll">
-                                        <div class="label">${label.innerText}</div>
-                                        <div class="result">${Dice.Roll(formula).total}</div>
+        for (const statsContainer of this.container.querySelectorAll<HTMLDivElement>(".stats")) {
+            for (const field of statsContainer.querySelectorAll<HTMLDivElement>(".field")) {
+                const label = field.querySelector<HTMLDivElement>(".label");
+                const statInput = field.querySelector("input");
+                this.addTrigger(statInput.dataset.attr, (value) => {
+                    SetPath(data, statInput.dataset.attr, value);
+                });
+                label.addEventListener("click", async () => {
+                    const stat = ResolvePath(data, statInput.dataset.attr);
+                    const formula = `2d6+${Math.floor(stat/2)}`;
+                    await ApiRequest("/messages/speak", {
+                        speaker: data.name,
+                        character_id: data.id,
+                        content: `
+                            <div class="Lightbearer template">
+                                <div class="stat" data-character-id="${data.id}" data-attr="${statInput.dataset.attr}">
+                                    <div class="rolls">
+                                        <div class="dice roll">
+                                            <div class="label">${label.innerText}</div>
+                                            <div class="result">${Dice.Roll(formula).total}</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    `,
+                        `,
+                    });
                 });
-            });
+            }
         }
     }
 }
