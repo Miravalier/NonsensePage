@@ -40,6 +40,8 @@
 .Generic.sheet .field input.number {
     width: 48px;
     max-width: 48px;
+    text-align: center;
+    padding: 0;
 }
 
 .Generic.sheet .label {

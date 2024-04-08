@@ -4,7 +4,6 @@ import { Vector2 } from "./vector.ts";
 import { Permissions } from "./enums.ts";
 import { Entry } from "./models.ts";
 import * as Database from "../lib/database.ts";
-import { catalanDependencies } from "mathjs";
 
 
 export function ColorIntToVec3(value: number): [number, number, number] {
@@ -70,6 +69,22 @@ export function InflateDocument(document: any) {
         cursor[terminal] = InflateDocument(value);
     }
     return result;
+}
+
+
+export function SetPath(object: any, path: string, value: any) {
+    const components = path.split(".");
+    const finalComponent = components.pop();
+
+    let cursor = object;
+    for (const component of components) {
+        if (!cursor[component]) {
+            cursor[component] = {};
+        }
+        cursor = cursor[component];
+    }
+
+    cursor[finalComponent] = value;
 }
 
 

@@ -1,16 +1,16 @@
 import * as ContextMenu from "../lib/contextmenu.ts";
+import * as Dice from "../lib/dice.ts";
 import * as Events from "../lib/events.ts";
 import { PCG } from "../lib/pcg-random.ts";
 import { InputDialog } from "../windows/window.ts";
-import { Ability, AbilityType, Character, Message, RollType } from "../lib/models.ts";
+import { Ability, AbilityType, Character, Message, Roll, RollType } from "../lib/models.ts";
 import { RegisterSheet } from "./sheet.ts";
 import { GenericSheet } from "./Generic.ts";
-import { GenerateId, GetPermissions } from "../lib/utils.ts";
+import { GenerateId, GetPermissions, ResolvePath, SetPath } from "../lib/utils.ts";
 import { ApiRequest } from "../lib/requests.ts";
-import { Roll } from "../lib/dice.ts";
+import { Permissions } from "../lib/enums.ts";
 import LightbearerHtml from "./Lightbearer.html?raw";
 import LightbearerCss from "./Lightbearer.css?raw";
-import { Permissions } from "../lib/enums.ts";
 
 
 const attribute_modifiers = {
@@ -125,16 +125,16 @@ function getIcons(ability: Ability) {
 }
 
 
-function rollAbility(ability: Ability): string {
+function renderRolls(rolls: Roll[]): string {
     let result = "";
-    for (const roll of ability.rolls) {
+    for (const roll of rolls) {
         let subresult = `<div class="${roll.type} roll">`;
         subresult += `<div class="label">${roll.label}</div>`;
         if (roll.type == RollType.Text) {
             subresult += `<div class="result">${roll.formula}</div>`;
         }
         else if (roll.type == RollType.Dice) {
-            const rollResults = Roll(roll.formula);
+            const rollResults = Dice.Roll(roll.formula);
             subresult += `<div class="result">${rollResults.total}</div>`;
         }
         else if (roll.type == RollType.Table) {
@@ -297,22 +297,51 @@ export class LightbearerSheet extends GenericSheet {
                         speaker: data.name,
                         character_id: data.id,
                         content: `
-                        <div class="Lightbearer template">
-                            <div class="ability" data-character-id="${data.id}" data-id="${ability.id}">
-                                <div class="bar">
-                                    <div class="row">
-                                        <div class="icons">${getIcons(ability)}</div>
-                                        <div class="name">${ability.name}</div>
+                            <div class="Lightbearer template">
+                                <div class="ability" data-character-id="${data.id}" data-id="${ability.id}">
+                                    <div class="bar">
+                                        <div class="row">
+                                            <div class="icons">${getIcons(ability)}</div>
+                                            <div class="name">${ability.name}</div>
+                                        </div>
                                     </div>
+                                    <div class="details hidden">${ability.description}</div>
+                                    <div class="rolls">${renderRolls(ability.rolls)}</div>
                                 </div>
-                                <div class="details hidden">${ability.description}</div>
-                                <div class="rolls">${rollAbility(ability)}</div>
                             </div>
-                        </div>
-                    `,
+                        `,
                     });
                 });
             }
+        }
+
+        const statsContainer = this.container.querySelector<HTMLDivElement>(".stats");
+        for (const field of statsContainer.querySelectorAll<HTMLDivElement>(".field")) {
+            const label = field.querySelector<HTMLDivElement>(".label");
+            const statInput = field.querySelector("input");
+            this.addTrigger(statInput.dataset.attr, (value) => {
+                SetPath(data, statInput.dataset.attr, value);
+            });
+            label.addEventListener("click", async () => {
+                const stat = ResolvePath(data, statInput.dataset.attr);
+                const formula = `2d6+${Math.floor(stat/2)}`;
+                await ApiRequest("/messages/speak", {
+                    speaker: data.name,
+                    character_id: data.id,
+                    content: `
+                        <div class="Lightbearer template">
+                            <div class="stat" data-character-id="${data.id}" data-attr="${statInput.dataset.attr}">
+                                <div class="rolls">
+                                    <div class="dice roll">
+                                        <div class="label">${label.innerText}</div>
+                                        <div class="result">${Dice.Roll(formula).total}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                });
+            });
         }
     }
 }

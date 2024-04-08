@@ -4,6 +4,15 @@
     margin-top: 16px;
 }
 
+.Lightbearer.sheet .stats .label {
+    cursor: pointer;
+}
+
+.Lightbearer.sheet .stats .label:hover {
+    color: #ddeeff;
+    text-shadow: 0 0 10px #c6def8;
+}
+
 .Lightbearer.sheet .abilities {
     display: flex;
     flex-flow: column nowrap;

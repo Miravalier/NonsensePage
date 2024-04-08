@@ -1,5 +1,21 @@
 {{ @sheet("Generic", data) /}}
 
+<h1>Stats</h1>
+<div class="stats column">
+    <div class="row">
+        {{ @input("Agility", "number", "data.data.agility") /}}
+        {{ @input("Charisma", "number", "data.data.charisma") /}}
+    </div>
+    <div class="row">
+        {{ @input("Endurance", "number", "data.data.endurance") /}}
+        {{ @input("Memory", "number", "data.data.memory") /}}
+    </div>
+    <div class="row">
+        {{ @input("Strength", "number", "data.data.strength") /}}
+        {{ @input("Perception", "number", "data.data.perception") /}}
+    </div>
+</div>
+
 <h1>Abilities</h1>
 <div class="abilities">
     {{ @if(data.ability_order.length == 0) }}
