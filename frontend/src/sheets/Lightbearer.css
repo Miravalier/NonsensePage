@@ -71,14 +71,14 @@
     align-items: center;
 }
 
-.Lightbearer .rolls {
+.Lightbearer .chat-rolls {
     display: flex;
     flex-flow: row wrap;
     justify-content: center;
     align-items: center;
 }
 
-.Lightbearer .rolls .roll {
+.Lightbearer .roll {
     display: flex;
     flex-flow: row nowrap;
     justify-content: center;
@@ -89,13 +89,13 @@
     margin: 2px;
 }
 
-.Lightbearer .rolls .roll .label {
+.Lightbearer .roll .label {
     margin: 2px;
     padding: 4px;
     background: #00000024;
     border-radius: 8px;
 }
 
-.Lightbearer .rolls .roll .result {
+.Lightbearer .roll .result {
     margin: 4px;
 }

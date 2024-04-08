@@ -2,7 +2,7 @@ import * as ContextMenu from "../lib/contextmenu.ts";
 import { Ability, Roll, RollType } from "../lib/models.ts";
 
 export function RollsFragmentRender(element: HTMLDivElement, ability: Ability) {
-    const rollsContainer = element.querySelector<HTMLDivElement>(".rolls");
+    const rollsContainer = element.querySelector<HTMLDivElement>(".rolls-fragment");
 
     const displayRoll = (roll: Roll) => {
         const rollElement = rollsContainer.appendChild(document.createElement("div"));

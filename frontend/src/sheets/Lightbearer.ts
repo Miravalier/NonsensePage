@@ -13,7 +13,17 @@ import LightbearerHtml from "./Lightbearer.html?raw";
 import LightbearerCss from "./Lightbearer.css?raw";
 
 
-const attribute_modifiers = {
+const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
+
+
+const playableRaces = [
+    "Aarakocra", "Centaur", "Dragonborn", "Dwarf", "Elf",
+    "Gnome", "Goliath", "Halfling", "Human", "Orc", "Satyr",
+    "Tabaxi", "Tiefling", "Triton", "Warforged"
+];
+
+
+const classAttributes = {
     // Classes
     "Assassin": { "agility": 5, "perception": 2, "charisma": -2, "endurance": -2, "power": -2 },
     "Bard": { "charisma": 5, "memory": 5, "perception": -2, "agility": -1, "endurance": -3, "power": -3 },
@@ -41,7 +51,7 @@ const attribute_modifiers = {
     "Warforged": { "power": 3, "endurance": 3, "memory": 3, "perception": -4, "charisma": -4 },
 };
 
-const skill_modifiers = {
+const classSkills = {
     // Classes
     "Assassin": ["stealth", "melee"],
     "Bard": ["spellwork"],
@@ -69,12 +79,7 @@ const skill_modifiers = {
     "Warforged": ["melee"],
 };
 
-const skill_levels = [
-    "Untrained", "Novice", "Skilled",
-    "Expert", "Master", "Legend"
-]
-
-const descriptions = {
+const classDescriptions = {
     // Classes
     "Assassin": "Stealthy, melee, single-target damage dealer",
     "Bard": "Team-oriented with large AoE buffs and debuffs",
@@ -306,7 +311,7 @@ export class LightbearerSheet extends GenericSheet {
                                         </div>
                                     </div>
                                     <div class="details hidden">${ability.description}</div>
-                                    <div class="rolls">${renderRolls(ability.rolls)}</div>
+                                    <div class="chat-rolls">${renderRolls(ability.rolls)}</div>
                                 </div>
                             </div>
                         `,
@@ -331,7 +336,7 @@ export class LightbearerSheet extends GenericSheet {
                         content: `
                             <div class="Lightbearer template">
                                 <div class="stat" data-character-id="${data.id}" data-attr="${statInput.dataset.attr}">
-                                    <div class="rolls">
+                                    <div class="chat-rolls">
                                         <div class="dice roll">
                                             <div class="label">${label.innerText}</div>
                                             <div class="result">${Dice.Roll(formula).total}</div>
