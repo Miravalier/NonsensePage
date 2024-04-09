@@ -120,6 +120,7 @@ export class MapWindow extends CanvasWindow {
             const element = boundary.hitTest(ev.clientX - xOffset, ev.clientY - yOffset);
             if (element) {
                 if (ev.ctrlKey) {
+                    ev.preventDefault();
                     element.emit("scale", ev);
                 }
                 else {

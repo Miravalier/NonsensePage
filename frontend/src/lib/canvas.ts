@@ -6,7 +6,6 @@ import { Vector2 } from "./vector.ts";
 import { Layer } from "./enums.ts";
 import { ApiRequest, Session } from "./requests.ts";
 import { GridFilter } from "../filters/grid.ts";
-import { map, sluDependencies } from "mathjs";
 import { launchWindow } from "../windows/window.ts";
 import { ScaleType } from "./models.ts";
 
@@ -324,8 +323,8 @@ export class MapCanvas extends Canvas {
 
         const applySize = () => {
             if (token.scale_type == ScaleType.Absolute) {
-                sprite.x = token.width;
-                sprite.y = token.height;
+                sprite.width = token.width;
+                sprite.height = token.height;
             }
             else {
                 sprite.scale.x = token.width;
@@ -340,7 +339,7 @@ export class MapCanvas extends Canvas {
 
         let scaleTimeoutHandle: number;
         sprite.on("scale", (ev) => {
-            if (ev.deltaY > 0) {
+            if (ev.deltaY < 0) {
                 token.width *= 1.05;
                 token.height *= 1.05;
             }
