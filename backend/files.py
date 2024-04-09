@@ -1,7 +1,9 @@
 import hashlib
 import os
+import shutil
 from pathlib import Path
 from wand.image import Image
+from wand.color import Color
 
 
 THUMBNAILS_DIR = Path("/thumbnails")
@@ -156,11 +158,17 @@ def sniff(path: Path):
         return "binary"
 
 
-def generate_thumbnail(image_path: Path, force: bool = False):
+def generate_thumbnail(image_path: Path, force: bool = False, svg: bool = False):
     thumbnail_path = THUMBNAILS_DIR / (hashlib.sha256(bytes(image_path)).hexdigest() + ".png")
     if not force and thumbnail_path.exists():
         return
-    with Image(filename=image_path) as image:
+
+    image_params = {"filename": image_path}
+
+    if svg:
+        image_params["background"] = Color('transparent')
+
+    with Image(**image_params) as image:
         with image.clone() as thumbnail:
             thumbnail.thumbnail(128, 128)
             thumbnail.save(filename=thumbnail_path)

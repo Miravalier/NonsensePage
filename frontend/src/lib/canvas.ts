@@ -8,6 +8,7 @@ import { ApiRequest, Session } from "./requests.ts";
 import { GridFilter } from "../filters/grid.ts";
 import { map, sluDependencies } from "mathjs";
 import { launchWindow } from "../windows/window.ts";
+import { ScaleType } from "./models.ts";
 
 
 export const NO_GRID = 0
@@ -96,8 +97,7 @@ export class CanvasContainer {
         const src = Require(options.src);
         const width: number = Parameter(options.width, null);
         const height: number = Parameter(options.height, null);
-        const xScale: number = Parameter(options.xScale, null);
-        const yScale: number = Parameter(options.yScale, null);
+        const scaleType: number = Parameter(options.scaleType, ScaleType.Absolute);
         const rotation: number = Parameter(options.rotation, 0);
         const position = Parameter(options.position, new Vector2(0, 0));
         const z = Parameter(options.z, 0);
@@ -115,32 +115,13 @@ export class CanvasContainer {
         const sprite = PIXI.Sprite.from(texture);
         sprite.anchor.set(0.5, 0.5);
         sprite.rotation = rotation;
-
-        if (width !== null && xScale !== null) {
-            throw Error("sprite width and xScale are mutually exclusive");
-        }
-        if (height !== null && yScale !== null) {
-            throw Error("sprite height and yScale are mutually exclusive");
-        }
-
-        if (width !== null) {
+        if (scaleType == ScaleType.Absolute) {
             sprite.width = width;
-        }
-        else if (xScale !== null) {
-            sprite.scale.x = xScale;
-        }
-        else {
-            sprite.scale.x = 1;
-        }
-
-        if (height !== null) {
             sprite.height = height;
         }
-        else if (yScale !== null) {
-            sprite.scale.y = yScale;
-        }
         else {
-            sprite.scale.y = 1;
+            sprite.scale.x = width;
+            sprite.scale.y = height;
         }
 
         sprite.x = position.x;
@@ -329,6 +310,7 @@ export class MapCanvas extends Canvas {
             z: token.z,
             width: token.width,
             height: token.height,
+            scaleType: token.scale_type,
             rotation: token.rotation,
         };
         const sprite = await container.DrawSprite(spriteOptions);
@@ -340,7 +322,49 @@ export class MapCanvas extends Canvas {
 
         this.tokenNodes[token.id] = sprite;
 
-        let scrollTimeoutHandle: number;
+        const applySize = () => {
+            if (token.scale_type == ScaleType.Absolute) {
+                sprite.x = token.width;
+                sprite.y = token.height;
+            }
+            else {
+                sprite.scale.x = token.width;
+                sprite.scale.y = token.height;
+            }
+        }
+
+        sprite.on("resized", (attribute: string, value: number) => {
+            token[attribute] = value;
+            applySize();
+        });
+
+        let scaleTimeoutHandle: number;
+        sprite.on("scale", (ev) => {
+            if (ev.deltaY > 0) {
+                token.width *= 1.05;
+                token.height *= 1.05;
+            }
+            else {
+                token.width *= 0.95;
+                token.height *= 0.95;
+            }
+            applySize();
+
+            clearTimeout(scaleTimeoutHandle);
+            scaleTimeoutHandle = setTimeout(async () => {
+                await ApiRequest("/map/update", {
+                    id: this.id,
+                    changes: {
+                        "$set": {
+                            [`tokens.${token.id}.width`]: token.width,
+                            [`tokens.${token.id}.height`]: token.height,
+                        },
+                    },
+                });
+            }, 250);
+        });
+
+        let rotateTimeoutHandle: number;
         sprite.on("rotate", (ev) => {
             if (ev.deltaY > 0) {
                 sprite.rotation += 0.2;
@@ -349,8 +373,8 @@ export class MapCanvas extends Canvas {
                 sprite.rotation -= 0.2;
             }
 
-            clearTimeout(scrollTimeoutHandle);
-            scrollTimeoutHandle = setTimeout(async () => {
+            clearTimeout(rotateTimeoutHandle);
+            rotateTimeoutHandle = setTimeout(async () => {
                 await ApiRequest("/map/update", {
                     id: this.id,
                     changes: {

@@ -359,6 +359,7 @@ async def character_list(request: AuthRequest):
         for character in database.characters.find():
             if character.has_permission(request.requester.id, level=Permissions.READ):
                 characters.append((character.id, character.name))
+    characters.sort(key=lambda c: c[1])
     return {"status": "success", "characters": characters}
 
 
@@ -1008,9 +1009,12 @@ async def list_files(request: ListFilesRequest):
         )
         for subpath in path.iterdir()
     ]
+    results.sort()
 
     for file_type, file_path in results:
-        if file_type.startswith("image/"):
+        if file_type == "image/svg":
+            files.generate_thumbnail(user_root / file_path.lstrip("/"), svg=True)
+        elif file_type.startswith("image/"):
             files.generate_thumbnail(user_root / file_path.lstrip("/"))
 
     return {

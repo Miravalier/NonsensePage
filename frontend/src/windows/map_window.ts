@@ -10,7 +10,7 @@ import { ErrorToast } from "../lib/notifications.ts";
 import { GridFilter } from "../filters/grid.ts";
 import { Button } from "../lib/elements.ts";
 import { Layer } from "../lib/enums.ts";
-import { Character, Permission } from "../lib/models.ts";
+import { Character, Permission, ScaleType } from "../lib/models.ts";
 
 
 type MapData = { x: number, y: number, scale: number };
@@ -119,7 +119,12 @@ export class MapWindow extends CanvasWindow {
             const yOffset = this.container.offsetTop + this.viewPort.offsetTop;
             const element = boundary.hitTest(ev.clientX - xOffset, ev.clientY - yOffset);
             if (element) {
-                element.emit("rotate", ev);
+                if (ev.ctrlKey) {
+                    element.emit("scale", ev);
+                }
+                else {
+                    element.emit("rotate", ev);
+                }
             }
             else {
                 // Zoom canvas
@@ -139,10 +144,10 @@ export class MapWindow extends CanvasWindow {
         });
     }
 
-    async onShare(){
+    async onShare() {
         await ApiRequest("/map/update", {
             id: this.mapId,
-            changes:{
+            changes: {
                 "$set": {
                     "permissions.*.*": Permission.Write,
                 }
@@ -263,6 +268,9 @@ export class MapWindow extends CanvasWindow {
                                 y: worldCoords.y,
                                 z: ++this.canvas.highestZIndex,
                                 layer: this.activeLayer,
+                                width: 1,
+                                height: 1,
+                                scale_type: ScaleType.Relative,
                             },
                         },
                     }
@@ -293,6 +301,7 @@ export class MapWindow extends CanvasWindow {
                                 hitbox_width: character.size * map.squareSize,
                                 hitbox_height: character.size * map.squareSize,
                                 character_id: character.id,
+                                scale_type: ScaleType.Absolute,
                             },
                         },
                     }
@@ -320,6 +329,9 @@ export class MapWindow extends CanvasWindow {
                         if (attribute == "x" || attribute == "y" || attribute == "rotation") {
                             sprite.parent.addChild(sprite);
                             sprite[attribute] = numericValue;
+                        }
+                        else if (attribute == "width" || attribute == "height") {
+                            sprite.emit("resized", attribute, numericValue);
                         }
                         else if (attribute == "z") {
                             sprite.zIndex = numericValue;

@@ -1,6 +1,11 @@
 from enum import IntEnum
 
 
+class ScaleType(IntEnum):
+    ABSOLUTE = 0
+    RELATIVE = 1
+
+
 class Permissions(IntEnum):
     INHERIT = 0
     NONE = 1

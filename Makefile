@@ -30,7 +30,7 @@ frontend:
 	fi
 	@. ./.env; sudo mkdir -p $$WEB_ROOT/files/ $$WEB_ROOT/thumbnails/
 	docker run --rm --user $(shell id -u):$(shell id -g) -w /app/frontend -v $(CURDIR):/app nonsense-frontend-compiler yarn run vite build
-	@. ./.env; sudo rm -rf $$WEB_ROOT//assets
+	@. ./.env; sudo rm -rf $$WEB_ROOT/assets
 	@. ./.env; sudo cp -r frontend/dist/* $$WEB_ROOT/
 	@rm -rf frontend/dist
 

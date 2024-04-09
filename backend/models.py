@@ -10,7 +10,8 @@ from typing import Any, Dict, Iterator, List, Optional, Union, Set
 
 from enums import (
     Alignment, Language, Permissions,
-    Layer, GridColor, AbilityType
+    Layer, GridColor, AbilityType,
+    ScaleType
 )
 from utils import current_timestamp
 
@@ -222,6 +223,7 @@ class Token(Entry):
     hitbox_height: float = None
     width: float = None
     height: float = None
+    scale_type: ScaleType = ScaleType.RELATIVE
     rotation: float = 0.0
     character_id: str = None
 

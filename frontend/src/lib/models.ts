@@ -30,6 +30,11 @@ export enum RollType {
     Table = "table",
 }
 
+export enum ScaleType {
+    Absolute = 0,
+    Relative = 1,
+}
+
 export type PermissionTable = {
     [entityId: string]: {
         [field: string]: Permission;
