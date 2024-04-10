@@ -1,3 +1,4 @@
+import { User } from "./models.ts";
 import { ErrorToast } from "./notifications.ts";
 
 
@@ -8,6 +9,7 @@ export class Session {
     static id: string = null as any;
     static ws: WebSocket;
     static subscriptions: { [pool: string]: Set<Subscription> } = {};
+    static user: User;
 }
 
 
@@ -95,16 +97,16 @@ export async function LoginRequest(username: string, password: string) {
     const response: {
         status: string;
         token: string;
-        gm: boolean;
-        id: string;
+        user: User;
     } = await ApiRequest("/login", { username, password });
     if (response.status === "success") {
         localStorage.setItem("token", response.token);
         Session.token = response.token;
     }
-    Session.gm = response.gm;
-    Session.id = response.id;
-    Session.username = username;
+    Session.gm = response.user.is_gm;
+    Session.id = response.user.id;
+    Session.user = response.user;
+    Session.username = response.user.name;
     return response;
 }
 

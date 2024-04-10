@@ -6,106 +6,11 @@ import { InputDialog } from "../windows/window.ts";
 import { Ability, AbilityType, Character, Message, Roll, RollType } from "../lib/models.ts";
 import { RegisterSheet } from "./sheet.ts";
 import { GenericSheet } from "./Generic.ts";
-import { GenerateId, GetPermissions, ResolvePath, SetPath } from "../lib/utils.ts";
+import { AddDragListener, GenerateId, GetPermissions, ResolvePath, SetPath } from "../lib/utils.ts";
 import { ApiRequest } from "../lib/requests.ts";
 import { Permissions } from "../lib/enums.ts";
 import LightbearerHtml from "./Lightbearer.html?raw";
 import LightbearerCss from "./Lightbearer.css?raw";
-
-
-const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
-
-
-const playableRaces = [
-    "Aarakocra", "Centaur", "Dragonborn", "Dwarf", "Elf",
-    "Gnome", "Goliath", "Halfling", "Human", "Orc", "Satyr",
-    "Tabaxi", "Tiefling", "Triton", "Warforged"
-];
-
-
-const classAttributes = {
-    // Classes
-    "Assassin": { "agility": 5, "perception": 2, "charisma": -2, "endurance": -2, "power": -2 },
-    "Bard": { "charisma": 5, "memory": 5, "perception": -2, "agility": -1, "endurance": -3, "power": -3 },
-    "Berserker": { "power": 5, "endurance": 4, "agility": 3, "charisma": -5, "memory": -3, "perception": -3 },
-    "Cleric": { "charisma": 4, "endurance": 3, "agility": -2, "perception": -2, "power": -2 },
-    "Druid": { "memory": 4, "perception": 2, "charisma": -2, "agility": -1, "power": -1, "endurance": -1 },
-    "Elementalist": { "memory": 5, "charisma": -1, "power": -1, "endurance": -1, "agility": -1 },
-    "Guardian": { "endurance": 6, "charisma": 1, "agility": -1, "memory": -1, "perception": -2, "power": -2 },
-    "Necromancer": { "memory": 6, "charisma": -5 },
-    // Races
-    "Aarakocra": { "agility": 3, "perception": 3, "endurance": -2, "memory": -2, "charisma": -1 },
-    "Centaur": { "power": 2, "endurance": 4, "agility": -3, "perception": -2 },
-    "Dragonborn": { "power": 4, "endurance": 2, "agility": -3, "memory": -1, "charisma": -1 },
-    "Dwarf": { "endurance": 4, "agility": -2, "perception": -1 },
-    "Elf": { "agility": 3, "perception": 2, "memory": 2, "power": -3, "endurance": -3 },
-    "Gnome": { "memory": 6, "charisma": 4, "agility": 1, "power": -5, "endurance": -5 },
-    "Goliath": { "endurance": 6, "power": 6, "memory": -4, "charisma": -4, "agility": -3 },
-    "Halfling": { "agility": 2, "charisma": 2, "power": -2, "endurance": -1 },
-    "Human": {},
-    "Orc": { "power": 2, "agility": 2, "endurance": 2, "memory": -2, "perception": -2, "charisma": -1 },
-    "Satyr": { "memory": 4, "agility": 2, "power": -2, "endurance": -2, "perception": -1 },
-    "Tabaxi": { "agility": 6, "perception": 3, "power": -2, "endurance": -4, "memory": -2 },
-    "Tiefling": { "power": 3, "memory": 3, "charisma": -4, "agility": -1 },
-    "Triton": { "perception": 2, "agility": 2, "memory": 2, "power": -3, "endurance": -2 },
-    "Warforged": { "power": 3, "endurance": 3, "memory": 3, "perception": -4, "charisma": -4 },
-};
-
-const classSkills = {
-    // Classes
-    "Assassin": ["stealth", "melee"],
-    "Bard": ["spellwork"],
-    "Berserker": ["melee"],
-    "Cleric": ["spellwork"],
-    "Druid": ["spellwork", "tracking"],
-    "Elementalist": ["spellwork"],
-    "Guardian": ["melee"],
-    "Necromancer": ["spellwork"],
-    // Races
-    "Aarakocra": ["tracking"],
-    "Centaur": ["ranged"],
-    "Dragonborn": ["melee"],
-    "Dwarf": ["artifice"],
-    "Elf": ["ranged"],
-    "Gnome": ["spellwork"],
-    "Goliath": ["melee"],
-    "Halfling": ["stealth"],
-    "Human": ["artifice"],
-    "Orc": ["melee", "melee"],
-    "Satyr": ["spellwork"],
-    "Tabaxi": ["stealth"],
-    "Tiefling": ["spellwork"],
-    "Triton": ["tracking"],
-    "Warforged": ["melee"],
-};
-
-const classDescriptions = {
-    // Classes
-    "Assassin": "Stealthy, melee, single-target damage dealer",
-    "Bard": "Team-oriented with large AoE buffs and debuffs",
-    "Berserker": "Frontline brute with risky abilities",
-    "Cleric": "Healer and ranged support",
-    "Druid": "Shapeshifting jack of all trades",
-    "Elementalist": "High-damage ranged powerhouse",
-    "Guardian": "Melee tank that keeps allies out of danger",
-    "Necromancer": "Undead-summoning ranged support",
-    // Races
-    "Aarakocra": "Agile and capable of flight",
-    "Centaur": "Fast and tough",
-    "Dragonborn": "Scaled and breathes fire",
-    "Dwarf": "Short and sturdy",
-    "Elf": "Agile and perceptive",
-    "Gnome": "Small and weak, but intelligent",
-    "Goliath": "Massive and strong",
-    "Halfling": "Small and unassuming",
-    "Human": "Adaptable",
-    "Orc": "Athletic and resilient",
-    "Satyr": "Intelligent and energetic",
-    "Tabaxi": "Nimble feline humanoid",
-    "Tiefling": "Cunning half-demon",
-    "Triton": "Amphibious with natural electricity",
-    "Warforged": "Automaton created by war mages",
-};
 
 
 function getIcons(ability: Ability) {
@@ -159,7 +64,8 @@ export class LightbearerSheet extends GenericSheet {
         const permission = GetPermissions(data);
 
         if (permission >= Permissions.WRITE) {
-            ContextMenu.set(this.container.querySelector(".abilities"), {
+            const abilityContainer = this.container.querySelector<HTMLDivElement>(".abilities");
+            ContextMenu.set(abilityContainer, {
                 "Create": {
                     "New Ability": () => {
                         const abilityId = GenerateId();
@@ -169,6 +75,17 @@ export class LightbearerSheet extends GenericSheet {
                         });
                     },
                 },
+            });
+            this.parent.addDropListener(abilityContainer, (data) => {
+                if (data.type != "ability") {
+                    return;
+                }
+                const droppedAbility: Ability = data.ability;
+                droppedAbility.id = GenerateId();
+                this.update({
+                    "$set": { [`ability_map.${droppedAbility.id}`]: droppedAbility },
+                    "$push": { "ability_order": droppedAbility.id },
+                });
             });
         }
         for (const abilityElement of this.container.querySelectorAll<HTMLDivElement>(".ability")) {
@@ -180,6 +97,8 @@ export class LightbearerSheet extends GenericSheet {
             const useButton = abilityBar.querySelector("i.button");
             const abilityId = abilityElement.dataset.id;
             const ability = data.ability_map[abilityId];
+
+            AddDragListener(abilityElement, { type: "ability", characterId: data.id, ability });
 
             // If the entire ability changes, propagate to each subfield
             this.addTrigger(`ability_map.${abilityId}`, (value) => {
@@ -329,7 +248,7 @@ export class LightbearerSheet extends GenericSheet {
                 });
                 label.addEventListener("click", async () => {
                     const stat = ResolvePath(data, statInput.dataset.attr);
-                    const formula = `2d6+${Math.floor(stat/2)}`;
+                    const formula = `2d6+${Math.floor(stat / 2)}`;
                     await ApiRequest("/messages/speak", {
                         speaker: data.name,
                         character_id: data.id,

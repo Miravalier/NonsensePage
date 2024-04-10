@@ -114,13 +114,15 @@ export class MapWindow extends CanvasWindow {
         });
 
         this.viewPort.addEventListener("wheel", ev => {
+            if (ev.ctrlKey) {
+                ev.preventDefault();
+            }
             const boundary = new PIXI.EventBoundary(this.canvas.app.stage);
             const xOffset = this.container.offsetLeft + this.viewPort.offsetLeft;
             const yOffset = this.container.offsetTop + this.viewPort.offsetTop;
             const element = boundary.hitTest(ev.clientX - xOffset, ev.clientY - yOffset);
             if (element) {
                 if (ev.ctrlKey) {
-                    ev.preventDefault();
                     element.emit("scale", ev);
                 }
                 else {

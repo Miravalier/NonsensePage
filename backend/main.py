@@ -155,7 +155,7 @@ async def login(request: LoginRequest):
         "user_id": user.id,
         "last_auth_date": datetime.utcnow(),
     })
-    return {"status": "success", "token": auth_token, "gm": user.is_gm, "id": user.id}
+    return {"status": "success", "token": auth_token, "user": user.model_dump()}
 
 
 class AuthRequest(BaseModel):
@@ -325,12 +325,22 @@ async def character_update(request: CharacterUpdateRequest):
 
 
 class CharacterGetRequest(AuthRequest):
-    id: str
+    id: str = None
+    name: str = None
 
 
 @app.post("/api/character/get")
 async def character_get(request: CharacterGetRequest):
-    character = require(database.characters.find_one(request.id), "invalid character id")
+    if request.id is None and request.name is None:
+        raise JsonError("get character by either id or name, passed neither")
+    if request.id is not None and request.name is not None:
+        raise JsonError("get character by either id or name, passed both")
+
+    if request.id:
+        character = require(database.characters.find_one(request.id), "invalid character id")
+    else:
+        character = require(database.characters.find_one({"name": request.name}), "invalid character name")
+
     permission = request.requester.is_gm or character.has_permission(request.requester.id, "*", Permissions.READ)
     if permission:
         return {"status": "success", "character": character.model_dump()}
@@ -855,9 +865,7 @@ async def live_connection(websocket: WebSocket):
 async def status(request: AuthRequest):
     return {
         "status": "success",
-        "id": request.requester.id,
-        "username": request.requester.name,
-        "gm": request.requester.is_gm,
+        "user": request.requester.model_dump(),
     }
 
 

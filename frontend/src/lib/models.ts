@@ -71,6 +71,13 @@ export interface Entry {
     data: any;
 }
 
+export interface User extends Entry {
+    type: "user";
+    is_gm: boolean;
+    character_id: string | null;
+    languages: Language[];
+}
+
 export interface Message {
     type: "message";
     id: string;

@@ -99,3 +99,20 @@
 .Lightbearer .roll .result {
     margin: 4px;
 }
+
+.Lightbearer.creator {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.Lightbearer.creator h1 {
+    margin: 4px;
+    margin-top: 16px;
+}
+
+.Lightbearer.creator p {
+    margin: 4px;
+}

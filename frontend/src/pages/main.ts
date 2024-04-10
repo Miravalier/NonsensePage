@@ -10,6 +10,7 @@ import { ApiRequest, Session, Subscribe, WsConnect } from "../lib/requests.ts";
 import { CharacterListWindow } from "../windows/character_list_window.ts";
 import { CheckUpdates } from "../lib/pending_updates.ts";
 import { MapListWindow } from "../windows/map_list_window.ts";
+import { CharacterCreatorWindow } from "../windows/character_creator_window.ts";
 import {
     launchWindow, windows, InputDialog,
     applyLayout, SerializedWindow,
@@ -47,9 +48,10 @@ async function OnLoad() {
         window.location.href = "/login";
     }
 
-    Session.gm = response.gm;
-    Session.username = response.username;
-    Session.id = response.id;
+    Session.gm = response.user.is_gm;
+    Session.id = response.user.id;
+    Session.user = response.user;
+    Session.username = response.user.name;
 }
 
 
@@ -207,16 +209,22 @@ async function Main() {
 
     ContextMenu.set(document.body, contextOptions);
 
-    const defaultLayout = window.localStorage.getItem("defaultLayout");
-    if (defaultLayout != null) {
-        const layouts = JSON.parse(window.localStorage.getItem("layouts"));
-        await applyLayout(layouts[defaultLayout]);
+    if (!Session.gm && !Session.user.character_id) {
+        const characterCreator = new CharacterCreatorWindow({});
+        await characterCreator.load();
     }
     else {
-        const chatWindow = new ChatWindow({
-            size: new Vector2(400, window.innerHeight - 64),
-            position: new Vector2(window.innerWidth - 400, 0),
-        });
-        await chatWindow.load();
+        const defaultLayout = localStorage.getItem("defaultLayout");
+        if (defaultLayout != null) {
+            const layouts = JSON.parse(localStorage.getItem("layouts"));
+            await applyLayout(layouts[defaultLayout]);
+        }
+        else {
+            const chatWindow = new ChatWindow({
+                size: new Vector2(400, window.innerHeight - 64),
+                position: new Vector2(window.innerWidth - 400, 0),
+            });
+            await chatWindow.load();
+        }
     }
 }
