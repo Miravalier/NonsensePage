@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import random
 import secrets
 import shutil
 import starlette.websockets
@@ -516,6 +517,30 @@ async def combat_sort(request: CombatSortRequest):
     return {"status": "success"}
 
 
+class CombatShuffleRequest(AuthRequest):
+    id: str
+
+
+@app.post("/api/combat/shuffle")
+async def combat_sort(request: CombatShuffleRequest):
+    combat = require(database.combats.find_one(request.id), "invalid combat id")
+    require(len(combat.combatants) > 0, "not enough combatants")
+    if not request.requester.is_gm:
+        auth_require(combat.has_permission(request.requester.id, "*", Permissions.WRITE))
+
+    combatants = list(combat.combatants)
+    random.shuffle(combatants)
+
+    update = {"$set": {
+        "combatants": [c.model_dump() for c in combatants],
+    }}
+
+    database.combats.find_one_and_update(request.id, update)
+    await combat.broadcast_changes(update)
+
+    return {"status": "success"}
+
+
 class CombatClearRequest(AuthRequest):
     id: str
 
@@ -644,13 +669,16 @@ async def combat_list(request: AuthRequest):
 
 
 class AddCombatantRequest(AuthRequest):
-    combat_id: str
+    combat_id: str = None
     character_id: str
 
 
 @app.post("/api/combat/add-combatant")
 async def add_combatant(request: AddCombatantRequest):
-    combat = require(database.combats.find_one(request.combat_id), "invalid combat id")
+    if request.combat_id is None:
+        combat = require(database.combats.find_one({}), "no combat")
+    else:
+        combat = require(database.combats.find_one(request.combat_id), "invalid combat id")
     character = require(database.characters.find_one(request.character_id), "invalid character id")
 
     if not request.requester.is_gm:

@@ -13,7 +13,7 @@ import LightbearerHtml from "./Lightbearer.html?raw";
 import LightbearerCss from "./Lightbearer.css?raw";
 
 
-function getIcons(ability: Ability) {
+export function getAbilityIcons(ability: Ability) {
     let icons = "";
     const typeIcon = {
         [AbilityType.Free]: "fa-regular fa-circle",
@@ -114,13 +114,13 @@ export class LightbearerSheet extends GenericSheet {
             });
             this.addTrigger(`ability_map.${abilityId}.description`, (value) => {
                 ability.description = value;
-                abilityDescription.innerHTML = value;
+                abilityDescription.innerHTML = value.replace("\n", "<br>");
             });
             this.addTrigger(`ability_map.${abilityId}.rolls`, (value) => {
                 ability.rolls = value;
             });
             const updateIcons = () => {
-                abilityIcons.innerHTML = getIcons(ability);
+                abilityIcons.innerHTML = getAbilityIcons(ability);
                 if (ability.type == AbilityType.Passive) {
                     abilityName.classList.add("passive");
                 }
@@ -225,11 +225,11 @@ export class LightbearerSheet extends GenericSheet {
                                 <div class="ability" data-character-id="${data.id}" data-id="${ability.id}">
                                     <div class="bar">
                                         <div class="row">
-                                            <div class="icons">${getIcons(ability)}</div>
+                                            <div class="icons">${getAbilityIcons(ability)}</div>
                                             <div class="name">${ability.name}</div>
                                         </div>
                                     </div>
-                                    <div class="details hidden">${ability.description}</div>
+                                    <div class="details hidden">${ability.description.replace("\n", "<br>")}</div>
                                     <div class="chat-rolls">${renderRolls(ability.rolls)}</div>
                                 </div>
                             </div>

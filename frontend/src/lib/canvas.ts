@@ -478,6 +478,13 @@ export class MapCanvas extends Canvas {
 
         const contextOptions = {
             "Edit Token": {
+                "Combat Tracker": async () => {
+                    if (token.character_id) {
+                        await ApiRequest("/combat/add-combatant", {
+                            character_id: token.character_id,
+                        });
+                    }
+                },
                 "Delete Token": async () => {
                     await ApiRequest("/map/update", {
                         id: this.id,

@@ -5,15 +5,12 @@ import * as Fragments from "../fragments/fragment.ts";
 
 
 export class CharacterCreatorWindow extends ContentWindow {
-    data: any;
-
     constructor(options) {
         options.classList = ["character-creator"];
         options.size = Parameter(options.size, new Vector2(600, 600));
         options.title = Parameter(options.title, "Character Creation");
         super(options);
-        this.data = {};
-        Fragments.RenderFragment(this.content, "lightbearer_cc", this.data);
+        Fragments.RenderFragment(this.content, "lightbearer_cc", { window: this });
     }
 }
 registerWindowType(CharacterCreatorWindow);

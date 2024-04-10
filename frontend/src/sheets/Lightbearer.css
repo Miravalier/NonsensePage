@@ -116,3 +116,17 @@
 .Lightbearer.creator p {
     margin: 4px;
 }
+
+.Lightbearer.creator .ability {
+    opacity: 60%;
+    background: #00000036;
+    padding: 2px;
+    margin: 4px 2px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.Lightbearer.creator .ability.selected {
+    opacity: 100%;
+    background: #00000036;
+}

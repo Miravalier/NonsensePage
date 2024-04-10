@@ -73,6 +73,15 @@ export class CombatTrackerWindow extends ContentWindow {
                 });
             });
 
+            const shuffleButton = buttonContainer.appendChild(Html(`
+                <button type="button" class="shuffle">Shuffle</button>
+            `));
+            shuffleButton.addEventListener("click", async () => {
+                await ApiRequest("/combat/shuffle", {
+                    id: this.combatId,
+                });
+            });
+
             const clearButton = buttonContainer.appendChild(Html(`
                 <button type="button" class="clear">Clear</button>
             `));

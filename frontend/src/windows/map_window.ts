@@ -2,15 +2,16 @@ import * as PIXI from "pixi.js";
 
 import * as ContextMenu from "../lib/contextmenu.ts";
 import { CanvasWindow, registerWindowType } from "./window.ts";
-import { Parameter, GenerateId, LocalPersist } from "../lib/utils.ts";
+import { Parameter, GenerateId, LocalPersist, RandomLetter } from "../lib/utils.ts";
 import { Vector2 } from "../lib/vector.ts";
 import { ApiRequest, Session } from "../lib/requests.ts";
 import { MapCanvas } from "../lib/canvas.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { GridFilter } from "../filters/grid.ts";
 import { Button } from "../lib/elements.ts";
-import { Layer } from "../lib/enums.ts";
+import { Alignment, Layer } from "../lib/enums.ts";
 import { Character, Permission, ScaleType } from "../lib/models.ts";
+import { PCG } from "../lib/pcg-random.ts";
 
 
 type MapData = { x: number, y: number, scale: number };
@@ -280,11 +281,33 @@ export class MapWindow extends CanvasWindow {
                 });
             }
             else if (data.type == "character") {
-                const response: {
+                const getResponse: {
                     status: string;
                     character: Character;
                 } = await ApiRequest("/character/get", { id: data.id });
-                const character = response.character;
+                let character = getResponse.character;
+
+                if (character.alignment != Alignment.PLAYER) {
+                    character.name = `${getResponse.character.name} - ${PCG.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ" as any)}${PCG.choice("0123456789" as any)}`;
+                    const createResponse: {
+                        status: string;
+                        id: string;
+                    } = await ApiRequest("/character/create", {
+                        name: character.name,
+                    });
+                    character.id = createResponse.id;
+                    const characterInfo = {
+                        image: character.image,
+                        hp: character.max_hp,
+                        max_hp: character.max_hp,
+                        data: character.data,
+                        ability_order: character.ability_order,
+                        ability_map: character.ability_map,
+                        description: character.description,
+                    };
+                    await ApiRequest("/character/update", { id: createResponse.id, changes: { "$set": characterInfo } });
+                }
+
                 const worldCoords = this.canvas.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
                 const newId = GenerateId();
                 await ApiRequest("/map/update", {

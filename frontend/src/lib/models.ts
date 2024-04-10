@@ -108,7 +108,7 @@ export interface Character extends Entity {
     type: "character";
     description: string;
     image: string;
-    alignment: string;
+    alignment: number;
     hp: number;
     max_hp: number;
     size: number;
