@@ -66,8 +66,13 @@ export class CharacterSheetWindow extends ContentWindow {
         await sheet.init(character);
 
         // Set up update watcher
-        await this.subscribe(id, async update => {
-            sheet.onUpdate(update.changes);
+        await this.subscribe(id, async broadcast => {
+            if (broadcast.type == "update") {
+                sheet.onUpdate(broadcast.changes);
+            }
+            else if (broadcast.type == "delete") {
+                this.close();
+            }
         });
     }
 
