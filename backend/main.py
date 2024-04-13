@@ -23,7 +23,7 @@ import ws_handlers
 from models import (
     Character, Item, User, Session,
     Connection, Combat, Message,
-    get_pool
+    Folder, get_pool
 )
 from enums import Alignment, Language, Permissions
 from errors import AuthError, JsonError
@@ -102,6 +102,16 @@ async def send_message(content: str, *, user: User, speaker: str = "System", cha
         else:
             await connection.send(foreign_broadcast)
     return message
+
+
+def delete_character_folder(folder: Folder):
+    # Delete the folder itself
+    database.character_folders.delete_one(folder.id)
+    # Delete all characters in this folder
+    database.characters.delete_many({"folder_id": folder.id})
+    # Recursively delete all child folders
+    for subfolder in database.character_folders.find({"parent_id": folder.id}):
+        delete_character_folder(subfolder)
 
 
 class AdminConsoleRequest(BaseModel):
@@ -188,6 +198,19 @@ class GMRequest(BaseModel):
         return user
 
 
+class ReAuthRequest(BaseModel):
+    token: str
+
+
+@app.post("/api/re-auth")
+async def reauthenticate(request: ReAuthRequest):
+    require(database.sessions.find_one_and_update(
+        {"auth_token": request.token},
+        {"$set": {"last_auth_date": datetime.utcnow()}}
+    ))
+    return {"status": "success"}
+
+
 class UserCreateRequest(GMRequest):
     username: str
     password: str
@@ -243,9 +266,61 @@ async def item_delete(request: ItemDeleteRequest):
     return {"status": "success"}
 
 
+class CharacterMoveRequest(AuthRequest):
+    character_id: Optional[str] = None
+    folder_id: Optional[str] = None
+    dst_id: Optional[str] = None
+
+
+@app.post("/api/character/move")
+async def character_move(request: CharacterMoveRequest):
+    if request.dst_id is not None:
+        dst_folder = require(database.character_folders.find_one(request.dst_id), "invalid folder id")
+        if not request.requester.is_gm:
+            auth_require(dst_folder.has_permission(request.requester.id, "*", Permissions.WRITE))
+
+    require(request.character_id or request.folder_id, "no src specified")
+    require(not (request.character_id and request.folder_id), "both folder and character ids specified")
+
+    if request.character_id is not None:
+        character = require(database.characters.find_one(request.character_id), "invalid character id")
+        require(character.folder_id != request.dst_id, "src and dst folder must differ")
+        if not request.requester.is_gm:
+            auth_require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
+        database.characters.find_one_and_update(request.character_id, {"$set": {"folder_id": request.dst_id}})
+        await character.pool.broadcast({
+            "type": "move",
+            "src": character.folder_id,
+            "dst": request.dst_id,
+        })
+        await get_pool("characters").broadcast({
+            "type": "move",
+            "src": character.folder_id,
+            "dst": request.dst_id,
+            "id": character.id,
+            "name": character.name,
+        })
+
+    if request.folder_id is not None:
+        folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
+        require(folder.parent_id != request.dst_id, "src and dst folder must differ")
+        if not request.requester.is_gm:
+            auth_require(folder.has_permission(request.requester.id, "*", Permissions.OWNER))
+        database.character_folders.find_one_and_update(request.folder_id, {"$set": {"parent_id": request.dst_id}})
+        await get_pool("characters").broadcast({
+            "type": "movedir",
+            "src": folder.parent_id,
+            "dst": request.dst_id,
+            "id": folder.id,
+            "name": folder.name,
+        })
+    return {"status": "success"}
+
+
 class CharacterCreateRequest(AuthRequest):
     name: str
     alignment: Optional[Alignment] = None
+    folder_id: Optional[str] = None
 
 
 @app.post("/api/character/create")
@@ -262,6 +337,11 @@ async def character_create(request: CharacterCreateRequest):
         options["alignment"] = request.alignment
     if not request.requester.is_gm:
         options["permissions"] = {"*": {"*": Permissions.READ}, request.requester.id: {"*": Permissions.OWNER}}
+    if request.folder_id is not None:
+        folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
+        if not request.requester.is_gm:
+            auth_require(folder.has_permission(request.requester.id, "*", Permissions.WRITE))
+        options["folder_id"] = request.folder_id
 
     character = database.characters.create(options)
 
@@ -274,6 +354,7 @@ async def character_create(request: CharacterCreateRequest):
 
     await get_pool("characters").broadcast({
         "type": "create",
+        "folder": character.folder_id,
         "id": character.id,
         "name": character.name,
     })
@@ -295,6 +376,7 @@ async def character_delete(request: CharacterDeleteRequest):
     })
     await get_pool("characters").broadcast({
         "type": "delete",
+        "folder": character.folder_id,
         "id": character.id,
     })
     return {"status": "success"}
@@ -318,6 +400,7 @@ async def character_update(request: CharacterUpdateRequest):
     if name := request.changes.get("$set", {}).get("name", None):
         await get_pool("characters").broadcast({
             "type": "rename",
+            "folder": character.folder_id,
             "id": request.id,
             "name": name,
         })
@@ -360,18 +443,74 @@ async def character_get(request: CharacterGetRequest):
         }
 
 
+class CharacterMkdirRequest(AuthRequest):
+    name: str
+    parent: Optional[str] = None
+
+
+@app.post("/api/character/mkdir")
+async def character_mkdir(request: CharacterMkdirRequest):
+    if request.parent is not None:
+        require(database.character_folders.find_one(request.parent), "invalid folder id")
+    options = {"name": request.name, "parent_id": request.parent}
+    if not request.requester.is_gm:
+        options["permissions"] = {"*": {"*": Permissions.READ}, request.requester.id: {"*": Permissions.OWNER}}
+    folder = database.character_folders.create(options)
+    await get_pool("characters").broadcast({
+        "type": "mkdir",
+        "folder": request.parent,
+        "id": folder.id,
+        "name": folder.name,
+    })
+    return {"status": "success", "id": folder.id}
+
+
+class CharacterRmdirRequest(AuthRequest):
+    folder_id: str
+
+
+@app.post("/api/character/rmdir")
+async def character_rmdir(request: CharacterRmdirRequest):
+    folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
+    if not request.requester.is_gm:
+        auth_require(folder.has_permission(request.requester.id, "*", Permissions.OWNER))
+    delete_character_folder(folder)
+    await get_pool("characters").broadcast({
+        "type": "rmdir",
+        "folder": folder.id,
+    })
+    return {"status": "success"}
+
+
+class CharacterListRequest(AuthRequest):
+    folder_id: Optional[str] = None
+
+
 @app.post("/api/character/list")
-async def character_list(request: AuthRequest):
+async def character_list(request: CharacterListRequest):
+    if request.folder_id is not None:
+        folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
+        parent_id = folder.parent_id
+    else:
+        parent_id = None
+    subfolders = []
     characters = []
     if request.requester.is_gm:
-        for character in database.characters.find():
+        for folder in database.character_folders.find({"parent_id": request.folder_id}):
+            subfolders.append((folder.id, folder.name))
+        for character in database.characters.find({"folder_id": request.folder_id}):
             characters.append((character.id, character.name))
+
     else:
-        for character in database.characters.find():
+        for folder in database.character_folders.find({"parent_id": request.folder_id}):
+            if folder.has_permission(request.requester.id, level=Permissions.READ):
+                subfolders.append((folder.id, folder.name))
+        for character in database.characters.find({"folder_id": request.folder_id}):
             if character.has_permission(request.requester.id, level=Permissions.READ):
                 characters.append((character.id, character.name))
+    subfolders.sort(key=lambda f: f[1])
     characters.sort(key=lambda c: c[1])
-    return {"status": "success", "characters": characters}
+    return {"status": "success", "parent_id": parent_id, "subfolders": subfolders, "characters": characters}
 
 
 @app.post("/api/map/create")

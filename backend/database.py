@@ -104,6 +104,7 @@ users = DocumentCollection(db.users, models.User)
 combats = DocumentCollection(db.combats, models.Combat)
 maps = DocumentCollection(db.maps, models.Map)
 messages = DocumentCollection(db.messages, models.Message)
+character_folders = DocumentCollection(db.character_folders, models.Folder)
 
 sessions = DocumentCollection(db.sessions, models.Session)
 sessions.create_index("auth_token")

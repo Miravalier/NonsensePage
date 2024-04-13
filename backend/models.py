@@ -172,8 +172,14 @@ class Item(Entity, Container):
     description: str = ""
 
 
+class Folder(Entry):
+    type: str = "folder"
+    parent_id: Optional[str] = None
+
+
 class Character(Entity, Container):
     type: str = "character"
+    folder_id: Optional[str] = None
     description: str = ""
     image: str = ""
     alignment: Alignment = Alignment.NEUTRAL

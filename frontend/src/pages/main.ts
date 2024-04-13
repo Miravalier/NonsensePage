@@ -13,11 +13,19 @@ import { CharacterListWindow } from "../windows/character_list_window.ts";
 import { CheckUpdates } from "../lib/pending_updates.ts";
 import { MapListWindow } from "../windows/map_list_window.ts";
 import { CharacterCreatorWindow } from "../windows/character_creator_window.ts";
+import { Character } from "../lib/models.ts";
 import {
     launchWindow, windows, InputDialog,
     applyLayout, SerializedWindow,
 } from "../windows/window.ts";
 import { ErrorToast } from "../lib/notifications.ts";
+
+
+declare global {
+    interface Window {
+        Nonsense: any;
+    }
+}
 
 
 window.addEventListener("load", async () => {
@@ -26,11 +34,35 @@ window.addEventListener("load", async () => {
 });
 
 
-export function LogOut() {
+function LogOut() {
     localStorage.removeItem("token");
     Session.token = null as any;
     console.log("Logged out, redirecting to /login");
     window.location.href = "/login";
+}
+
+
+async function LoadCharacters(path: string = null) {
+    const response: {
+        status: string,
+        characters: [string, string][],
+    } = await ApiRequest("/character/list", { path });
+    if (response.status != "success") {
+        throw Error("failed to list characters");
+    }
+
+    const results = [];
+    for (let [id, _name] of response.characters) {
+        const response: {
+            status: string;
+            character: Character;
+        } = await ApiRequest("/character/get", { id });
+        if (response.status == "success") {
+            results.push(response.character);
+        }
+    }
+
+    return results;
 }
 
 
@@ -49,6 +81,10 @@ async function OnLoad() {
         window.location.href = "/login";
     }
 
+    // Re-auth now and every 15 minutes
+    ApiRequest("/re-auth");
+    setInterval(ApiRequest, 900000, "/re-auth");
+
     Session.gm = response.user.is_gm;
     Session.id = response.user.id;
     Session.user = response.user;
@@ -57,6 +93,13 @@ async function OnLoad() {
     for (const ruleset of Rulesets) {
         await ruleset.init();
     }
+
+    // Add functions to the window
+    window.Nonsense = {
+        ApiRequest,
+        LogOut,
+        LoadCharacters,
+    };
 }
 
 
@@ -180,8 +223,7 @@ async function Main() {
         },
         "Settings": {
             "Log Out": () => {
-                localStorage.removeItem("token");
-                location.reload();
+                LogOut();
             }
         }
     };
