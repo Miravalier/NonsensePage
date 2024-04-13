@@ -12,7 +12,7 @@ import {
     AddDropListener,
     GenerateId,
 } from "../lib/utils.js";
-import { Fragments } from "../fragments";
+import { Fragments } from "../lib/fragments.ts";
 
 
 export type SerializedWindow = {
@@ -500,7 +500,7 @@ export function InputDialog(title: string, inputs: { [label: string]: any }, acc
             const fragment = inputValue;
             const data = secondaryValue;
             const [fragmentTemplate, fragmentCallback] = Fragments[inputValue];
-            const template = Templates.loadTemplate("fragment-" + fragment, fragmentTemplate);
+            const template = Templates.LoadTemplate("fragment-" + fragment, fragmentTemplate);
             inputElement.innerHTML = template(data);
             fragmentCallback(inputElement, data);
         }

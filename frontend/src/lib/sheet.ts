@@ -1,25 +1,9 @@
-import * as Templates from "../lib/templates.ts";
-import { Character, Permission } from "../lib/models.ts";
-import { AddDropListener, GetPermissions, ResolvePath } from '../lib/utils.ts';
-import { ApiRequest } from "../lib/requests.ts";
-import { ErrorToast } from "../lib/notifications.ts";
+import * as Templates from "./templates.ts";
+import { Character, Permission } from "./models.ts";
+import { AddDropListener, GetPermissions, ResolvePath } from './utils.ts';
+import { ApiRequest } from "./requests.ts";
+import { ErrorToast } from "./notifications.ts";
 import { CharacterSheetWindow } from "../windows/character_sheet_window.ts";
-
-
-export const SheetRegistry: {
-    [name: string]:
-    {
-        new(characterId: string, parent: CharacterSheetWindow): Sheet
-    }
-} = {};
-
-export const SheetResources: {
-    [name: string]:
-    {
-        html: string;
-        css: string;
-    }
-} = {};
 
 
 /**
@@ -174,20 +158,30 @@ export class Sheet {
      * associated with this sheet, then renders it.
      */
     async init(data: Character) {
-        this.container.className = `sheet ${data.sheet_type}`;
-        const { html, css } = SheetResources[this.constructor.name];
-        Templates.loadCss(this.constructor.name, css);
-        this.template = Templates.loadTemplate(this.constructor.name, html);
+        this.container.classList.add("sheet");
+        const { html } = SheetRegistry[this.constructor.name];
+        this.template = Templates.LoadTemplate(this.constructor.name, html);
         await this.render(data);
     }
 }
 
 
-export function RegisterSheet(
-    type: { new(characterId: string, parent: CharacterSheetWindow): Sheet },
-    html: string,
-    css: string,
-) {
-    SheetRegistry[type.name] = type;
-    SheetResources[type.name] = { html, css };
+export const SheetRegistry: {
+    [name: string]:
+    {
+        type: {
+            new(characterId: string, parent: CharacterSheetWindow): Sheet
+        },
+        html: string
+    }
+} = { default: { type: Sheet, html: "" } };
+
+
+export function RegisterSheet(type: { new(characterId: string, parent: CharacterSheetWindow): Sheet }, html: string) {
+    SheetRegistry[type.name] = { type, html };
+}
+
+export function RegisterDefaultSheet(type: { new(characterId: string, parent: CharacterSheetWindow): Sheet }, html: string) {
+    SheetRegistry[type.name] = { type, html };
+    SheetRegistry.default = SheetRegistry[type.name];
 }

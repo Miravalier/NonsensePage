@@ -1,16 +1,17 @@
-import { Ability, AbilityType, Character } from "../lib/models.ts";
-import { ErrorToast } from "../lib/notifications.ts";
-import { ApiRequest } from "../lib/requests.ts";
-import { getAbilityIcons } from "../sheets/Lightbearer.ts";
+import { Ability, AbilityType, Character } from "../../lib/models.ts";
+import { ErrorToast } from "../../lib/notifications.ts";
+import { ApiRequest } from "../../lib/requests.ts";
+import { BaseWindow } from "../../windows/window.ts";
+import { getAbilityIcons } from "./character.ts";
 
-const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
+// const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
 
 
-const playableRaces = [
-    "Aarakocra", "Centaur", "Dragonborn", "Dwarf", "Elf",
-    "Gnome", "Goliath", "Halfling", "Human", "Orc", "Satyr",
-    "Tabaxi", "Tiefling", "Triton", "Warforged"
-];
+// const playableRaces = [
+//     "Aarakocra", "Centaur", "Dragonborn", "Dwarf", "Elf",
+//     "Gnome", "Goliath", "Halfling", "Human", "Orc", "Satyr",
+//     "Tabaxi", "Tiefling", "Triton", "Warforged"
+// ];
 
 
 const classMaxHp = {
@@ -111,7 +112,7 @@ const classDescriptions = {
 
 
 
-export function LightbearerCreatorRender(container: HTMLDivElement, data: any) {
+export function LightbearerCreatorRender(container: HTMLDivElement, data: { window: BaseWindow }) {
     const classSelect = container.querySelector<HTMLSelectElement>(".class");
     const raceSelect = container.querySelector<HTMLSelectElement>(".race");
     const classDescription = container.querySelector<HTMLDivElement>(".class-description");

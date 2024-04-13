@@ -1,16 +1,12 @@
-import * as ContextMenu from "../lib/contextmenu.ts";
-import * as Dice from "../lib/dice.ts";
-import * as Events from "../lib/events.ts";
-import { PCG } from "../lib/pcg-random.ts";
-import { InputDialog } from "../windows/window.ts";
-import { Ability, AbilityType, Character, Message, Roll, RollType } from "../lib/models.ts";
-import { RegisterSheet } from "./sheet.ts";
-import { GenericSheet } from "./Generic.ts";
-import { AddDragListener, GenerateId, GetPermissions, ResolvePath, SetPath } from "../lib/utils.ts";
-import { ApiRequest } from "../lib/requests.ts";
-import { Permissions } from "../lib/enums.ts";
-import LightbearerHtml from "./Lightbearer.html?raw";
-import LightbearerCss from "./Lightbearer.css?raw";
+import * as ContextMenu from "../../lib/contextmenu.ts";
+import * as Dice from "../../lib/dice.ts";
+import { PCG } from "../../lib/pcg-random.ts";
+import { InputDialog } from "../../windows/window.ts";
+import { Ability, AbilityType, Character, Message, Roll, RollType } from "../../lib/models.ts";
+import { Sheet } from "../../lib/sheet.ts";
+import { AddDragListener, GenerateId, GetPermissions, ResolvePath, SetPath } from "../../lib/utils.ts";
+import { ApiRequest } from "../../lib/requests.ts";
+import { Permissions } from "../../lib/enums.ts";
 
 
 export function getAbilityIcons(ability: Ability) {
@@ -58,9 +54,10 @@ function renderRolls(rolls: Roll[]): string {
 }
 
 
-export class LightbearerSheet extends GenericSheet {
+export class LightbearerSheet extends Sheet {
     onRender(data: Character): void {
         super.onRender(data);
+        this.container.classList.add("Lightbearer");
         const permission = GetPermissions(data);
 
         if (permission >= Permissions.WRITE) {
@@ -270,11 +267,3 @@ export class LightbearerSheet extends GenericSheet {
         }
     }
 }
-RegisterSheet(LightbearerSheet, LightbearerHtml, LightbearerCss);
-
-
-Events.register("renderMessage", (_message: Message, element: HTMLDivElement) => {
-    element.querySelector(".bar")?.addEventListener("click", () => {
-        element.querySelector(".details")?.classList.toggle("hidden");
-    });
-});

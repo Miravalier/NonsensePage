@@ -2,6 +2,8 @@ import * as ContextMenu from "../lib/contextmenu.ts";
 import * as Database from "../lib/database.ts";
 import * as Notifications from "../lib/notifications.ts";
 import * as Templates from "../lib/templates.ts";
+import { IntroRegistry } from "../lib/intro.ts";
+import { Rulesets } from "../rulesets";
 import { Vector2 } from "../lib/vector.ts";
 import { CombatTrackerWindow } from "../windows/combat_tracker_window.ts";
 import { ChatWindow } from "../windows/chat_window.ts";
@@ -16,7 +18,6 @@ import {
     applyLayout, SerializedWindow,
 } from "../windows/window.ts";
 import { ErrorToast } from "../lib/notifications.ts";
-import * as Sheets from "../sheets";
 
 
 window.addEventListener("load", async () => {
@@ -52,13 +53,10 @@ async function OnLoad() {
     Session.id = response.user.id;
     Session.user = response.user;
     Session.username = response.user.name;
-}
 
-
-function PreloadRuleset(ruleset: string) {
-    const { html, css } = Sheets.SheetResources[ruleset + "Sheet"];
-    Templates.loadCss(ruleset + "Sheet", css);
-    Templates.loadTemplate(ruleset + "Sheet", html);
+    for (const ruleset of Rulesets) {
+        await ruleset.init();
+    }
 }
 
 
@@ -73,9 +71,6 @@ async function Main() {
     await ContextMenu.init();
     await Notifications.init();
     await Templates.init();
-
-    PreloadRuleset("Generic");
-    PreloadRuleset("Lightbearer");
 
     Subscribe("show/window", (data: { user: string; type: string; data: any; }) => {
         if (Session.id == data.user) {
@@ -209,7 +204,7 @@ async function Main() {
 
     ContextMenu.set(document.body, contextOptions);
 
-    if (!Session.gm && !Session.user.character_id) {
+    if (!Session.gm && !Session.user.character_id && IntroRegistry.html !== null) {
         const characterCreator = new CharacterCreatorWindow({});
         await characterCreator.load();
     }

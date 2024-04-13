@@ -4,7 +4,7 @@ import { ApiRequest } from "../lib/requests.ts";
 import { ErrorToast } from "../lib/notifications.ts";
 import { Parameter } from "../lib/utils.ts";
 import { Character, Permission } from "../lib/models.ts";
-import { Sheet, SheetRegistry } from "../sheets";
+import { Sheet, SheetRegistry } from "../lib/sheet.ts";
 
 
 export class CharacterSheetWindow extends ContentWindow {
@@ -18,10 +18,10 @@ export class CharacterSheetWindow extends ContentWindow {
         this.characterId = null;
     }
 
-    async onShare(){
+    async onShare() {
         await ApiRequest("/character/update", {
             id: this.characterId,
-            changes:{
+            changes: {
                 "$set": {
                     "permissions.*.*": Permission.Read,
                 }
@@ -57,8 +57,12 @@ export class CharacterSheetWindow extends ContentWindow {
         this.setTitle(character.name);
 
         // Load sheet content
-        const SheetType = SheetRegistry[character.sheet_type + "Sheet"];
-        const sheet = new SheetType(character.id, this);
+        let registeredSheet = SheetRegistry[character.sheet_type];
+        if (!registeredSheet) {
+            registeredSheet = SheetRegistry.default;
+        }
+        const { type } = registeredSheet;
+        const sheet = new type(character.id, this);
         await sheet.init(character);
 
         // Set up update watcher

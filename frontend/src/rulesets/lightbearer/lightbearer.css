@@ -1,3 +1,59 @@
+.Lightbearer.sheet {
+    display: flex;
+    flex-flow: column nowrap;
+    padding: 4px;
+}
+
+.Lightbearer.sheet .header {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: stretch;
+    align-items: stretch;
+}
+
+.Lightbearer.sheet .header img {
+    width: 48px;
+    height: 48px;
+}
+
+.Lightbearer.sheet .region {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.Lightbearer.sheet .field {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 8px;
+}
+
+.Lightbearer.sheet .field input {
+    flex: 1;
+    width: 64px;
+    padding-left: 2px;
+}
+
+.Lightbearer.sheet .field input.number {
+    width: 48px;
+    max-width: 48px;
+    text-align: center;
+    padding: 0;
+}
+
+.Lightbearer.sheet .label {
+    text-wrap: nowrap;
+    margin-right: 2px;
+}
+
+.Lightbearer.sheet textarea.description {
+    margin: 0px 4px;
+    height: 24em;
+}
+
 .Lightbearer.sheet h1 {
     text-align: center;
     font-size: 20px;

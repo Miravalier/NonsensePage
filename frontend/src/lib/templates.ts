@@ -1,6 +1,5 @@
 import * as Sqrl from 'squirrelly';
-import { SheetResources } from '../sheets';
-import { Fragments } from '../fragments';
+import { Fragments } from './fragments.ts';
 
 
 const fetchCache: { [url: string]: any } = {};
@@ -18,26 +17,9 @@ export async function init() {
         const data = content.params[1];
         // Render output
         const [fragmentTemplate, fragmentCallback] = Fragments[fragment];
-        const template = loadTemplate("fragment-" + fragment, fragmentTemplate);
+        const template = LoadTemplate("fragment-" + fragment, fragmentTemplate);
         if (fragmentCallback && data.helperData) {
             data.helperData.fragmentCallbacks.push(fragmentCallback);
-        }
-        return template(data);
-    });
-
-    Sqrl.helpers.define("sheet", function (content, _blocks, _config): string {
-        // Sort out parameters
-        if (content.params.length != 2) {
-            throw Error("@sheet helper requires 2 parameters");
-        }
-        const sheet = content.params[0];
-        const data = content.params[1];
-        // Render output
-        const { html, css } = SheetResources[sheet + "Sheet"];
-        loadCss(sheet + "Sheet", css);
-        const template = loadTemplate(sheet + "Sheet", html);
-        if (data.helperData) {
-            data.helperData.sheet.container.classList.add(sheet);
         }
         return template(data);
     });
@@ -147,7 +129,7 @@ export async function init() {
 }
 
 
-export async function fetchCss(url: string): Promise<HTMLLinkElement> {
+export async function FetchCss(url: string): Promise<HTMLLinkElement> {
     let link: HTMLLinkElement = fetchCache[url];
     if (link) {
         return link;
@@ -164,7 +146,7 @@ export async function fetchCss(url: string): Promise<HTMLLinkElement> {
 }
 
 
-export function loadCss(key: string, content: string): HTMLStyleElement {
+export function LoadCss(key: string, content: string): HTMLStyleElement {
     let styleElement: HTMLStyleElement = loadCache["css-" + key];
     if (styleElement) {
         return styleElement;
@@ -179,7 +161,7 @@ export function loadCss(key: string, content: string): HTMLStyleElement {
 }
 
 
-export async function fetchTemplate(url: string): Promise<(data: any) => string> {
+export async function FetchTemplate(url: string): Promise<(data: any) => string> {
     let template: (data: any) => string = fetchCache[url];
     if (template) {
         return template;
@@ -198,7 +180,7 @@ export async function fetchTemplate(url: string): Promise<(data: any) => string>
 }
 
 
-export function loadTemplate(key: string, content: string): (data: any) => string {
+export function LoadTemplate(key: string, content: string): (data: any) => string {
     let template: (data: any) => string = loadCache["html-" + key];
     if (template) {
         return template;
@@ -211,4 +193,11 @@ export function loadTemplate(key: string, content: string): (data: any) => strin
 
     loadCache["html-" + key] = template;
     return template;
+}
+
+export function RenderFragment(container: HTMLDivElement, name: string, data: any = {}) {
+    const [fragmentTemplate, fragmentCallback] = Fragments[name];
+    const template = LoadTemplate("fragment-" + name, fragmentTemplate);
+    container.innerHTML = template(data);
+    fragmentCallback(container, data);
 }

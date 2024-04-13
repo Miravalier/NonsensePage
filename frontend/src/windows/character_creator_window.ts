@@ -1,7 +1,8 @@
 import { Vector2 } from "../lib/vector.ts";
 import { ContentWindow, registerWindowType } from "./window.ts";
 import { Parameter } from "../lib/utils.ts";
-import * as Fragments from "../fragments/fragment.ts";
+import { IntroRegistry } from "../lib/intro.ts";
+import { LoadTemplate } from "../lib/templates.ts";
 
 
 export class CharacterCreatorWindow extends ContentWindow {
@@ -10,7 +11,11 @@ export class CharacterCreatorWindow extends ContentWindow {
         options.size = Parameter(options.size, new Vector2(600, 600));
         options.title = Parameter(options.title, "Character Creation");
         super(options);
-        Fragments.RenderFragment(this.content, "lightbearer_cc", { window: this });
+        const { html, callback } = IntroRegistry;
+        const template = LoadTemplate("intro", html);
+        const data = { window: this };
+        this.content.innerHTML = template(data);
+        callback(this.content, data);
     }
 }
 registerWindowType(CharacterCreatorWindow);

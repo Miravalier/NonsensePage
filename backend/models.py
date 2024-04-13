@@ -181,7 +181,7 @@ class Character(Entity, Container):
     max_hp: float = 0
     size: float = 1
     scale: float = 1.0
-    sheet_type: str = "Lightbearer"
+    sheet_type: str = "default"
     ability_map: Dict[str, Ability] = Field(default_factory=dict)
     ability_order: List[str] = Field(default_factory=list)
 
