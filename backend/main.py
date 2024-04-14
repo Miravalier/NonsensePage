@@ -299,6 +299,7 @@ async def character_move(request: CharacterMoveRequest):
             "dst": request.dst_id,
             "id": character.id,
             "name": character.name,
+            "image": character.image,
         })
 
     if request.folder_id is not None:
@@ -521,7 +522,7 @@ async def character_list(request: CharacterListRequest):
         for folder in database.character_folders.find({"parent_id": request.folder_id}):
             subfolders.append((folder.id, folder.name))
         for character in database.characters.find({"folder_id": request.folder_id}):
-            characters.append((character.id, character.name))
+            characters.append((character.id, character.name, character.image))
 
     else:
         for folder in database.character_folders.find({"parent_id": request.folder_id}):
@@ -529,7 +530,7 @@ async def character_list(request: CharacterListRequest):
                 subfolders.append((folder.id, folder.name))
         for character in database.characters.find({"folder_id": request.folder_id}):
             if character.has_permission(request.requester.id, level=Permissions.READ):
-                characters.append((character.id, character.name))
+                characters.append((character.id, character.name, character.image))
     subfolders.sort(key=lambda f: f[1])
     characters.sort(key=lambda c: c[1])
     return {

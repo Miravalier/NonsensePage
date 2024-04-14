@@ -2,7 +2,7 @@ import * as ContextMenu from "../lib/ContextMenu.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
 import { ApiRequest, Session, FileUpload } from "../lib/Requests.ts";
 import { Vector2 } from "../lib/Vector.ts";
-import { Parameter, AddDragListener, Leaf, Parent, PathConcat } from "../lib/Utils.ts";
+import { Parameter, AddDragListener, Leaf, Parent, PathConcat, GetThumbnail } from "../lib/Utils.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 
 
@@ -190,12 +190,7 @@ export class FileWindow extends ContentWindow {
 
         let icon;
         if (filetype.startsWith("image/")) {
-            const encoder = new TextEncoder();
-            let thumbnail = "/thumbnails/";
-            for (let byte of new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(urlPath)))) {
-                thumbnail += byte.toString(16).padStart(2, '0');
-            }
-            thumbnail += ".png";
+            const thumbnail = await GetThumbnail(urlPath);
             icon = document.createElement("img");
             icon.classList = "tiny thumbnail";
             icon.src = thumbnail;

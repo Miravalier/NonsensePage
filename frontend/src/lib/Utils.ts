@@ -332,6 +332,17 @@ export function Require<T>(argument: T): T {
 }
 
 
+export async function GetThumbnail(url: string): Promise<string> {
+    const encoder = new TextEncoder();
+    let thumbnail = "/thumbnails/";
+    for (let byte of new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(url)))) {
+        thumbnail += byte.toString(16).padStart(2, '0');
+    }
+    thumbnail += ".png";
+    return thumbnail;
+}
+
+
 const FREQUENCIES = [
     0.075187970,
     0.015037594,

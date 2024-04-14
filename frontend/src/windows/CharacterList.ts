@@ -4,7 +4,7 @@ import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from ".
 import { ApiRequest } from "../lib/Requests.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { CharacterSheetWindow } from "./CharacterSheet.ts";
-import { Parameter, AddDragListener, IsDefined } from "../lib/Utils.ts";
+import { Parameter, AddDragListener, IsDefined, GetThumbnail } from "../lib/Utils.ts";
 
 
 export class CharacterListWindow extends ContentWindow {
@@ -116,11 +116,19 @@ export class CharacterListWindow extends ContentWindow {
         });
     }
 
-    async addCharacter(id: string, name: string) {
+    async addCharacter(id: string, name: string, image: string = null) {
         const element = this.characters.appendChild(document.createElement("div"));
         element.dataset.character = id;
         element.className = "character";
-        element.innerText = name;
+        const icon = element.appendChild(document.createElement("img"));
+        icon.className = "tiny thumbnail";
+        if (image) {
+            icon.src = await GetThumbnail(image);
+        }
+        else {
+            icon.src = "/unknown.png";
+        }
+        element.appendChild(document.createTextNode(name));
         element.addEventListener("click", async () => {
             const characterSheetWindow = new CharacterSheetWindow({
                 title: "Character Sheet",
@@ -170,7 +178,7 @@ export class CharacterListWindow extends ContentWindow {
             name: string,
             parent_id: string,
             subfolders: [string, string][],
-            characters: [string, string][],
+            characters: [string, string, string][],
         } = await ApiRequest("/character/list", { folder_id: this.folderId });
         if (response.status != "success") {
             ErrorToast("Failed to load character list.");
@@ -190,8 +198,8 @@ export class CharacterListWindow extends ContentWindow {
             await this.addFolder(id, name);
         }
 
-        for (let [id, name] of response.characters) {
-            await this.addCharacter(id, name);
+        for (let [id, name, image] of response.characters) {
+            await this.addCharacter(id, name, image);
         }
 
         await this.subscribe("characters", async updateData => {
@@ -208,7 +216,7 @@ export class CharacterListWindow extends ContentWindow {
                 if (updateData.folder != this.folderId) {
                     return;
                 }
-                await this.addCharacter(updateData.id, updateData.name);
+                await this.addCharacter(updateData.id, updateData.name, null);
             }
             else if (updateData.type == "rename") {
                 if (updateData.folder != this.folderId) {
@@ -227,7 +235,7 @@ export class CharacterListWindow extends ContentWindow {
                     }
                 }
                 else if (updateData.dst == this.folderId) {
-                    await this.addCharacter(updateData.id, updateData.name);
+                    await this.addCharacter(updateData.id, updateData.name, updateData.image);
                 }
             }
             else if (updateData.type == "rmdir") {
