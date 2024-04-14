@@ -186,3 +186,18 @@
     opacity: 100%;
     background: #00000036;
 }
+
+.Lightbearer.caption {
+    padding: 4px;
+    border-radius: 4px;
+    background: #00000066;
+    display: flex;
+    flex-flow: row wrap;
+    max-width: 100px;
+    justify-content: center;
+    align-items: center;
+}
+
+.Lightbearer.caption .die {
+    margin: 4px;
+}
