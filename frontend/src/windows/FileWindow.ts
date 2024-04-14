@@ -29,6 +29,7 @@ export class FileWindow extends ContentWindow {
     uploadFileButton: HTMLButtonElement;
     createFolderButton: HTMLButtonElement;
     filePicker: HTMLInputElement;
+    viewSelect: HTMLSelectElement;
     path: string;
     view: string;
 
@@ -85,13 +86,13 @@ export class FileWindow extends ContentWindow {
             });
         });
 
-        const viewSelect = this.buttons.appendChild(document.createElement("select"));
-        viewSelect.innerHTML = `
+        this.viewSelect = this.buttons.appendChild(document.createElement("select"));
+        this.viewSelect.innerHTML = `
             <option value="detail">Detail</option>
             <option value="images">Images</option>
         `;
-        viewSelect.addEventListener("change", () => {
-            this.view = viewSelect.value;
+        this.viewSelect.addEventListener("change", () => {
+            this.view = this.viewSelect.value;
             if (this.view != "detail") {
                 this.files.classList.remove("detail");
             }
@@ -123,6 +124,7 @@ export class FileWindow extends ContentWindow {
         if (view) {
             this.view = view;
         }
+        this.viewSelect.value = this.view;
 
         if (this.view != "detail") {
             this.files.classList.remove("detail");
