@@ -1,15 +1,16 @@
+import { Future } from "./Async.ts";
 import { Html } from "./Elements.ts";
 
 // Globals
 let contextMenuElement: HTMLDivElement = null;
-let contextMenuResolve: (value: [MouseEvent, string]) => void = null;
+let contextMenuFuture: Future<[MouseEvent, string]> = null;
 
 
 export function close() {
     if (contextMenuElement !== null) {
         contextMenuElement.remove();
         contextMenuElement = null;
-        contextMenuResolve([null, null]);
+        contextMenuFuture.resolve([null, null]);
     }
 }
 
@@ -30,6 +31,7 @@ export function set(element: HTMLElement, options: { [category: string]: { [choi
         if (options == null) {
             return;
         }
+        contextMenuFuture = new Future();
 
         const callbacks: { [choice: string]: (ev: MouseEvent) => void } = {};
         const categoryDivs: string[] = [];
@@ -74,15 +76,13 @@ export function set(element: HTMLElement, options: { [category: string]: { [choi
             choiceElement.addEventListener("click", ev => {
                 ev.preventDefault();
                 ev.stopPropagation();
+                contextMenuFuture.resolve([ev, choiceElement.dataset.choice]);
                 contextMenuElement.remove();
                 contextMenuElement = null;
-                contextMenuResolve([ev, choiceElement.dataset.choice]);
             });
         }
 
-        const [resolvingEvent, selectedOption] = await new Promise<[MouseEvent, string]>((resolve) => {
-            contextMenuResolve = resolve;
-        });
+        const [resolvingEvent, selectedOption] = await contextMenuFuture;
         if (selectedOption) {
             callbacks[selectedOption](resolvingEvent);
         }

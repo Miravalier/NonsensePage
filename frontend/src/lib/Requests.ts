@@ -1,5 +1,6 @@
 import { User } from "./Models.ts";
 import { ErrorToast } from "./Notifications.ts";
+import { Sleep } from "./Async.ts";
 
 
 export class Session {
@@ -10,6 +11,7 @@ export class Session {
     static ws: WebSocket;
     static subscriptions: { [pool: string]: Set<Subscription> } = {};
     static user: User;
+    static connectionFailures: number = 0;
 }
 
 
@@ -30,8 +32,8 @@ export function HandleWsMessage(data: any) {
 
 
 export async function WsConnect() {
-    let ws_prefix = (window.location.protocol === "https:" ? "wss:" : "ws:");
-    Session.ws = new WebSocket(`${ws_prefix}//${window.location.host}/api/live`);
+    let ws_prefix = (location.protocol === "https:" ? "wss:" : "ws:");
+    Session.ws = new WebSocket(`${ws_prefix}//${location.host}/api/live`);
     Session.ws.onopen = () => {
         Session.ws.send(JSON.stringify({ "token": Session.token }));
         for (let [pool, subscription_set] of Object.entries(Session.subscriptions)) {
@@ -39,13 +41,18 @@ export async function WsConnect() {
                 Session.ws.send(JSON.stringify({ type: "subscribe", pool }));
             }
         }
+        Session.connectionFailures = 0;
     }
     Session.ws.onmessage = ev => {
         const data = JSON.parse(ev.data);
         HandleWsMessage(data);
     };
     Session.ws.onclose = async () => {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (Session.connectionFailures >= 5) {
+            location.reload();
+        }
+        Session.connectionFailures++;
+        await Sleep(1000 * Math.pow(2, Session.connectionFailures));
         WsConnect();
     };
 }

@@ -28,8 +28,13 @@ declare global {
 
 
 window.addEventListener("load", async () => {
-    await OnLoad();
-    await Main();
+    try {
+        await OnLoad();
+        await Main();
+    }
+    catch (error) {
+        document.body.innerHTML = '<div class="watermark">Failed to connect to the server. Wait a while and refresh the page.</div>';
+    }
 });
 
 
@@ -105,7 +110,9 @@ async function OnLoad() {
 async function Main() {
     await WsConnect();
     setInterval(() => {
-        Session.ws.send(JSON.stringify({ type: "heartbeat" }));
+        if (Session.ws.readyState == WebSocket.OPEN) {
+            Session.ws.send(JSON.stringify({ type: "heartbeat" }));
+        }
     }, 5000);
 
     await Database.init();

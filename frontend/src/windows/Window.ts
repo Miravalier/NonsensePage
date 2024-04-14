@@ -13,6 +13,7 @@ import {
     GenerateId,
 } from "../lib/Utils.js";
 import { Fragments } from "../lib/Fragments.ts";
+import { Future } from "../lib/Async.ts";
 
 
 export type SerializedWindow = {
@@ -459,7 +460,7 @@ export class Dialog extends ContentWindow {
 registerWindowType(Dialog);
 
 
-export function InputDialog(title: string, inputs: { [label: string]: any }, acceptText: string): Promise<{ [label: string]: any }> {
+export async function InputDialog(title: string, inputs: { [label: string]: any }, acceptText: string): Promise<{ [label: string]: any }> {
     const inputElements = [];
     for (const [labelText, inputData] of Object.entries(inputs)) {
         let inputType;
@@ -554,44 +555,47 @@ export function InputDialog(title: string, inputs: { [label: string]: any }, acc
         ]
     });
 
-    return new Promise((resolve) => {
-        let results = null;
-        acceptButton.addEventListener("click", () => {
-            results = {};
-            for (const [label, inputElement] of inputElements) {
-                let value;
-                if (inputElement.classList.contains("fragment")) {
-                    continue;
-                }
-                if (inputElement.type == "number") {
-                    value = parseInt(inputElement.value);
-                }
-                else if (inputElement.type == "checkbox") {
-                    value = inputElement.checked;
-                }
-                else {
-                    value = inputElement.value;
-                }
-                results[label.textContent] = value;
+    const future = new Future<{ [label: string]: any }>();
+
+    acceptButton.addEventListener("click", () => {
+        const results: { [label: string]: any } = {};
+        for (const [label, inputElement] of inputElements) {
+            let value;
+            if (inputElement.classList.contains("fragment")) {
+                continue;
             }
-            dialog.close();
-        });
-        cancelButton.addEventListener("click", () => {
-            dialog.close();
-        });
-        dialog.on_close.push(() => {
-            resolve(results);
-        });
+            if (inputElement.type == "number") {
+                value = parseInt(inputElement.value);
+            }
+            else if (inputElement.type == "checkbox") {
+                value = inputElement.checked;
+            }
+            else {
+                value = inputElement.value;
+            }
+            results[label.textContent] = value;
+        }
+        future.resolve(results);
+        dialog.close();
     });
+    cancelButton.addEventListener("click", () => {
+        dialog.close();
+    });
+    dialog.on_close.push(() => {
+        future.resolve(null);
+    });
+
+    return await future;
 }
 
 
-export function ConfirmDialog(prompt: string): Promise<boolean> {
+export async function ConfirmDialog(prompt: string): Promise<boolean> {
     const confirmButton = Button("check");
     confirmButton.appendChild(document.createTextNode("Confirm"));
     const cancelButton = Button("ban");
     cancelButton.appendChild(document.createTextNode("Cancel"));
 
+    const future = new Future<boolean>();
     const dialog = new Dialog({
         title: "Confirm",
         description: prompt,
@@ -600,23 +604,21 @@ export function ConfirmDialog(prompt: string): Promise<boolean> {
         ],
     });
 
-    return new Promise<boolean>((resolve) => {
-        let result = false;
-        confirmButton.addEventListener("click", () => {
-            result = true;
-            dialog.close();
-        });
-        cancelButton.addEventListener("click", () => {
-            result = false;
-            dialog.close();
-        });
-        dialog.on_close.push(() => {
-            resolve(result);
-        });
+    dialog.on_close.push(() => {
+        future.resolve(false);
     });
+    confirmButton.addEventListener("click", () => {
+        future.resolve(true);
+        dialog.close();
+    });
+    cancelButton.addEventListener("click", () => {
+        dialog.close();
+    });
+
+    return await future;
 }
 
-export function ImageSelectDialog(prompt: string): Promise<string> {
+export async function ImageSelectDialog(prompt: string): Promise<string> {
     const confirmButton = Button("check");
     confirmButton.appendChild(document.createTextNode("Confirm"));
     const cancelButton = Button("ban");
@@ -634,20 +636,20 @@ export function ImageSelectDialog(prompt: string): Promise<string> {
         ],
     });
 
-    return new Promise<string>((resolve) => {
-        let result: string = null;
-        confirmButton.addEventListener("click", () => {
-            result = filePicker.files[0].name;
-            dialog.close();
-        });
-        cancelButton.addEventListener("click", () => {
-            result = null;
-            dialog.close();
-        });
-        dialog.on_close.push(() => {
-            resolve(result);
-        });
+    const future = new Future<string>();
+
+    dialog.on_close.push(() => {
+        future.resolve(null);
     });
+    confirmButton.addEventListener("click", () => {
+        future.resolve(filePicker.files[0].name);
+        dialog.close();
+    });
+    cancelButton.addEventListener("click", () => {
+        dialog.close();
+    });
+
+    return await future;
 }
 
 

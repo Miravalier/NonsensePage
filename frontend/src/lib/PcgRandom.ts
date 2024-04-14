@@ -6,7 +6,7 @@ export class PcgEngine {
     state: bigint;
     inc: bigint;
 
-    constructor(seed = undefined, inc = undefined) {
+    constructor(seed: bigint = undefined, inc: bigint = undefined) {
         if (seed === null && inc === null) {
             return;
         }
