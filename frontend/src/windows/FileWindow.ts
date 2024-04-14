@@ -70,7 +70,7 @@ export class FileWindow extends ContentWindow {
         this.createFolderButton.type = "button";
         this.createFolderButton.className = "create-folder";
         this.createFolderButton.appendChild(document.createTextNode("Create Folder"));
-        this.createFolderButton.addEventListener("click", async ev => {
+        this.createFolderButton.addEventListener("click", async () => {
             const selection = await InputDialog("Create Folder", { "Name": "text" }, "Create");
             if (!selection || !selection.Name) {
                 return;

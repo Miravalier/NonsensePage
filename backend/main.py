@@ -302,6 +302,7 @@ async def character_move(request: CharacterMoveRequest):
         })
 
     if request.folder_id is not None:
+        require(request.folder_id != request.dst_id, "folder cannot contain itself")
         folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
         require(folder.parent_id != request.dst_id, "src and dst folder must differ")
         if not request.requester.is_gm:
@@ -443,13 +444,32 @@ async def character_get(request: CharacterGetRequest):
         }
 
 
-class CharacterMkdirRequest(AuthRequest):
+class CharacterFolderRenameRequest(AuthRequest):
+    id: str
+    name: str
+
+
+@app.post("/api/character/folder/rename")
+async def character_folder_rename(request: CharacterFolderRenameRequest):
+    folder = require(database.character_folders.find_one(request.id), "invalid folder id")
+    if not request.requester.is_gm:
+        auth_require(folder.has_permission(request.requester.id, "*", Permissions.OWNER))
+    database.character_folders.find_one_and_update(request.id, {"$set": {"name": request.name}})
+    await get_pool("characters").broadcast({
+        "type": "renamedir",
+        "folder": request.id,
+        "name": request.name,
+    })
+    return {"status": "success"}
+
+
+class CharacterFolderCreateRequest(AuthRequest):
     name: str
     parent: Optional[str] = None
 
 
-@app.post("/api/character/mkdir")
-async def character_mkdir(request: CharacterMkdirRequest):
+@app.post("/api/character/folder/create")
+async def character_folder_create(request: CharacterFolderCreateRequest):
     if request.parent is not None:
         require(database.character_folders.find_one(request.parent), "invalid folder id")
     options = {"name": request.name, "parent_id": request.parent}
@@ -465,12 +485,12 @@ async def character_mkdir(request: CharacterMkdirRequest):
     return {"status": "success", "id": folder.id}
 
 
-class CharacterRmdirRequest(AuthRequest):
+class CharacterFolderDeleteRequest(AuthRequest):
     folder_id: str
 
 
-@app.post("/api/character/rmdir")
-async def character_rmdir(request: CharacterRmdirRequest):
+@app.post("/api/character/folder/delete")
+async def character_folder_delete(request: CharacterFolderDeleteRequest):
     folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
     if not request.requester.is_gm:
         auth_require(folder.has_permission(request.requester.id, "*", Permissions.OWNER))
@@ -490,8 +510,10 @@ class CharacterListRequest(AuthRequest):
 async def character_list(request: CharacterListRequest):
     if request.folder_id is not None:
         folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
+        folder_name = folder.name
         parent_id = folder.parent_id
     else:
+        folder_name = "/"
         parent_id = None
     subfolders = []
     characters = []
@@ -510,7 +532,13 @@ async def character_list(request: CharacterListRequest):
                 characters.append((character.id, character.name))
     subfolders.sort(key=lambda f: f[1])
     characters.sort(key=lambda c: c[1])
-    return {"status": "success", "parent_id": parent_id, "subfolders": subfolders, "characters": characters}
+    return {
+        "status": "success",
+        "name": folder_name,
+        "parent_id": parent_id,
+        "subfolders": subfolders,
+        "characters": characters
+    }
 
 
 @app.post("/api/map/create")

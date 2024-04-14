@@ -1,7 +1,7 @@
 import * as ContextMenu from "../lib/ContextMenu.ts";
 import { Vector2 } from "../lib/Vector.ts";
-import { ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
-import { ApiRequest, Session } from "../lib/Requests.ts";
+import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
+import { ApiRequest } from "../lib/Requests.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { CharacterSheetWindow } from "./CharacterSheet.ts";
 import { Parameter, AddDragListener, IsDefined } from "../lib/Utils.ts";
@@ -47,11 +47,30 @@ export class CharacterListWindow extends ContentWindow {
             if (!selection || !selection.Name) {
                 return;
             }
-            await ApiRequest("/character/mkdir", { name: selection.Name, parent: this.folderId });
+            await ApiRequest("/character/folder/create", { name: selection.Name, parent: this.folderId });
         });
 
         this.folderId = null;
         this.ancestorIds = new Set();
+    }
+
+    async addParentFolder(id: string) {
+        const element = this.characters.appendChild(document.createElement("div"));
+        element.dataset.folder = id;
+        element.className = "character folder";
+        element.innerHTML = `<i class="fa-solid fa-folder-arrow-up"></i> ..`;
+        element.addEventListener("click", async () => {
+            this.ancestorIds.delete(this.folderId);
+            await this.load(id);
+        });
+        this.addDropListener(element, async (dropData) => {
+            if (dropData.type == "characterFolder") {
+                await ApiRequest("/character/move", { folder_id: dropData.id, dst_id: id });
+            }
+            else if (dropData.type == "character") {
+                await ApiRequest("/character/move", { character_id: dropData.id, dst_id: id });
+            }
+        });
     }
 
     async addFolder(id: string, name: string) {
@@ -60,21 +79,39 @@ export class CharacterListWindow extends ContentWindow {
         element.className = "character folder";
         element.innerHTML = `<i class="fa-solid fa-folder"></i> ${name}`;
         element.addEventListener("click", async () => {
-            if (name == "..") {
-                this.ancestorIds.delete(this.folderId);
-            }
             await this.load(id);
         });
-        if (name != "..") {
-            AddDragListener(element, { type: "characterFolder", id });
-        }
+        AddDragListener(element, { type: "characterFolder", id });
         this.addDropListener(element, async (dropData) => {
             if (dropData.type == "characterFolder") {
+                if (dropData.id == id) {
+                    return;
+                }
                 await ApiRequest("/character/move", { folder_id: dropData.id, dst_id: id });
 
             }
             else if (dropData.type == "character") {
                 await ApiRequest("/character/move", { character_id: dropData.id, dst_id: id });
+            }
+        });
+        ContextMenu.set(element, {
+            "Edit Folder": {
+                "Rename": async () => {
+                    const selection = await InputDialog("Rename Folder", { "Name": "text" }, "Rename");
+                    if (!selection || !selection.Name) {
+                        return;
+                    }
+                    await ApiRequest("/character/folder/rename", {
+                        id,
+                        name: selection.Name,
+                    });
+                },
+                "Delete": async () => {
+                    if (!await ConfirmDialog(`Delete '${name}'`)) {
+                        return;
+                    }
+                    await ApiRequest("/character/folder/delete", { folder_id: id });
+                }
             }
         });
     }
@@ -108,6 +145,9 @@ export class CharacterListWindow extends ContentWindow {
                     });
                 },
                 "Delete": async () => {
+                    if (!await ConfirmDialog(`Delete '${name}'`)) {
+                        return;
+                    }
                     await ApiRequest("/character/delete", { id });
                     element.remove();
                 },
@@ -127,6 +167,7 @@ export class CharacterListWindow extends ContentWindow {
 
         const response: {
             status: string,
+            name: string,
             parent_id: string,
             subfolders: [string, string][],
             characters: [string, string][],
@@ -138,7 +179,11 @@ export class CharacterListWindow extends ContentWindow {
         }
 
         if (this.folderId) {
-            await this.addFolder(response.parent_id, "..");
+            this.setTitle(`Characters - ${response.name}`);
+            await this.addParentFolder(response.parent_id);
+        }
+        else {
+            this.setTitle("Characters");
         }
 
         for (let [id, name] of response.subfolders) {
@@ -213,7 +258,21 @@ export class CharacterListWindow extends ContentWindow {
                     await this.addFolder(updateData.id, updateData.name);
                 }
             }
+            else if (updateData.type == "renamedir") {
+                const folderDiv = this.characters.querySelector(`[data-folder="${updateData.folder}"]`);
+                if (folderDiv) {
+                    folderDiv.innerHTML = `<i class="fa-solid fa-folder"></i> ${updateData.name}`;
+                }
+            }
         });
+    }
+
+    serialize() {
+        return { folderId: this.folderId };
+    }
+
+    async deserialize(data) {
+        await this.load(data.folderId);
     }
 }
 registerWindowType(CharacterListWindow);
