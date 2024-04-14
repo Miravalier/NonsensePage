@@ -99,6 +99,7 @@ db = client.nonsense_db
 
 # Collections
 characters = DocumentCollection(db.characters, models.Character)
+characters.create_index("folder_id")
 items = DocumentCollection(db.items, models.Item)
 users = DocumentCollection(db.users, models.User)
 combats = DocumentCollection(db.combats, models.Combat)
@@ -108,4 +109,4 @@ character_folders = DocumentCollection(db.character_folders, models.Folder)
 
 sessions = DocumentCollection(db.sessions, models.Session)
 sessions.create_index("auth_token")
-sessions.create_index("last_auth_date", expireAfterSeconds=86400)
+sessions.create_index("last_auth_date", expireAfterSeconds=3600)
