@@ -1,12 +1,12 @@
-import * as ContextMenu from "../../lib/contextmenu.ts";
-import * as Dice from "../../lib/dice.ts";
-import { PCG } from "../../lib/pcg-random.ts";
-import { InputDialog } from "../../windows/window.ts";
-import { Ability, AbilityType, Character, Message, Roll, RollType } from "../../lib/models.ts";
-import { Sheet } from "../../lib/sheet.ts";
-import { AddDragListener, GenerateId, GetPermissions, ResolvePath, SetPath } from "../../lib/utils.ts";
-import { ApiRequest } from "../../lib/requests.ts";
-import { Permissions } from "../../lib/enums.ts";
+import * as ContextMenu from "../../lib/ContextMenu.ts";
+import * as Dice from "../../lib/Dice.ts";
+import { PCG } from "../../lib/PcgRandom.ts";
+import { InputDialog } from "../../windows/Window.ts";
+import { Ability, AbilityType, Character, Roll, RollType } from "../../lib/Models.ts";
+import { Sheet } from "../../lib/Sheet.ts";
+import { AddDragListener, GenerateId, GetPermissions, ResolvePath, SetPath } from "../../lib/Utils.ts";
+import { ApiRequest } from "../../lib/Requests.ts";
+import { Permissions } from "../../lib/Enums.ts";
 
 
 export function getAbilityIcons(ability: Ability) {

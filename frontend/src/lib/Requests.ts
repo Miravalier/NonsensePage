@@ -1,5 +1,5 @@
-import { User } from "./models.ts";
-import { ErrorToast } from "./notifications.ts";
+import { User } from "./Models.ts";
+import { ErrorToast } from "./Notifications.ts";
 
 
 export class Session {

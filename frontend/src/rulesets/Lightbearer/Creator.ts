@@ -1,8 +1,8 @@
-import { Ability, AbilityType, Character } from "../../lib/models.ts";
-import { ErrorToast } from "../../lib/notifications.ts";
-import { ApiRequest } from "../../lib/requests.ts";
-import { BaseWindow } from "../../windows/window.ts";
-import { getAbilityIcons } from "./character.ts";
+import { Ability, AbilityType, Character } from "../../lib/Models.ts";
+import { ErrorToast } from "../../lib/Notifications.ts";
+import { ApiRequest } from "../../lib/Requests.ts";
+import { BaseWindow } from "../../windows/Window.ts";
+import { getAbilityIcons } from "./Character.ts";
 
 // const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
 

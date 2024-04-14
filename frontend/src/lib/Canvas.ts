@@ -1,13 +1,13 @@
 import * as PIXI from "pixi.js";
 
-import * as ContextMenu from "./contextmenu.ts";
-import { Parameter, Require, IsDefined } from "./utils.ts";
-import { Vector2 } from "./vector.ts";
-import { Layer } from "./enums.ts";
-import { ApiRequest, Session } from "./requests.ts";
-import { GridFilter } from "../filters/grid.ts";
-import { launchWindow } from "../windows/window.ts";
-import { ScaleType } from "./models.ts";
+import * as ContextMenu from "./ContextMenu.ts";
+import { Parameter, Require, IsDefined } from "./Utils.ts";
+import { Vector2 } from "./Vector.ts";
+import { Layer } from "./Enums.ts";
+import { ApiRequest, Session } from "./Requests.ts";
+import { GridFilter } from "../filters/Grid.ts";
+import { launchWindow } from "../windows/Window.ts";
+import { ScaleType } from "./Models.ts";
 
 
 export const NO_GRID = 0

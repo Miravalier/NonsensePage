@@ -1,8 +1,8 @@
 import * as PIXI from "pixi.js";
 import { Filter, GlProgram } from 'pixi.js';
-import vertex from '../shaders/grid.vert?raw';
-import fragment from '../shaders/grid.frag?raw';
-import { Vector2 } from "../lib/vector.ts";
+import vertex from '../shaders/Grid.vert?raw';
+import fragment from '../shaders/Grid.frag?raw';
+import { Vector2 } from "../lib/Vector.ts";
 
 
 export class GridFilter extends Filter {

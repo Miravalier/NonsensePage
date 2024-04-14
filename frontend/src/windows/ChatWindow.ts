@@ -1,15 +1,15 @@
-import * as Events from "../lib/events.ts";
-import * as ContextMenu from "../lib/contextmenu.ts";
-import { Vector2 } from "../lib/vector.ts";
-import { ContentWindow, InputDialog, registerWindowType } from "./window.ts";
-import { ApiRequest, Session, HandleWsMessage } from "../lib/requests.ts";
+import * as Events from "../lib/Events.ts";
+import * as ContextMenu from "../lib/ContextMenu.ts";
+import { Vector2 } from "../lib/Vector.ts";
+import { ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
+import { ApiRequest, Session, HandleWsMessage } from "../lib/Requests.ts";
 import {
     Parameter, DerivePcgEngine, RandomText,
     GenerateId, EscapeHtml, GetSpeaker,
-} from "../lib/utils.ts";
-import { ErrorToast } from "../lib/notifications.ts";
-import { Language } from "../lib/enums.ts";
-import { Message } from "../lib/models.ts";
+} from "../lib/Utils.ts";
+import { ErrorToast } from "../lib/Notifications.ts";
+import { Language } from "../lib/Enums.ts";
+import { Message } from "../lib/Models.ts";
 
 
 const LANGUAGES = [

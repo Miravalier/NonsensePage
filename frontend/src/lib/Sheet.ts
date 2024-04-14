@@ -1,9 +1,9 @@
-import * as Templates from "./templates.ts";
-import { Character, Permission } from "./models.ts";
-import { AddDropListener, GetPermissions, ResolvePath } from './utils.ts';
-import { ApiRequest } from "./requests.ts";
-import { ErrorToast } from "./notifications.ts";
-import { CharacterSheetWindow } from "../windows/character_sheet_window.ts";
+import * as Templates from "./Templates.ts";
+import { Character, Permission } from "./Models.ts";
+import { AddDropListener, GetPermissions, ResolvePath } from './Utils.ts';
+import { ApiRequest } from "./Requests.ts";
+import { ErrorToast } from "./Notifications.ts";
+import { CharacterSheetWindow } from "../windows/CharacterSheet.ts";
 
 
 /**

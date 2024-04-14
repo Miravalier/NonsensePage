@@ -1,17 +1,17 @@
 import * as PIXI from "pixi.js";
 
-import * as ContextMenu from "../lib/contextmenu.ts";
-import { CanvasWindow, registerWindowType } from "./window.ts";
-import { Parameter, GenerateId, LocalPersist, RandomLetter } from "../lib/utils.ts";
-import { Vector2 } from "../lib/vector.ts";
-import { ApiRequest, Session } from "../lib/requests.ts";
-import { MapCanvas } from "../lib/canvas.ts";
-import { ErrorToast } from "../lib/notifications.ts";
-import { GridFilter } from "../filters/grid.ts";
-import { Button } from "../lib/elements.ts";
-import { Alignment, Layer } from "../lib/enums.ts";
-import { Character, Permission, ScaleType } from "../lib/models.ts";
-import { PCG } from "../lib/pcg-random.ts";
+import * as ContextMenu from "../lib/ContextMenu.ts";
+import { CanvasWindow, registerWindowType } from "./Window.ts";
+import { Parameter, GenerateId, LocalPersist } from "../lib/Utils.ts";
+import { Vector2 } from "../lib/Vector.ts";
+import { ApiRequest, Session } from "../lib/Requests.ts";
+import { MapCanvas } from "../lib/Canvas.ts";
+import { ErrorToast } from "../lib/Notifications.ts";
+import { GridFilter } from "../filters/Grid.ts";
+import { Button } from "../lib/Elements.ts";
+import { Alignment, Layer } from "../lib/Enums.ts";
+import { Character, Permission, ScaleType } from "../lib/Models.ts";
+import { PCG } from "../lib/PcgRandom.ts";
 
 
 type MapData = { x: number, y: number, scale: number };

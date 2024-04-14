@@ -1,11 +1,11 @@
-import * as ContextMenu from "../lib/contextmenu.ts";
-import { ApiRequest, Session } from "../lib/requests.ts";
-import { ContentWindow, InputDialog, registerWindowType } from "./window.ts";
-import { Parameter, AddDragListener } from "../lib/utils.ts";
-import { Vector2 } from "../lib/vector.ts";
-import { ErrorToast } from "../lib/notifications.ts";
-import { Html } from "../lib/elements.ts";
-import { MapWindow } from "./map_window.ts";
+import * as ContextMenu from "../lib/ContextMenu.ts";
+import { ApiRequest, Session } from "../lib/Requests.ts";
+import { ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
+import { Parameter, AddDragListener } from "../lib/Utils.ts";
+import { Vector2 } from "../lib/Vector.ts";
+import { ErrorToast } from "../lib/Notifications.ts";
+import { Html } from "../lib/Elements.ts";
+import { MapWindow } from "./MapWindow.ts";
 
 
 export class MapListWindow extends ContentWindow {

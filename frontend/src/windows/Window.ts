@@ -1,9 +1,9 @@
-import * as ContextMenu from "../lib/contextmenu.ts";
-import * as Templates from "../lib/templates.ts";
-import { Button } from "../lib/elements.ts";
-import { Vector2 } from "../lib/vector.ts";
-import { Canvas } from "../lib/canvas.ts";
-import { ApiRequest, Session, Subscribe, Subscription } from "../lib/requests.ts";
+import * as ContextMenu from "../lib/ContextMenu.ts";
+import * as Templates from "../lib/Templates.ts";
+import { Button } from "../lib/Elements.ts";
+import { Vector2 } from "../lib/Vector.ts";
+import { Canvas } from "../lib/Canvas.ts";
+import { ApiRequest, Session, Subscribe, Subscription } from "../lib/Requests.ts";
 import {
     PageCenter,
     Parameter,
@@ -11,8 +11,8 @@ import {
     StringBound,
     AddDropListener,
     GenerateId,
-} from "../lib/utils.js";
-import { Fragments } from "../lib/fragments.ts";
+} from "../lib/Utils.js";
+import { Fragments } from "../lib/Fragments.ts";
 
 
 export type SerializedWindow = {

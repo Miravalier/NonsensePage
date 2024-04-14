@@ -1,5 +1,5 @@
 import * as Sqrl from 'squirrelly';
-import { Fragments } from './fragments.ts';
+import { Fragments } from './Fragments.ts';
 
 
 const fetchCache: { [url: string]: any } = {};

@@ -1,14 +1,14 @@
-import * as ContextMenu from "../lib/contextmenu.ts";
-import { Vector2 } from "../lib/vector.ts";
-import { CharacterSheetWindow } from "./character_sheet_window.ts";
-import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from "./window.ts";
-import { ApiRequest, Session } from "../lib/requests.ts";
-import { Parameter, HasPermission } from "../lib/utils.ts";
-import { ErrorToast } from "../lib/notifications.ts";
-import { Html } from "../lib/elements.ts";
-import { Roll } from "../lib/dice.ts";
-import { Permissions } from "../lib/enums.ts";
-import { Combat, Combatant } from "../lib/models.ts";
+import * as ContextMenu from "../lib/ContextMenu.ts";
+import { Vector2 } from "../lib/Vector.ts";
+import { CharacterSheetWindow } from "./CharacterSheet.ts";
+import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
+import { ApiRequest, Session } from "../lib/Requests.ts";
+import { Parameter, HasPermission } from "../lib/Utils.ts";
+import { ErrorToast } from "../lib/Notifications.ts";
+import { Html } from "../lib/Elements.ts";
+import { Roll } from "../lib/Dice.ts";
+import { Permissions } from "../lib/Enums.ts";
+import { Combat, Combatant } from "../lib/Models.ts";
 
 
 export class CombatTrackerWindow extends ContentWindow {

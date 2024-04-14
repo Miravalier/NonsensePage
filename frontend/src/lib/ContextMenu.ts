@@ -1,4 +1,4 @@
-import { Html } from "./elements.ts";
+import { Html } from "./Elements.ts";
 
 // Globals
 let contextMenuElement: HTMLDivElement = null;

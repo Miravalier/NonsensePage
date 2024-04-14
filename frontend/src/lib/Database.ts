@@ -1,4 +1,4 @@
-import { ApiRequest, Subscribe } from "./requests.ts";
+import { ApiRequest, Subscribe } from "./Requests.ts";
 
 export const users = {};
 

@@ -1,10 +1,10 @@
-import { ContentWindow, registerWindowType } from "./window.ts";
-import { Vector2 } from "../lib/vector.ts";
-import { ApiRequest } from "../lib/requests.ts";
-import { ErrorToast } from "../lib/notifications.ts";
-import { Parameter } from "../lib/utils.ts";
-import { Character, Permission } from "../lib/models.ts";
-import { Sheet, SheetRegistry } from "../lib/sheet.ts";
+import { ContentWindow, registerWindowType } from "./Window.ts";
+import { Vector2 } from "../lib/Vector.ts";
+import { ApiRequest } from "../lib/Requests.ts";
+import { ErrorToast } from "../lib/Notifications.ts";
+import { Parameter } from "../lib/Utils.ts";
+import { Character, Permission } from "../lib/Models.ts";
+import { Sheet, SheetRegistry } from "../lib/Sheet.ts";
 
 
 export class CharacterSheetWindow extends ContentWindow {

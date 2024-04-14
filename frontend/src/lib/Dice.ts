@@ -1,5 +1,5 @@
 import * as math from 'mathjs';
-import { PCG } from "./pcg-random.ts";
+import { PCG } from "./PcgRandom.ts";
 
 export interface DieResult {
     result: number;

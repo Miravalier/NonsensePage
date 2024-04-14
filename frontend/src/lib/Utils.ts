@@ -1,9 +1,9 @@
-import { Session } from "./requests.ts";
-import { PcgEngine } from "./pcg-random.ts";
-import { Vector2 } from "./vector.ts";
-import { Permissions } from "./enums.ts";
-import { Entry } from "./models.ts";
-import * as Database from "../lib/database.ts";
+import { Session } from "./Requests.ts";
+import { PcgEngine } from "./PcgRandom.ts";
+import { Vector2 } from "./Vector.ts";
+import { Permissions } from "./Enums.ts";
+import { Entry } from "./Models.ts";
+import * as Database from "./Database.ts";
 
 
 export function ColorIntToVec3(value: number): [number, number, number] {

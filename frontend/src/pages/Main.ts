@@ -1,24 +1,23 @@
-import * as ContextMenu from "../lib/contextmenu.ts";
-import * as Database from "../lib/database.ts";
-import * as Notifications from "../lib/notifications.ts";
-import * as Templates from "../lib/templates.ts";
-import { IntroRegistry } from "../lib/intro.ts";
-import { Rulesets } from "../rulesets";
-import { Vector2 } from "../lib/vector.ts";
-import { CombatTrackerWindow } from "../windows/combat_tracker_window.ts";
-import { ChatWindow } from "../windows/chat_window.ts";
-import { FileWindow } from "../windows/file_window.ts";
-import { ApiRequest, Session, Subscribe, WsConnect } from "../lib/requests.ts";
-import { CharacterListWindow } from "../windows/character_list_window.ts";
-import { CheckUpdates } from "../lib/pending_updates.ts";
-import { MapListWindow } from "../windows/map_list_window.ts";
-import { CharacterCreatorWindow } from "../windows/character_creator_window.ts";
-import { Character } from "../lib/models.ts";
+import * as ContextMenu from "../lib/ContextMenu.ts";
+import * as Database from "../lib/Database.ts";
+import * as Notifications from "../lib/Notifications.ts";
+import * as Templates from "../lib/Templates.ts";
+import { IntroRegistry } from "../lib/Intro.ts";
+import { Rulesets } from "../rulesets/index.ts";
+import { Vector2 } from "../lib/Vector.ts";
+import { CombatTrackerWindow } from "../windows/CombatTracker.ts";
+import { ChatWindow } from "../windows/ChatWindow.ts";
+import { FileWindow } from "../windows/FileWindow.ts";
+import { ApiRequest, Session, Subscribe, WsConnect } from "../lib/Requests.ts";
+import { CharacterListWindow } from "../windows/CharacterList.ts";
+import { MapListWindow } from "../windows/MapList.ts";
+import { CharacterCreatorWindow } from "../windows/CharacterCreator.ts";
+import { Character } from "../lib/Models.ts";
 import {
     launchWindow, windows, InputDialog,
     applyLayout, SerializedWindow,
-} from "../windows/window.ts";
-import { ErrorToast } from "../lib/notifications.ts";
+} from "../windows/Window.ts";
+import { ErrorToast } from "../lib/Notifications.ts";
 
 
 declare global {
@@ -108,7 +107,6 @@ async function Main() {
     setInterval(() => {
         Session.ws.send(JSON.stringify({ type: "heartbeat" }));
     }, 5000);
-    setInterval(CheckUpdates, 1000);
 
     await Database.init();
     await ContextMenu.init();

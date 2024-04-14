@@ -1,8 +1,8 @@
-import { Vector2 } from "../lib/vector.ts";
-import { ContentWindow, registerWindowType } from "./window.ts";
-import { Parameter } from "../lib/utils.ts";
-import { IntroRegistry } from "../lib/intro.ts";
-import { LoadTemplate } from "../lib/templates.ts";
+import { Vector2 } from "../lib/Vector.ts";
+import { ContentWindow, registerWindowType } from "./Window.ts";
+import { Parameter } from "../lib/Utils.ts";
+import { IntroRegistry } from "../lib/Intro.ts";
+import { LoadTemplate } from "../lib/Templates.ts";
 
 
 export class CharacterCreatorWindow extends ContentWindow {
