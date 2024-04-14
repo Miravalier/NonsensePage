@@ -121,7 +121,7 @@ export class CharacterListWindow extends ContentWindow {
         element.dataset.character = id;
         element.className = "character";
         const icon = element.appendChild(document.createElement("img"));
-        icon.className = "tiny thumbnail";
+        icon.className = "thumbnail";
         if (image) {
             icon.src = await GetThumbnail(image);
         }

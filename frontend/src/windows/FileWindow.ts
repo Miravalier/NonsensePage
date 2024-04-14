@@ -30,6 +30,7 @@ export class FileWindow extends ContentWindow {
     createFolderButton: HTMLButtonElement;
     filePicker: HTMLInputElement;
     path: string;
+    view: string;
 
     constructor(options) {
         options.classList = ["file"];
@@ -84,14 +85,30 @@ export class FileWindow extends ContentWindow {
             });
         });
 
+        const viewSelect = this.buttons.appendChild(document.createElement("select"));
+        viewSelect.innerHTML = `
+            <option value="detail">Detail</option>
+            <option value="images">Images</option>
+        `;
+        viewSelect.addEventListener("change", () => {
+            this.view = viewSelect.value;
+            if (this.view != "detail") {
+                this.files.classList.remove("detail");
+            }
+            if (this.view != "images") {
+                this.files.classList.remove("images");
+            }
+            this.files.classList.add(this.view);
+        });
+        this.view = "detail";
         this.path = "/";
     }
 
     refresh() {
-        this.load(this.path);
+        this.load(this.path, this.view);
     }
 
-    async load(path: string) {
+    async load(path: string, view: string = null) {
         await super.load();
         this.files.innerHTML = "";
         this.fileNames = new Set();
@@ -103,6 +120,17 @@ export class FileWindow extends ContentWindow {
             return;
         }
         this.path = response.path;
+        if (view) {
+            this.view = view;
+        }
+
+        if (this.view != "detail") {
+            this.files.classList.remove("detail");
+        }
+        if (this.view != "images") {
+            this.files.classList.remove("images");
+        }
+        this.files.classList.add(this.view);
 
         this.setTitle(`Files - ${response.path}`);
         if (response.path != "/") {
@@ -126,11 +154,11 @@ export class FileWindow extends ContentWindow {
     }
 
     serialize() {
-        return { path: this.path };
+        return { path: this.path, view: this.view };
     }
 
     async deserialize(data) {
-        await this.load(data.path);
+        await this.load(data.path, data.view);
     }
 
     addFolder(img, name, path) {
@@ -192,7 +220,7 @@ export class FileWindow extends ContentWindow {
         if (filetype.startsWith("image/")) {
             const thumbnail = await GetThumbnail(urlPath);
             icon = document.createElement("img");
-            icon.classList = "tiny thumbnail";
+            icon.classList = "thumbnail";
             icon.src = thumbnail;
         }
         else {

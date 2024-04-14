@@ -236,6 +236,11 @@
     flex-flow: column nowrap;
 }
 
+.files.images {
+    display: flex;
+    flex-flow: row wrap;
+}
+
 .files .item {
     display: flex;
     flex-flow: row nowrap;
@@ -243,6 +248,12 @@
     align-items: center;
     cursor: pointer;
     border-radius: 2px;
+}
+
+.files.images .item {
+    flex-flow: column nowrap;
+    width: 172px;
+    height: 172px;
 }
 
 .files .item .name {
@@ -253,24 +264,49 @@
     justify-content: start;
 }
 
+.files.images .item .name {
+    flex-flow: column nowrap;
+    word-break: break-word;
+}
+
 .files .item .name:hover {
     background-color: #ffffff4f;
 }
 
 .thumbnail {
     margin: 2px;
-}
-
-.tiny.thumbnail {
     width: 16px;
     height: 16px;
+}
+
+.files.detail .thumbnail {
+    width: 16px;
+    height: 16px;
+}
+
+.files.images .thumbnail {
+    width: 128px;
+    height: 128px;
 }
 
 .files .item svg,
 .files .item i {
+    margin: 2px;
+}
+
+.files.detail .item svg,
+.files.detail .item i {
+    font-size: 16px;
     width: 16px;
     height: 16px;
-    margin: 2px;
+}
+
+.files.images .item svg,
+.files.images .item i {
+    text-align: center;
+    font-size: 128px;
+    width: 128px;
+    height: 128px;
 }
 
 input,
