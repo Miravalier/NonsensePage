@@ -252,8 +252,9 @@
 
 .files.images .item {
     flex-flow: column nowrap;
-    width: 172px;
-    height: 172px;
+    width: 164px;
+    height: 200px;
+    margin: 4px;
 }
 
 .files .item .name {
@@ -269,7 +270,7 @@
     word-break: break-word;
 }
 
-.files .item .name:hover {
+.files .item:hover {
     background-color: #ffffff4f;
 }
 
@@ -305,7 +306,7 @@
 .files.images .item i {
     text-align: center;
     font-size: 128px;
-    width: 128px;
+    width: 164px;
     height: 128px;
 }
 
