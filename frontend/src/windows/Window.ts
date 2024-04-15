@@ -67,6 +67,7 @@ export class BaseWindow {
         classList = [],
         resizable = true,
         refreshable = false,
+        popOut = false,
     }) {
         this.size = size;
         this.position = Parameter<Vector2>(position, PageCenter().subtract(this.size).divide(2));
@@ -103,31 +104,33 @@ export class BaseWindow {
         this.titleBar = titleBar;
         titleBar.className = "titleBar";
 
-        titleBar.addEventListener("mousedown", ev => {
-            const xOffset = ev.clientX - this.container.offsetLeft;
-            const yOffset = ev.clientY - this.container.offsetTop;
-            const xMax = window.innerWidth - (Math.ceil(this.container.offsetWidth) + 1);
-            const yMax = window.innerHeight - (Math.ceil(this.container.offsetHeight) + 1);
+        if (!popOut) {
+            titleBar.addEventListener("mousedown", ev => {
+                const xOffset = ev.clientX - this.container.offsetLeft;
+                const yOffset = ev.clientY - this.container.offsetTop;
+                const xMax = window.innerWidth - (Math.ceil(this.container.offsetWidth) + 1);
+                const yMax = window.innerHeight - (Math.ceil(this.container.offsetHeight) + 1);
 
-            const onDrag = ev => {
-                this.position.x = Bound(0, ev.clientX - xOffset, xMax);
-                this.container.style.left = `${this.position.x}px`;
-                this.position.y = Bound(0, ev.clientY - yOffset, yMax);
-                this.container.style.top = `${this.position.y}px`;
-            }
+                const onDrag = ev => {
+                    this.position.x = Bound(0, ev.clientX - xOffset, xMax);
+                    this.container.style.left = `${this.position.x}px`;
+                    this.position.y = Bound(0, ev.clientY - yOffset, yMax);
+                    this.container.style.top = `${this.position.y}px`;
+                }
 
-            const onDragEnd = () => {
-                document.removeEventListener("mousemove", onDrag);
-            }
+                const onDragEnd = () => {
+                    document.removeEventListener("mousemove", onDrag);
+                }
 
-            document.addEventListener("mousemove", onDrag);
-            document.addEventListener("mouseup", onDragEnd, { once: true });
-        });
-
-        if (resizable) {
-            titleBar.addEventListener("dblclick", () => {
-                this.toggleMinimize();
+                document.addEventListener("mousemove", onDrag);
+                document.addEventListener("mouseup", onDragEnd, { once: true });
             });
+
+            if (resizable) {
+                titleBar.addEventListener("dblclick", () => {
+                    this.toggleMinimize();
+                });
+            }
         }
 
         this.titleNode = titleBar.appendChild(document.createElement("div"));
@@ -209,7 +212,12 @@ export class BaseWindow {
             "Window": {
                 "Close": () => {
                     this.close();
-                }
+                },
+                "Pop Out": () => {
+                    const windowData = btoa(JSON.stringify({ type: this.constructor.name, data: this.serialize() }));
+                    window.open(`/?window=${windowData}`).focus();
+                    this.close();
+                },
             }
         }
         if (Session.gm && register) {
@@ -222,6 +230,20 @@ export class BaseWindow {
 
         const windowElements = document.querySelector("#windows");
         windowElements.appendChild(this.container);
+
+        if (popOut) {
+            resizable = false;
+            this.titleBar.style.display = "none";
+            this.container.style.position = "unset";
+            this.container.style.width = "100%";
+            this.container.style.height = "100%";
+            this.viewPort.style.width = "100%";
+            this.viewPort.style.height = "100%";
+            this.resizeHandle.style.display = "none";
+            this.size.x = window.innerWidth;
+            this.size.y = window.innerHeight;
+            this.container.classList.add("popout");
+        }
     }
 
     async onShare() { }
@@ -653,9 +675,9 @@ export async function ImageSelectDialog(prompt: string): Promise<string> {
 }
 
 
-export async function launchWindow(type: string, data: any): Promise<BaseWindow> {
+export async function launchWindow(type: string, data: any, popOut: boolean = false): Promise<BaseWindow> {
     const windowType = WindowTypes[type];
-    const newWindow = new windowType({});
+    const newWindow = new windowType({ popOut });
     await newWindow.deserialize(data);
     return newWindow;
 }

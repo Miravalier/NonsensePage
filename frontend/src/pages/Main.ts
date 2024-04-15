@@ -30,7 +30,16 @@ declare global {
 window.addEventListener("load", async () => {
     try {
         await OnLoad();
-        await Main();
+
+        const searchParams = new URLSearchParams(location.search);
+        const windowString = searchParams.get("window");
+        if (windowString) {
+            const serializedWindow = JSON.parse(atob(windowString));
+            launchWindow(serializedWindow.type, serializedWindow.data, true);
+        }
+        else {
+            await Main();
+        }
     }
     catch (error) {
         document.body.innerHTML = '<div class="watermark">Failed to connect to the server. Wait a while and refresh the page.</div>';
@@ -104,10 +113,7 @@ async function OnLoad() {
         LogOut,
         LoadCharacters,
     };
-}
 
-
-async function Main() {
     await WsConnect();
     setInterval(() => {
         if (Session.ws.readyState == WebSocket.OPEN) {
@@ -119,7 +125,10 @@ async function Main() {
     await ContextMenu.init();
     await Notifications.init();
     await Templates.init();
+}
 
+
+async function Main() {
     Subscribe("show/window", (data: { user: string; type: string; data: any; }) => {
         if (Session.id == data.user) {
             return;

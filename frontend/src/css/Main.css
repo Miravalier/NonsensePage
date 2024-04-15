@@ -57,6 +57,10 @@
     align-items: center;
 }
 
+.popout.window .buttonTray {
+    top: 0;
+}
+
 .window .buttonTray button {
     width: 24px;
     height: 24px;
