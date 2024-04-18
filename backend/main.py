@@ -737,6 +737,7 @@ class AnnounceTurnRequest(AuthRequest):
 @app.post("/api/combat/announce-turn")
 async def combat_announce_turn(request: AnnounceTurnRequest):
     combat = require(database.combats.find_one(request.id), "invalid combat id")
+    auth_require(request.requester.is_gm)
     require(len(combat.combatants) > 0, "not enough combatants")
     combatant = combat.combatants[0]
     await send_message(
@@ -753,15 +754,9 @@ class ReverseTurnRequest(AuthRequest):
 @app.post("/api/combat/reverse-turn")
 async def combat_end_turn(request: ReverseTurnRequest):
     combat = require(database.combats.find_one(request.id), "invalid combat id")
+    auth_require(request.requester.is_gm)
     require(len(combat.combatants) > 1, "not enough combatants")
     combatant = combat.combatants[-1]
-    if not request.requester.is_gm:
-        character = require(database.characters.find_one(combatant.character_id), "invalid character id")
-        auth_require(
-            character.has_permission(request.requester.id, "*", Permissions.OWNER)
-            or
-            combat.has_permission(request.requester.id, "*", Permissions.WRITE)
-        )
 
     database.combats.find_one_and_update(request.id, {
         "$pull": {
@@ -797,12 +792,15 @@ async def combat_end_turn(request: EndTurnRequest):
     require(len(combat.combatants) > 1, "not enough combatants")
     combatant = combat.combatants[0]
     if not request.requester.is_gm:
-        character = require(database.characters.find_one(combatant.character_id), "invalid character id")
-        auth_require(
-            character.has_permission(request.requester.id, "*", Permissions.OWNER)
-            or
-            combat.has_permission(request.requester.id, "*", Permissions.WRITE)
-        )
+        if combatant.character_id is not None:
+            character = require(database.characters.find_one(combatant.character_id), "invalid character id")
+            auth_require(
+                combat.has_permission(request.requester.id, "*", Permissions.WRITE)
+                or
+                character.has_permission(request.requester.id, "*", Permissions.OWNER)
+            )
+        else:
+            auth_require(combat.has_permission(request.requester.id, "*", Permissions.WRITE))
 
     database.combats.find_one_and_update(request.id, {
         "$pull": {
@@ -837,8 +835,10 @@ async def combat_list(request: AuthRequest):
 
 
 class AddCombatantRequest(AuthRequest):
-    combat_id: str = None
-    character_id: str
+    combat_id: Optional[str] = None
+    character_id: Optional[str] = None
+    name: Optional[str] = None
+
 
 
 @app.post("/api/combat/add-combatant")
@@ -847,22 +847,31 @@ async def add_combatant(request: AddCombatantRequest):
         combat = require(database.combats.find_one({}), "no combat")
     else:
         combat = require(database.combats.find_one(request.combat_id), "invalid combat id")
-    character = require(database.characters.find_one(request.character_id), "invalid character id")
 
-    if not request.requester.is_gm:
-        auth_require(
-            character.has_permission(request.requester.id, "*", Permissions.OWNER)
-            or
-            combat.has_permission(request.requester.id, "*", Permissions.WRITE)
-        )
+    auth_require(
+        request.requester.is_gm
+        or
+        combat.has_permission(request.requester.id, "*", Permissions.WRITE)
+    )
 
+    require(request.character_id is not None or request.name is not None, "name or character_id is required")
     combatant_id = secrets.token_hex(12)
-    update = {"$push": {"combatants": {
-        "id": combatant_id,
-        "character_id": character.id,
-        "name": character.name,
-        "permissions": character.permissions,
-    }}}
+    combatant = {"id": combatant_id}
+
+    if request.character_id is not None:
+        character = require(database.characters.find_one(request.character_id), "invalid character id")
+        combatant["name"] = character.name
+        combatant["permissions"] = character.permissions
+        combatant["character_id"] = character.id
+
+    if request.name is not None:
+        combatant["name"] = request.name
+
+    update = {
+        "$push": {
+            "combatants": combatant
+        }
+    }
     database.combats.find_one_and_update(combat.id, update)
     await combat.broadcast_changes(update)
     return {"status": "success", "id": combatant_id}

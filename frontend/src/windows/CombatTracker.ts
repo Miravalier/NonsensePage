@@ -93,6 +93,20 @@ export class CombatTrackerWindow extends ContentWindow {
                     id: this.combatId,
                 });
             });
+
+            const addCombatantButton = buttonContainer.appendChild(Html(`
+                <button type="button" class="add">+</button>
+            `));
+            addCombatantButton.addEventListener("click", async () => {
+                const selection = await InputDialog("Add Combatant", { "Name": "text" }, "Add");
+                if (!selection || !selection.Name) {
+                    return;
+                }
+                await ApiRequest("/combat/add-combatant", {
+                    combat_id: this.combatId,
+                    name: selection.Name,
+                });
+            });
         }
     }
 
@@ -118,12 +132,15 @@ export class CombatTrackerWindow extends ContentWindow {
                     <span class="initiative">${initiative}</span>
                 </div>
             `) as HTMLDivElement);
-            combatantElement.addEventListener("click", async () => {
-                const characterSheetWindow = new CharacterSheetWindow({
-                    title: "Character Sheet",
+            if (combatant.character_id) {
+                combatantElement.dataset.character = combatant.character_id;
+                combatantElement.addEventListener("click", async () => {
+                    const characterSheetWindow = new CharacterSheetWindow({
+                        title: "Character Sheet",
+                    });
+                    await characterSheetWindow.load(combatant.character_id);
                 });
-                await characterSheetWindow.load(combatant.character_id);
-            });
+            }
             if (Session.gm) {
                 ContextMenu.set(combatantElement, {
                     "Edit Combatant": {
