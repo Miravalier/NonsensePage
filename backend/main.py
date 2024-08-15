@@ -1225,7 +1225,9 @@ async def list_files(request: ListFilesRequest):
     results.sort()
 
     for file_type, file_path in results:
-        if file_type == "image/svg":
+        if file_type == "image/gif":
+            pass # Don't thumbnail GIFs
+        elif file_type == "image/svg":
             files.generate_thumbnail(user_root / file_path.lstrip("/"), svg=True)
         elif file_type.startswith("image/"):
             files.generate_thumbnail(user_root / file_path.lstrip("/"))

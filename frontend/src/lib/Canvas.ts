@@ -366,10 +366,10 @@ export class MapCanvas extends Canvas {
         let rotateTimeoutHandle: number;
         sprite.on("rotate", (ev) => {
             if (ev.deltaY > 0) {
-                sprite.rotation += 0.2;
+                sprite.rotation += 0.261799;
             }
             else {
-                sprite.rotation -= 0.2;
+                sprite.rotation -= 0.261799;
             }
 
             clearTimeout(rotateTimeoutHandle);
