@@ -396,10 +396,10 @@ source-map-js@^1.2.0:
   resolved "https://registry.yarnpkg.com/source-map-js/-/source-map-js-1.2.0.tgz#16b809c162517b5b8c3e7dcd315a2a5c2612b2af"
   integrity sha512-itJW8lvSA0TXEphiRoawsCksnlf8SyvmFzIhltqAHluXd88pkCd+cXJVHTDwdCr0IzwptSm035IHQktUu1QUMg==
 
-squirrelly@^9.0.0:
-  version "9.0.0"
-  resolved "https://registry.yarnpkg.com/squirrelly/-/squirrelly-9.0.0.tgz#465bced289aa2772ba0b650e0fb99c5a180b52c6"
-  integrity sha512-MutQSfwrpIxvdUOFJ8XOfRSioLy+9O10bmBVWLik4uzJkD5TbeNSTOCKqLjzZJVcgdJNyLc8JRFUN15qFlZx9Q==
+squirrelly@^9.1.0:
+  version "9.1.0"
+  resolved "https://registry.yarnpkg.com/squirrelly/-/squirrelly-9.1.0.tgz#399e180033af66ef8e9b9361d36b871e5c099e75"
+  integrity sha512-kvjFqb7qzC4gX4lkqSaU8QPvUHhDLMiDpxpz7a66vjTH0JtjLJqAXbPrc7ST61EefuuuW05sne2rjGskunrF2A==
 
 tiny-emitter@^2.1.0:
   version "2.1.0"
