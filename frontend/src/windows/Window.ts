@@ -1,4 +1,5 @@
 import * as ContextMenu from "../lib/ContextMenu.ts";
+import * as Drag from "../lib/Drag.ts";
 import * as Templates from "../lib/Templates.ts";
 import { Button } from "../lib/Elements.ts";
 import { Vector2 } from "../lib/Vector.ts";
@@ -9,11 +10,11 @@ import {
     Parameter,
     Bound,
     StringBound,
-    AddDropListener,
     GenerateId,
 } from "../lib/Utils.js";
 import { Fragments } from "../lib/Fragments.ts";
 import { Future } from "../lib/Async.ts";
+import { AddDropListener } from "../lib/Drag.ts";
 
 
 export type SerializedWindow = {
@@ -105,25 +106,19 @@ export class BaseWindow {
         titleBar.className = "titleBar";
 
         if (!popOut) {
-            titleBar.addEventListener("mousedown", ev => {
-                const xOffset = ev.clientX - this.container.offsetLeft;
-                const yOffset = ev.clientY - this.container.offsetTop;
-                const xMax = window.innerWidth - (Math.ceil(this.container.offsetWidth) + 1);
-                const yMax = window.innerHeight - (Math.ceil(this.container.offsetHeight) + 1);
-
-                const onDrag = ev => {
-                    this.position.x = Bound(0, ev.clientX - xOffset, xMax);
+            Drag.AddPositionalListener(titleBar, {
+                onStart: (ctx, ev) => {
+                    ctx.xOffset = ev.clientX - this.container.offsetLeft;
+                    ctx.yOffset = ev.clientY - this.container.offsetTop;
+                    ctx.xMax = window.innerWidth - (Math.ceil(this.container.offsetWidth) + 1);
+                    ctx.yMax = window.innerHeight - (Math.ceil(this.container.offsetHeight) + 1);
+                },
+                onMove: (ctx, ev) => {
+                    this.position.x = Bound(0, ev.clientX - ctx.xOffset, ctx.xMax);
                     this.container.style.left = `${this.position.x}px`;
-                    this.position.y = Bound(0, ev.clientY - yOffset, yMax);
+                    this.position.y = Bound(0, ev.clientY - ctx.yOffset, ctx.yMax);
                     this.container.style.top = `${this.position.y}px`;
-                }
-
-                const onDragEnd = () => {
-                    document.removeEventListener("mousemove", onDrag);
-                }
-
-                document.addEventListener("mousemove", onDrag);
-                document.addEventListener("mouseup", onDragEnd, { once: true });
+                },
             });
 
             if (resizable) {
@@ -180,31 +175,27 @@ export class BaseWindow {
             this.resizeHandle = resizeHandle;
             resizeHandle.className = "resizeHandle";
 
-            resizeHandle.addEventListener("mousedown", () => {
-                const xMax = window.innerWidth - (this.container.offsetLeft + this.viewPort.offsetLeft + 1);
-                const yMax = window.innerHeight - (this.container.offsetTop + this.viewPort.offsetTop + 1);
-
-                const onDrag = (ev: MouseEvent) => {
+            Drag.AddPositionalListener(resizeHandle, {
+                onStart: (ctx, ev) => {
+                    ctx.xMax = window.innerWidth - (this.container.offsetLeft + this.viewPort.offsetLeft + 1);
+                    ctx.yMax = window.innerHeight - (this.container.offsetTop + this.viewPort.offsetTop + 1);
+                },
+                onMove: (ctx, ev) => {
                     const xOffset = ev.clientX - this.container.offsetLeft;
                     const yOffset = ev.clientY - this.container.offsetTop;
                     let minWidth = 10;
                     for (const group of this.titleBar.children) {
                         minWidth += group.clientWidth;
                     }
-                    this.size.x = Bound(minWidth, xOffset, xMax);
-                    this.size.y = Bound(40, yOffset, yMax);
+                    this.size.x = Bound(minWidth, xOffset, ctx.xMax);
+                    this.size.y = Bound(40, yOffset, ctx.yMax);
                     this.viewPort.style.width = `${this.size.x}px`;
                     this.viewPort.style.height = `${this.size.y}px`;
                     this.onResizeStart();
-                }
-
-                const onDragEnd = () => {
-                    document.removeEventListener("mousemove", onDrag);
+                },
+                onEnd: (ctx, ev) => {
                     this.onResizeStop();
-                }
-
-                document.addEventListener("mousemove", onDrag);
-                document.addEventListener("mouseup", onDragEnd, { once: true });
+                },
             });
         }
 

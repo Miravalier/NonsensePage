@@ -1,10 +1,11 @@
 import * as ContextMenu from "../../lib/ContextMenu.ts";
 import * as Dice from "../../lib/Dice.ts";
+import { AddDragListener } from "../../lib/Drag.ts";
 import { PCG } from "../../lib/PcgRandom.ts";
 import { InputDialog } from "../../windows/Window.ts";
 import { Ability, AbilityType, Character, Roll, RollType } from "../../lib/Models.ts";
 import { Sheet } from "../../lib/Sheet.ts";
-import { AddDragListener, GenerateId, GetPermissions, ResolvePath, SetPath } from "../../lib/Utils.ts";
+import { GenerateId, GetPermissions, ResolvePath, SetPath } from "../../lib/Utils.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { Permissions } from "../../lib/Enums.ts";
 

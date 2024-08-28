@@ -1,8 +1,7 @@
 import * as PIXI from "pixi.js";
 
-import * as ContextMenu from "../lib/ContextMenu.ts";
 import { CanvasWindow, registerWindowType } from "./Window.ts";
-import { Parameter, GenerateId, LocalPersist } from "../lib/Utils.ts";
+import { Bound, Parameter, GenerateId, LocalPersist } from "../lib/Utils.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { ApiRequest, Session } from "../lib/Requests.ts";
 import { MapCanvas } from "../lib/Canvas.ts";
@@ -76,11 +75,11 @@ export class MapWindow extends CanvasWindow {
         });
 
         this.viewPort.addEventListener("mousedown", (ev: MouseEvent) => {
+            // If not right mouse, return
             if (ev.button != 2) {
                 return;
             }
 
-            ContextMenu.close();
             const boundary = new PIXI.EventBoundary(this.canvas.app.stage);
             const xOffset = this.container.offsetLeft + this.viewPort.offsetLeft;
             const yOffset = this.container.offsetTop + this.viewPort.offsetTop;
@@ -97,9 +96,7 @@ export class MapWindow extends CanvasWindow {
                 const deltaY = y - previousY;
                 previousX = x;
                 previousY = y;
-                this.translation.x += deltaX;
-                this.translation.y += deltaY;
-                this.applyTranslation();
+                this.translate(deltaX, deltaY);
                 elementDragged = true;
             }
 
@@ -131,21 +128,70 @@ export class MapWindow extends CanvasWindow {
                 }
             }
             else {
-                // Zoom canvas
-                this.translation.applySubtract(this.size.divide(2));
+                let zoomDelta;
                 if (ev.deltaY > 0) {
-                    this.scale *= 0.9;
-                    this.translation.applyMultiply(0.9);
+                    zoomDelta = 0.9;
                 }
                 else {
-                    this.scale *= 1.1;
-                    this.translation.applyMultiply(1.1);
+                    zoomDelta = 1.1;
                 }
-                this.translation.applyAdd(this.size.divide(2));
-                this.applyScale();
-                this.applyTranslation();
+                this.zoom(zoomDelta);
             }
         });
+
+        let touching = false;
+        this.viewPort.addEventListener("touchstart", ev => {
+            if (ev.touches.length != 2 || touching) {
+                return;
+            }
+
+            touching = true;
+
+            const abortController = new AbortController();
+
+            let previousTouchPrimary = new Vector2(ev.touches[0].clientX, ev.touches[0].clientY);
+            let previousTouchSecondary = new Vector2(ev.touches[1].clientX, ev.touches[1].clientY);
+            let previousMagnitude = previousTouchPrimary.subtract(previousTouchSecondary).magnitude;
+
+            const onTouchEnd = (ev: TouchEvent) => {
+                touching = false;
+                abortController.abort();
+            };
+
+            const onTouch = (ev: TouchEvent) => {
+                if (ev.touches.length != 2) {
+                    onTouchEnd(ev);
+                    return;
+                }
+                const touchPrimary = new Vector2(ev.touches[0].clientX, ev.touches[0].clientY);
+                const touchSecondary = new Vector2(ev.touches[1].clientX, ev.touches[1].clientY);
+                const magnitude = touchPrimary.subtract(touchSecondary).magnitude;
+
+                const panDeltaX = (touchPrimary.x - previousTouchPrimary.x) + (touchSecondary.x - previousTouchSecondary.x);
+                const panDeltaY = (touchPrimary.y - previousTouchPrimary.y) + (touchSecondary.y - previousTouchSecondary.y);
+                const zoomDelta = magnitude - previousMagnitude;
+
+                this.translate(panDeltaX, panDeltaY);
+                this.zoom(1.0 + (zoomDelta / 250));
+
+                previousMagnitude = magnitude;
+                previousTouchPrimary = touchPrimary;
+                previousTouchSecondary = touchSecondary;
+            };
+
+            document.addEventListener("touchmove", onTouch, { signal: abortController.signal });
+            document.addEventListener("touchend", onTouchEnd, { signal: abortController.signal });
+            document.addEventListener("touchcancel", onTouchEnd, { signal: abortController.signal });
+        });
+    }
+
+    async zoom(delta: number) {
+        this.translation.applySubtract(this.size.divide(2));
+        this.scale *= delta;
+        this.translation.applyMultiply(delta);
+        this.translation.applyAdd(this.size.divide(2));
+        this.applyScale();
+        this.applyTranslation();
     }
 
     async onShare() {
@@ -181,6 +227,12 @@ export class MapWindow extends CanvasWindow {
         else {
             this.buttonTray.style.display = null;
         }
+    }
+
+    translate(x: number, y: number) {
+        this.translation.x += x;
+        this.translation.y += y;
+        this.applyTranslation();
     }
 
     applyTranslation() {

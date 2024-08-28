@@ -2,8 +2,9 @@ import * as ContextMenu from "../lib/ContextMenu.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
 import { ApiRequest, Session, FileUpload } from "../lib/Requests.ts";
 import { Vector2 } from "../lib/Vector.ts";
-import { Parameter, AddDragListener, Leaf, Parent, PathConcat, GetThumbnail } from "../lib/Utils.ts";
+import { Parameter, Leaf, Parent, PathConcat, GetThumbnail } from "../lib/Utils.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
+import { AddDragListener } from "../lib/Drag.ts";
 
 
 const FILE_ICONS = {

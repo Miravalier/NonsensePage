@@ -193,44 +193,6 @@ export function ContainsOperators(data: any): boolean {
 }
 
 
-export function AddDragListener(element: HTMLElement, data: any) {
-    element.draggable = true;
-    element.addEventListener("dragstart", (ev) => {
-        ev.dataTransfer.setData("application/nonsense", JSON.stringify(data));
-        if (data.img) {
-            const image = new Image();
-            image.src = data.img;
-            ev.dataTransfer.setDragImage(image, 16, 16);
-        }
-    });
-}
-
-
-export function AddDropListener(element: HTMLElement, fn: CallableFunction): AbortController {
-    const abortController = new AbortController();
-
-    element.addEventListener("dragover", (ev) => {
-        ev.dataTransfer.dropEffect = "copy";
-        ev.preventDefault();
-    }, { signal: abortController.signal });
-
-    element.addEventListener("drop", (ev) => {
-        let dragData;
-        try {
-            dragData = JSON.parse(ev.dataTransfer.getData("application/nonsense"));
-        } catch (error) {
-            dragData = null;
-        }
-
-        if (dragData) {
-            fn(dragData, ev);
-        }
-    }, { signal: abortController.signal });
-
-    return abortController;
-}
-
-
 export function DerivePcgEngine(id: string) {
     return new PcgEngine(
         BigInt(parseInt(id.slice(0, 6), 36)),

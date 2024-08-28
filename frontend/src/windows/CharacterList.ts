@@ -4,7 +4,8 @@ import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from ".
 import { ApiRequest } from "../lib/Requests.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { CharacterSheetWindow } from "./CharacterSheet.ts";
-import { Parameter, AddDragListener, IsDefined, GetThumbnail } from "../lib/Utils.ts";
+import { Parameter, IsDefined, GetThumbnail } from "../lib/Utils.ts";
+import { AddDragListener } from "../lib/Drag.ts";
 
 
 export class CharacterListWindow extends ContentWindow {

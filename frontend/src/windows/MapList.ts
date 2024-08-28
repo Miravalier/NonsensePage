@@ -1,7 +1,8 @@
 import * as ContextMenu from "../lib/ContextMenu.ts";
 import { ApiRequest, Session } from "../lib/Requests.ts";
 import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
-import { Parameter, AddDragListener } from "../lib/Utils.ts";
+import { Parameter } from "../lib/Utils.ts";
+import { AddDragListener } from "../lib/Drag.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { Html } from "../lib/Elements.ts";

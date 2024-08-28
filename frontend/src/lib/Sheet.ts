@@ -1,9 +1,10 @@
 import * as Templates from "./Templates.ts";
 import { Character, Permission } from "./Models.ts";
-import { AddDropListener, GetPermissions, ResolvePath } from './Utils.ts';
+import { GetPermissions, ResolvePath } from './Utils.ts';
 import { ApiRequest } from "./Requests.ts";
 import { ErrorToast } from "./Notifications.ts";
 import { CharacterSheetWindow } from "../windows/CharacterSheet.ts";
+import { AddDropListener } from "./Drag.ts";
 
 
 /**
