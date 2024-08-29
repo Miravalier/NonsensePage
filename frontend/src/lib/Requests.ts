@@ -35,6 +35,9 @@ export async function WsConnect() {
     let ws_prefix = (location.protocol === "https:" ? "wss:" : "ws:");
     Session.ws = new WebSocket(`${ws_prefix}//${location.host}/api/live`);
     Session.ws.onopen = () => {
+        if (Session.connectionFailures >= 5) {
+            location.reload();
+        }
         Session.ws.send(JSON.stringify({ "token": Session.token }));
         for (let [pool, subscription_set] of Object.entries(Session.subscriptions)) {
             if (subscription_set.size != 0) {
@@ -48,11 +51,15 @@ export async function WsConnect() {
         HandleWsMessage(data);
     };
     Session.ws.onclose = async () => {
-        if (Session.connectionFailures >= 5) {
-            location.reload();
+        if (Session.connectionFailures < 5) {
+            await Sleep(1000 * Math.pow(2, Session.connectionFailures));
         }
+        else {
+            await Sleep(1000 * 30);
+        }
+
         Session.connectionFailures++;
-        await Sleep(1000 * Math.pow(2, Session.connectionFailures));
+
         WsConnect();
     };
 }
