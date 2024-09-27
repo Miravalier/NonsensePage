@@ -415,3 +415,39 @@ button:hover i {
     margin: 24px;
     color: #ffffff4f;
 }
+
+.template {
+    background: #d0e9ff14;
+    padding: 2px;
+    margin: 4px;
+    border-radius: 4px;
+}
+
+.template .chat-rolls {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.template .roll {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    align-items: center;
+    background: #00000024;
+    border-radius: 8px;
+    padding: 2px;
+    margin: 2px;
+}
+
+.template .roll .label {
+    margin: 2px;
+    padding: 4px;
+    background: #00000024;
+    border-radius: 8px;
+}
+
+.template .roll .result {
+    margin: 4px;
+}

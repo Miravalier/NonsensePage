@@ -247,16 +247,18 @@ export class LightbearerSheet extends Sheet {
                 label.addEventListener("click", async () => {
                     const stat = ResolvePath(data, statInput.dataset.attr);
                     const formula = `2d6+${Math.floor(stat / 2)}`;
+                    const rollResults = Dice.Roll(formula);
+                    rollResults.rolls.push({ "result": Math.floor(stat / 2), "sides": 0 });
                     await ApiRequest("/messages/speak", {
                         speaker: data.name,
                         character_id: data.id,
                         content: `
-                            <div class="Lightbearer template">
+                            <div class="template">
                                 <div class="stat" data-character-id="${data.id}" data-attr="${statInput.dataset.attr}">
                                     <div class="chat-rolls">
                                         <div class="dice roll">
                                             <div class="label">${label.innerText}</div>
-                                            <div class="result">${Dice.Roll(formula).total}</div>
+                                            <div class="result" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>
                                         </div>
                                     </div>
                                 </div>

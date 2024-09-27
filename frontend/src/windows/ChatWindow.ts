@@ -1,5 +1,6 @@
-import * as Events from "../lib/Events.ts";
 import * as ContextMenu from "../lib/ContextMenu.ts";
+import * as Dice from "../lib/Dice.ts";
+import * as Events from "../lib/Events.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
 import { ApiRequest, Session, HandleWsMessage } from "../lib/Requests.ts";
@@ -87,17 +88,34 @@ async function helpCommand() {
 }
 
 
-async function rollCommand(formula) {
+async function rollCommand(formulas: string) {
     let characterId = null;
+    let diceResults = "";
     const speaker = GetSpeaker();
     if (speaker.type == "character") {
         characterId = speaker.id;
     }
-    await ApiRequest("/messages/roll", {
+    for (const formula of formulas.split(",")) {
+        const rollResults = Dice.Roll(formula);
+        diceResults += `
+            <div class="dice roll" >
+                <div class="label">${formula}</div>
+                <div class="result" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>
+            </div>
+        `;
+    }
+    await ApiRequest("/messages/speak", {
         speaker: speaker.name,
         character_id: characterId,
-        formula: formula,
-        silent: false,
+        content: `
+            <div class="template">
+                <div class="generic-roll">
+                    <div class="chat-rolls">
+                        ${diceResults}
+                    </div>
+                </div>
+            </div>
+        `,
     });
 }
 

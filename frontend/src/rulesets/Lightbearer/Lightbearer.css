@@ -78,13 +78,6 @@
     border: solid 1px #5b6e7978;
 }
 
-.Lightbearer.template {
-    background: #d0e9ff14;
-    padding: 2px;
-    margin: 4px;
-    border-radius: 4px;
-}
-
 .Lightbearer .ability .bar {
     display: flex;
     margin: 4px;
@@ -125,35 +118,6 @@
     flex-flow: column nowrap;
     justify-content: center;
     align-items: center;
-}
-
-.Lightbearer .chat-rolls {
-    display: flex;
-    flex-flow: row wrap;
-    justify-content: center;
-    align-items: center;
-}
-
-.Lightbearer .roll {
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: center;
-    align-items: center;
-    background: #00000024;
-    border-radius: 8px;
-    padding: 2px;
-    margin: 2px;
-}
-
-.Lightbearer .roll .label {
-    margin: 2px;
-    padding: 4px;
-    background: #00000024;
-    border-radius: 8px;
-}
-
-.Lightbearer .roll .result {
-    margin: 4px;
 }
 
 .Lightbearer.creator {

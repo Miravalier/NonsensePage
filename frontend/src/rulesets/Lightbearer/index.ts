@@ -6,6 +6,7 @@ import { RegisterFragment } from "../../lib/Fragments.ts";
 import { LoadCss } from "../../lib/Templates.ts";
 import { Message } from "../../lib/Models.ts";
 import { DieResult } from "../../lib/Dice.ts";
+import { NumberWithSign } from "../../lib/Utils.ts";
 
 import { LightbearerSheet } from "./Character.ts";
 import { LightbearerCreatorRender } from "./Creator.ts";
@@ -32,11 +33,16 @@ export async function init() {
             try {
                 const rolls: DieResult[] = JSON.parse(atob(resultElement.dataset.dice));
                 for (const roll of rolls) {
-                    let dieIcon = "d20";
-                    if ([4, 6, 8, 10, 12, 20].indexOf(roll.sides) !== -1) {
-                        dieIcon = `d${roll.sides}`;
+                    if (!roll.sides) {
+                        captionContent += `<div class="value">${NumberWithSign(roll.result)}</div>`;
                     }
-                    captionContent += `<div class="die"><i class="fa-solid fa-dice-${dieIcon}"></i>${roll.result}</div>`;
+                    else {
+                        let dieIcon = "d20";
+                        if ([4, 6, 8, 10, 12, 20].indexOf(roll.sides) !== -1) {
+                            dieIcon = `d${roll.sides}`;
+                        }
+                        captionContent += `<div class="die"><i class="fa-solid fa-dice-${dieIcon}"></i>${roll.result}</div>`;
+                    }
                 }
             } catch (error) {
                 captionContent = "No Roll Data";

@@ -6,6 +6,13 @@ import { Entry } from "./Models.ts";
 import * as Database from "./Database.ts";
 
 
+export function NumberWithSign(value: number): string {
+    return new Intl.NumberFormat("en-US", {
+        signDisplay: "always"
+    }).format(value);
+}
+
+
 export function ColorIntToVec3(value: number): [number, number, number] {
     return [
         ((value & 0xFF0000) >>> 16) / 255,

@@ -880,7 +880,6 @@ async def add_combatant(request: AddCombatantRequest):
 class RollRequest(AuthRequest):
     formula: str
     character_id: Optional[str]
-    silent: bool = True
 
 
 @app.post("/api/messages/roll")
@@ -898,16 +897,7 @@ async def send_roll(request: RollRequest):
     try:
         result = expressions.evaluate(request.formula, character.data if character else None)
     except Exception as e:
-        raise JsonError(str(e))
-
-    if not request.silent:
-        message = await send_message(
-            f"<p>{request.formula} = {result}</p>",
-            user=request.requester,
-            character_id=request.character_id,
-            speaker=request.requester.name,
-        )
-        response["id"] = message.id
+        raise JsonError(f"unrecognized variable '{e}'")
 
     response["result"] = result
     return response
