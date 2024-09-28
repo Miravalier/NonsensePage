@@ -154,12 +154,18 @@
 .Lightbearer.caption {
     padding: 4px;
     border-radius: 4px;
-    background: #00000066;
+    background: #000000aa;
     display: flex;
     flex-flow: row wrap;
     max-width: 100px;
     justify-content: center;
     align-items: center;
+}
+
+.Lightbearer.caption .formula {
+    flex: 100%;
+    word-break: break-all;
+    text-align: center;
 }
 
 .Lightbearer.caption .die {

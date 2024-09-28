@@ -30,6 +30,12 @@ export async function init() {
         });
         for (const resultElement of element.querySelectorAll<HTMLDivElement>(".dice.roll .result")) {
             let captionContent = "";
+
+            const formula = resultElement.dataset.formula;
+            if (formula) {
+                captionContent += `<div class="formula">${formula}</div>`
+            }
+
             try {
                 const rolls: DieResult[] = JSON.parse(atob(resultElement.dataset.dice));
                 for (const roll of rolls) {
@@ -44,14 +50,14 @@ export async function init() {
                         captionContent += `<div class="die"><i class="fa-solid fa-dice-${dieIcon}"></i>${roll.result}</div>`;
                     }
                 }
-            } catch (error) {
-                captionContent = "No Roll Data";
-            }
+            } catch (error) { }
 
-            const caption = document.createElement("div");
-            caption.className = "Lightbearer caption";
-            caption.innerHTML = captionContent;
-            Hoverable.set(resultElement.parentElement, caption);
+            if (captionContent) {
+                const caption = document.createElement("div");
+                caption.className = "Lightbearer caption";
+                caption.innerHTML = captionContent;
+                Hoverable.set(resultElement.parentElement, caption);
+            }
         }
     });
 }

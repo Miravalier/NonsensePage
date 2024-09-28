@@ -100,7 +100,7 @@ async function rollCommand(formulas: string) {
         diceResults += `
             <div class="dice roll" >
                 <div class="label">${formula}</div>
-                <div class="result" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>
+                <div class="result" data-formula="${formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>
             </div>
         `;
     }

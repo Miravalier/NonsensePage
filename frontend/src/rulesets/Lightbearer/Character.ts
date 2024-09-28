@@ -42,7 +42,7 @@ function renderRolls(rolls: Roll[]): string {
         }
         else if (roll.type == RollType.Dice) {
             const rollResults = Dice.Roll(roll.formula);
-            subresult += `<div class="result" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>`;
+            subresult += `<div class="result" data-formula="${roll.formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>`;
         }
         else if (roll.type == RollType.Table) {
             const choiceResult = PCG.choice(roll.formula.split(/ *, */));
@@ -248,7 +248,6 @@ export class LightbearerSheet extends Sheet {
                     const stat = ResolvePath(data, statInput.dataset.attr);
                     const formula = `2d6+${Math.floor(stat / 2)}`;
                     const rollResults = Dice.Roll(formula);
-                    rollResults.rolls.push({ "result": Math.floor(stat / 2), "sides": 0 });
                     await ApiRequest("/messages/speak", {
                         speaker: data.name,
                         character_id: data.id,
@@ -258,7 +257,7 @@ export class LightbearerSheet extends Sheet {
                                     <div class="chat-rolls">
                                         <div class="dice roll">
                                             <div class="label">${label.innerText}</div>
-                                            <div class="result" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>
+                                            <div class="result" data-formula="${formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>
                                         </div>
                                     </div>
                                 </div>
