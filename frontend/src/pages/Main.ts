@@ -17,7 +17,6 @@ import {
     launchWindow, windows, InputDialog,
     applyLayout, SerializedWindow,
 } from "../windows/Window.ts";
-import { ErrorToast } from "../lib/Notifications.ts";
 
 
 declare global {
@@ -80,6 +79,8 @@ async function LoadCharacters(path: string = null) {
 
 
 async function OnLoad() {
+    await Notifications.init();
+
     const token = localStorage.getItem("token");
     if (token === null) {
         console.error("No token found in local storage, redirecting to /login");
@@ -112,6 +113,9 @@ async function OnLoad() {
         ApiRequest,
         LogOut,
         LoadCharacters,
+        Warning: Notifications.WarningToast,
+        Error: Notifications.ErrorToast,
+        Info: Notifications.InfoToast,
     };
 
     await WsConnect();
@@ -123,7 +127,6 @@ async function OnLoad() {
 
     await Database.init();
     await ContextMenu.init();
-    await Notifications.init();
     await Templates.init();
 }
 

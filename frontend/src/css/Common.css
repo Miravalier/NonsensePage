@@ -15,14 +15,14 @@
 /* Chrome, Safari, Edge, Opera */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 /* Firefox */
 input[type=number] {
-  -moz-appearance: textfield;
-  appearance: textfield;
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 * {
@@ -55,23 +55,38 @@ textarea {
     padding: 2px;
 }
 
-.info-toast {
+#notifications {
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    justify-content: start;
+    pointer-events: none;
+}
+
+#notifications .toast {
     color: white;
     text-shadow: 2px 2px #222222;
+    padding: 6px;
+    margin: 2px;
+    opacity: 0;
+    transition: opacity 0.5s linear;
+    border-radius: 4px;
+}
+
+#notifications .info {
     background-color: #09406d;
     background: linear-gradient(135deg, #135f9c, #0d4b7e);
 }
 
-.warning-toast {
-    color: white;
-    text-shadow: 2px 2px #222222;
+#notifications .warning {
     background-color: #9c5f19;
     background: linear-gradient(135deg, #b96d25, #9c5f19);
 }
 
-.error-toast {
-    color: white;
-    text-shadow: 2px 2px #222222;
+#notifications .error {
     background-color: #800000;
     background: linear-gradient(135deg, #9c0b0b, #790303);
 }

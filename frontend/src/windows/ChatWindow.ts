@@ -217,7 +217,12 @@ export class ChatWindow extends ContentWindow {
                         // Dispatch command
                         const commandFunction = COMMANDS[command];
                         if (commandFunction) {
-                            await commandFunction(message);
+                            try {
+                                await commandFunction(message);
+                            }
+                            catch (error) {
+                                ErrorToast(error.toString());
+                            }
                         }
                         else {
                             ErrorToast(`Unknown command '${command}'`);
