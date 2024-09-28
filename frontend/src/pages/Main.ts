@@ -175,6 +175,9 @@ async function Main() {
                 if (!selection || !selection.Name) {
                     return;
                 }
+                if (selection.Default) {
+                    selection.Name = "Default";
+                }
 
                 const layout: SerializedWindow[] = [];
                 for (const openWindow of Object.values(windows)) {
