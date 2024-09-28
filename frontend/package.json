@@ -15,6 +15,7 @@
   "dependencies": {
     "mathjs": "^12.4.1",
     "pixi.js": "^8.0.4",
-    "squirrelly": "^9.1.0"
+    "squirrelly": "^9.1.0",
+    "marked": "^14.1.2"
   }
 }

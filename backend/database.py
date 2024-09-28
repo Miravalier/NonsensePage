@@ -100,12 +100,14 @@ db = client.nonsense_db
 # Collections
 characters = DocumentCollection(db.characters, models.Character)
 characters.create_index("folder_id")
+notes = DocumentCollection(db.notes, models.Note)
 items = DocumentCollection(db.items, models.Item)
 users = DocumentCollection(db.users, models.User)
 combats = DocumentCollection(db.combats, models.Combat)
 maps = DocumentCollection(db.maps, models.Map)
 messages = DocumentCollection(db.messages, models.Message)
 character_folders = DocumentCollection(db.character_folders, models.Folder)
+note_folders = DocumentCollection(db.note_folders, models.Folder)
 
 sessions = DocumentCollection(db.sessions, models.Session)
 sessions.create_index("auth_token")

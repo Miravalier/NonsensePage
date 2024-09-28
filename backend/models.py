@@ -192,6 +192,12 @@ class Character(Entity, Container):
     ability_order: List[str] = Field(default_factory=list)
 
 
+class Note(Entry):
+    type: str = "note"
+    folder_id: Optional[str] = None
+    text: str = ""
+
+
 class User(Entry):
     type: str = "user"
     hashed_password: bytes = Field(exclude=True, default=b"")

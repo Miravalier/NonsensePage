@@ -20,10 +20,11 @@ import database
 import expressions
 import files
 import ws_handlers
+from database import DocumentCollection
 from models import (
     Character, Item, User, Session,
     Connection, Combat, Message,
-    Folder, get_pool
+    Folder, Entry, get_pool
 )
 from enums import Alignment, Language, Permissions
 from errors import AuthError, JsonError
@@ -104,14 +105,16 @@ async def send_message(content: str, *, user: User, speaker: str = "System", cha
     return message
 
 
-def delete_character_folder(folder: Folder):
+def delete_folder(collection: str, folder: Folder):
     # Delete the folder itself
-    database.character_folders.delete_one(folder.id)
+    folders: DocumentCollection[Folder] = getattr(database, f"{collection}_folders")
+    folders.delete_one(folder.id)
     # Delete all characters in this folder
-    database.characters.delete_many({"folder_id": folder.id})
+    entries: DocumentCollection[Entry] = getattr(database, f"{collection}s")
+    entries.delete_many({"folder_id": folder.id})
     # Recursively delete all child folders
-    for subfolder in database.character_folders.find({"parent_id": folder.id}):
-        delete_character_folder(subfolder)
+    for subfolder in folders.find({"parent_id": folder.id}):
+        delete_folder(subfolder)
 
 
 class AdminConsoleRequest(BaseModel):
@@ -495,7 +498,7 @@ async def character_folder_delete(request: CharacterFolderDeleteRequest):
     folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
     if not request.requester.is_gm:
         auth_require(folder.has_permission(request.requester.id, "*", Permissions.OWNER))
-    delete_character_folder(folder)
+    delete_folder("character", folder)
     await get_pool("characters").broadcast({
         "type": "rmdir",
         "folder": folder.id,
@@ -540,6 +543,64 @@ async def character_list(request: CharacterListRequest):
         "subfolders": subfolders,
         "characters": characters
     }
+
+
+class NoteFolderRenameRequest(AuthRequest):
+    id: str
+    name: str
+
+
+@app.post("/api/note/folder/rename")
+async def note_folder_rename(request: NoteFolderRenameRequest):
+    folder = require(database.note_folders.find_one(request.id), "invalid folder id")
+    if not request.requester.is_gm:
+        auth_require(folder.has_permission(request.requester.id, "*", Permissions.OWNER))
+    database.note_folders.find_one_and_update(request.id, {"$set": {"name": request.name}})
+    await get_pool("notes").broadcast({
+        "type": "renamedir",
+        "folder": request.id,
+        "name": request.name,
+    })
+    return {"status": "success"}
+
+
+class NoteFolderCreateRequest(AuthRequest):
+    name: str
+    parent: Optional[str] = None
+
+
+@app.post("/api/note/folder/create")
+async def note_folder_create(request: NoteFolderCreateRequest):
+    if request.parent is not None:
+        require(database.note_folders.find_one(request.parent), "invalid folder id")
+    options = {"name": request.name, "parent_id": request.parent}
+    if not request.requester.is_gm:
+        options["permissions"] = {"*": {"*": Permissions.READ}, request.requester.id: {"*": Permissions.OWNER}}
+    folder = database.note_folders.create(options)
+    await get_pool("notes").broadcast({
+        "type": "mkdir",
+        "folder": request.parent,
+        "id": folder.id,
+        "name": folder.name,
+    })
+    return {"status": "success", "id": folder.id}
+
+
+class NoteFolderDeleteRequest(AuthRequest):
+    folder_id: str
+
+
+@app.post("/api/note/folder/delete")
+async def note_folder_delete(request: NoteFolderDeleteRequest):
+    folder = require(database.note_folders.find_one(request.folder_id), "invalid folder id")
+    if not request.requester.is_gm:
+        auth_require(folder.has_permission(request.requester.id, "*", Permissions.OWNER))
+    delete_folder("note", folder)
+    await get_pool("notes").broadcast({
+        "type": "rmdir",
+        "folder": folder.id,
+    })
+    return {"status": "success"}
 
 
 @app.post("/api/map/create")

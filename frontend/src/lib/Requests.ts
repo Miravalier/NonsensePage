@@ -116,11 +116,11 @@ export async function LoginRequest(username: string, password: string) {
     if (response.status === "success") {
         localStorage.setItem("token", response.token);
         Session.token = response.token;
+        Session.gm = response.user.is_gm;
+        Session.id = response.user.id;
+        Session.user = response.user;
+        Session.username = response.user.name;
     }
-    Session.gm = response.user.is_gm;
-    Session.id = response.user.id;
-    Session.user = response.user;
-    Session.username = response.user.name;
     return response;
 }
 
