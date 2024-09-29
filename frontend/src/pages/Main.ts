@@ -2,6 +2,7 @@ import * as ContextMenu from "../lib/ContextMenu.ts";
 import * as Database from "../lib/Database.ts";
 import * as Notifications from "../lib/Notifications.ts";
 import * as Templates from "../lib/Templates.ts";
+import { ErrorToast } from "../lib/Notifications.ts";
 import { IntroRegistry } from "../lib/Intro.ts";
 import { Rulesets } from "../rulesets/index.ts";
 import { Vector2 } from "../lib/Vector.ts";
@@ -17,6 +18,7 @@ import {
     launchWindow, windows, InputDialog,
     applyLayout, SerializedWindow,
 } from "../windows/Window.ts";
+import { NoteListWindow } from "../windows/NoteList.ts";
 
 
 declare global {
@@ -171,16 +173,27 @@ async function Main() {
                 });
                 await mapListWindow.load();
             },
+            "Notes": async (ev: MouseEvent) => {
+                const noteListWindow = new NoteListWindow({
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await noteListWindow.load();
+            },
         },
         "Layout": {
             "Save": async () => {
                 const selection = await InputDialog("Save Layout", { "Name": "text", "Default": "checkbox" }, "Create");
-                if (!selection || !selection.Name) {
+                if (!selection) {
                     return;
                 }
                 if (selection.Default) {
                     selection.Name = "Default";
                 }
+                if (!selection.Name) {
+                    ErrorToast("Missing layout name.");
+                    return;
+                }
+
 
                 const layout: SerializedWindow[] = [];
                 for (const openWindow of Object.values(windows)) {

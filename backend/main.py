@@ -541,7 +541,7 @@ async def character_list(request: CharacterListRequest):
         "name": folder_name,
         "parent_id": parent_id,
         "subfolders": subfolders,
-        "characters": characters
+        "entries": characters
     }
 
 
@@ -578,6 +578,7 @@ async def note_move(request: NoteMoveRequest):
             "dst": request.dst_id,
             "id": note.id,
             "name": note.name,
+            "image": note.image,
         })
 
     if request.folder_id is not None:
@@ -769,7 +770,7 @@ async def note_list(request: NoteListRequest):
         for folder in database.note_folders.find({"parent_id": request.folder_id}):
             subfolders.append((folder.id, folder.name))
         for note in database.notes.find({"folder_id": request.folder_id}):
-            notes.append((note.id, note.name))
+            notes.append((note.id, note.name, note.image))
 
     else:
         for folder in database.note_folders.find({"parent_id": request.folder_id}):
@@ -777,7 +778,7 @@ async def note_list(request: NoteListRequest):
                 subfolders.append((folder.id, folder.name))
         for note in database.notes.find({"folder_id": request.folder_id}):
             if note.has_permission(request.requester.id, level=Permissions.READ):
-                notes.append((note.id, note.name))
+                notes.append((note.id, note.name, note.image))
     subfolders.sort(key=lambda f: f[1])
     notes.sort(key=lambda c: c[1])
     return {
@@ -785,7 +786,7 @@ async def note_list(request: NoteListRequest):
         "name": folder_name,
         "parent_id": parent_id,
         "subfolders": subfolders,
-        "notes": notes
+        "entries": notes
     }
 
 

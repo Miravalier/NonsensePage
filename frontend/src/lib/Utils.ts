@@ -6,6 +6,11 @@ import { Entry } from "./Models.ts";
 import * as Database from "./Database.ts";
 
 
+export function TitleCase(s: string): string {
+    return s[0].toUpperCase() + s.substring(1).toLowerCase()
+}
+
+
 export function NumberWithSign(value: number): string {
     return new Intl.NumberFormat("en-US", {
         signDisplay: "always"

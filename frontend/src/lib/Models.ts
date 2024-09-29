@@ -123,6 +123,12 @@ export interface Character extends Entity {
     helperData: any;
 }
 
+export interface Note extends Entry {
+    type: "note";
+    image: string;
+    text: string;
+}
+
 export interface Combatant extends Entry {
     type: "combatant";
     character_id: string;

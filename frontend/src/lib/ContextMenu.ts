@@ -22,7 +22,8 @@ export async function init() {
 }
 
 
-export function set(element: HTMLElement, options: { [category: string]: { [choice: string]: (ev: MouseEvent) => void } }) {
+export function set(element: HTMLElement, options: { [category: string]: { [choice: string]: (ev: MouseEvent) => void } }): AbortController {
+    const abortController = new AbortController();
     element.addEventListener("contextmenu", async (ev: MouseEvent) => {
         ev.preventDefault();
         ev.stopPropagation();
@@ -86,5 +87,6 @@ export function set(element: HTMLElement, options: { [category: string]: { [choi
         if (selectedOption) {
             callbacks[selectedOption](resolvingEvent);
         }
-    });
+    }, { signal: abortController.signal });
+    return abortController;
 }

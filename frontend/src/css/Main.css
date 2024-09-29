@@ -202,7 +202,7 @@
     background-color: #ffffff4f;
 }
 
-.character-list .characters .character {
+.entry-list .entry {
     display: flex;
     flex-flow: row nowrap;
     justify-content: start;
@@ -213,14 +213,14 @@
     padding: 1px 2px;
 }
 
-.character-list .characters .character i,
-.character-list .characters .character svg {
+.entry-list .entry i,
+.entry-list .entry svg {
     margin: 2px;
     width: 16px;
     height: 16px;
 }
 
-.character-list .characters .character:hover {
+.entry-list .entry:hover {
     background-color: #ffffff4f;
 }
 
@@ -238,6 +238,18 @@
 .character.window .character.sheet {
     display: flex;
     flex-flow: column nowrap;
+}
+
+.note.window .content {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: stretch;
+    align-items: stretch;
+    height: 100%;
+}
+
+.note.window .content textarea {
+    flex: 1;
 }
 
 .files.images {

@@ -196,6 +196,7 @@ class Note(Entry):
     type: str = "note"
     folder_id: Optional[str] = None
     text: str = ""
+    image: str = ""
 
 
 class User(Entry):
