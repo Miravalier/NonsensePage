@@ -5,6 +5,7 @@ import { Vector2 } from "../lib/Vector.ts";
 import { Parameter, Leaf, Parent, PathConcat, GetThumbnail } from "../lib/Utils.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { AddDragListener } from "../lib/Drag.ts";
+import { FileViewer } from "./FileViewer.ts";
 
 
 const FILE_ICONS = {
@@ -242,7 +243,8 @@ export class FileWindow extends ContentWindow {
         AddDragListener(nameElement, { type: "file", filetype, urlPath, path });
 
         nameElement.addEventListener("click", () => {
-            window.open(urlPath, path);
+            const fileViewer = new FileViewer();
+            fileViewer.load(urlPath);
         });
 
         ContextMenu.set(nameElement, {

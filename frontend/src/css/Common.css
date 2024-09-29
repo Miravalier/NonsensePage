@@ -101,3 +101,13 @@ textarea {
     flex-flow: row nowrap;
     align-items: center;
 }
+
+@font-face {
+    font-family: "Noto Sans";
+    src: url(/NotoSans-Regular.ttf);
+}
+
+@font-face {
+    font-family: "Prompt";
+    src: url(/Prompt-Regular.ttf);
+}

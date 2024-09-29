@@ -252,6 +252,31 @@
     flex: 1;
 }
 
+.note.window .text :first-child {
+    margin-top: 4px;
+}
+
+.note.window .text h1 {
+    margin-top: 24px;
+}
+
+.note.window .text h2 {
+    margin-top: 16px;
+}
+
+.note.window .text h3 {
+    margin-top: 8px;
+}
+
+.note.window .text ol,
+.note.window .text ul {
+    padding: revert;
+}
+
+.note.window .text li {
+    margin: 8px 0;
+}
+
 .files.images {
     display: flex;
     flex-flow: row wrap;
@@ -324,6 +349,26 @@
     font-size: 128px;
     width: 164px;
     height: 128px;
+}
+
+.file-viewer .content {
+    margin: 0;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: stretch;
+    align-items: stretch;
+    resize: both;
+}
+
+.file-viewer .content iframe {
+    flex: 1;
+    border: none;
+}
+
+.disabled {
+    pointer-events: none;
 }
 
 input,
