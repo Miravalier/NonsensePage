@@ -365,7 +365,8 @@ export class CanvasWindow extends BaseWindow {
     canvasInitialized: boolean;
     loadingText: HTMLDivElement;
 
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         super(options);
         const canvasClass = Parameter(options.canvasClass, Canvas);
         this.viewPort.className = "canvasViewPort";
@@ -414,7 +415,8 @@ registerWindowType(CanvasWindow);
 export class ContentWindow extends BaseWindow {
     content: HTMLDivElement;
 
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         super(options);
         this.content = this.viewPort.appendChild(document.createElement("div"));
         this.content.className = "content";
@@ -447,7 +449,8 @@ export class Dialog extends ContentWindow {
     description: HTMLDivElement;
     elements: HTMLDivElement;
 
-    constructor(options: any) {
+    constructor(options: any = undefined) {
+        options = Parameter(options, {});
         // Default resizable to false instead of true
         options.resizable = Parameter(options.resizable, false);
         options.title = Parameter(options.title, "New Dialog");

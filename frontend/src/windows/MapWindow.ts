@@ -26,7 +26,8 @@ export class MapWindow extends CanvasWindow {
     layerButtons: { [layer: number]: HTMLButtonElement };
     declare canvas: MapCanvas;
 
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         options.classList = ["map-window"];
         options.size = Parameter(options.size, new Vector2(800, 600));
         options.refreshable = Parameter(options.refreshable, true);

@@ -13,7 +13,8 @@ export class MapListWindow extends ContentWindow {
     maps: HTMLDivElement;
     createMapButton: HTMLButtonElement | null;
 
-    constructor(options: any) {
+    constructor(options: any = undefined) {
+        options = Parameter(options, {});
         options.classList = ["map-list-window"];
         options.refreshable = Parameter(options.refreshable, true);
         options.size = Parameter(options.size, new Vector2(300, 400));

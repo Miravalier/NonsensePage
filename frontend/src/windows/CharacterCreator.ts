@@ -6,7 +6,8 @@ import { LoadTemplate } from "../lib/Templates.ts";
 
 
 export class CharacterCreatorWindow extends ContentWindow {
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         options.classList = ["character-creator"];
         options.size = Parameter(options.size, new Vector2(600, 600));
         options.title = Parameter(options.title, "Character Creation");

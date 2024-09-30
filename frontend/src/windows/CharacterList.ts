@@ -2,10 +2,12 @@ import { registerWindowType } from "./Window.ts";
 import { CharacterSheetWindow } from "./CharacterSheet.ts";
 import { EntryListWindow } from "./EntryList.ts";
 import { ApiRequest, Session } from "../lib/Requests.ts";
+import { Parameter } from "../lib/Utils.ts";
 
 
 export class CharacterListWindow extends EntryListWindow {
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         options.classList = ["character-list"];
         options.entryType = "character";
         super(options);

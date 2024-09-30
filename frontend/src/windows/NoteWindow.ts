@@ -13,7 +13,8 @@ export class NoteWindow extends ContentWindow {
     noteId: string;
     editMode: boolean;
 
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         options.classList = ["note"];
         options.size = Parameter(options.size, new Vector2(540, 600));
         super(options);

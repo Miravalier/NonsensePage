@@ -35,7 +35,8 @@ export class FileWindow extends ContentWindow {
     path: string;
     view: string;
 
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         options.classList = ["file"];
         options.size = Parameter(options.size, new Vector2(400, 400));
         options.refreshable = Parameter(options.refreshable, true);

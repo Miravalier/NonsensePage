@@ -128,6 +128,10 @@ async function OnLoad() {
         Warning: Notifications.WarningToast,
         Error: Notifications.ErrorToast,
         Info: Notifications.InfoToast,
+        CreateCharacter: async () => {
+            const characterCreator = new CharacterCreatorWindow();
+            await characterCreator.load();
+        },
     };
 
     await WsConnect();
@@ -300,7 +304,7 @@ async function Main() {
     ContextMenu.set(document.body, contextOptions);
 
     if (!Session.gm && !Session.user.character_id && IntroRegistry.html !== null) {
-        const characterCreator = new CharacterCreatorWindow({});
+        const characterCreator = new CharacterCreatorWindow();
         await characterCreator.load();
     }
     else {

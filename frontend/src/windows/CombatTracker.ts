@@ -18,7 +18,8 @@ export class CombatTrackerWindow extends ContentWindow {
     combatantIndexes: { [id: string]: number };
     endTurnButton: HTMLButtonElement;
 
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         options.classList = ["combat-tracker"];
         options.size = Parameter(options.size, new Vector2(380, 520));
         options.title = Parameter(options.title, "Combat Tracker");

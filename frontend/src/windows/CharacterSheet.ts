@@ -11,7 +11,8 @@ export class CharacterSheetWindow extends ContentWindow {
     characterId: string;
     sheet: Sheet
 
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         options.classList = ["character"];
         options.size = Parameter(options.size, new Vector2(540, 600));
         super(options);

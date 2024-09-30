@@ -188,7 +188,8 @@ export class ChatWindow extends ContentWindow {
     inputSection: HTMLDivElement;
     textarea: HTMLTextAreaElement;
 
-    constructor(options) {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
         options.classList = ["chat"];
         options.size = Parameter(options.size, new Vector2(400, 600));
         options.title = Parameter(options.title, "Chat");
