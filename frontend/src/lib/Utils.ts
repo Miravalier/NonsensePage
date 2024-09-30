@@ -3,7 +3,6 @@ import { PcgEngine } from "./PcgRandom.ts";
 import { Vector2 } from "./Vector.ts";
 import { Permissions } from "./Enums.ts";
 import { Entry } from "./Models.ts";
-import * as Database from "./Database.ts";
 
 
 export function TitleCase(s: string): string {
@@ -58,6 +57,21 @@ export class LocalPersist {
             return defaultValue;
         }
         return JSON.parse(storedJson);
+    }
+}
+
+
+export function RecursiveAssign(target: any, source: any) {
+    for (const [key, value] of Object.entries(source)) {
+        if (typeof target[key] === "undefined") {
+            target[key] = value;
+        }
+        else if (IsObject(value)) {
+            RecursiveAssign(target[key], value);
+        }
+        else {
+            target[key] = value;
+        }
     }
 }
 
@@ -242,16 +256,6 @@ export function Leaf(path: string): string {
     return path.substring(lastSlashIndex + 1);
 }
 
-export function GetSpeaker() {
-    const user = Database.users[Session.id];
-    if (user.character) {
-        return user.character;
-    }
-    else {
-        return user;
-    }
-}
-
 
 export function EscapeHtml(message) {
     const div = document.createElement("div");
@@ -275,6 +279,11 @@ export function StringBound(s: string, maxLength: number): string {
     else {
         return s.slice(0, maxLength - 3) + "...";
     }
+}
+
+
+export function IsObject(value: any): boolean {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 

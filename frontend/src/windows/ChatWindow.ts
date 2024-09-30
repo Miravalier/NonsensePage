@@ -6,11 +6,12 @@ import { ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
 import { ApiRequest, Session, HandleWsMessage } from "../lib/Requests.ts";
 import {
     Parameter, DerivePcgEngine, RandomText,
-    GenerateId, EscapeHtml, GetSpeaker,
+    GenerateId, EscapeHtml,
 } from "../lib/Utils.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { Language } from "../lib/Enums.ts";
 import { Message } from "../lib/Models.ts";
+import { GetSpeaker } from "../lib/Database.ts";
 
 
 const LANGUAGES = [
@@ -91,7 +92,7 @@ async function helpCommand() {
 async function rollCommand(formulas: string) {
     let characterId = null;
     let diceResults = "";
-    const speaker = GetSpeaker();
+    const speaker = await GetSpeaker();
     if (speaker.type == "character") {
         characterId = speaker.id;
     }
@@ -121,7 +122,7 @@ async function rollCommand(formulas: string) {
 
 
 async function memoteCommand(message) {
-    const speaker = GetSpeaker();
+    const speaker = await GetSpeaker();
     await ApiRequest("/messages/speak", {
         speaker: Session.username,
         content: `
@@ -143,7 +144,7 @@ async function oocCommand(message) {
 
 
 async function emoteCommand(message) {
-    const speaker = GetSpeaker();
+    const speaker = await GetSpeaker();
     await ApiRequest("/messages/speak", {
         speaker: Session.username,
         content: `<div class="emote">${speaker.name} ${EscapeHtml(message)}</div>`
@@ -169,7 +170,7 @@ async function narrateCommand(message) {
 
 async function speakCommand(message) {
     let characterId = null;
-    const speaker = GetSpeaker();
+    const speaker = await GetSpeaker();
     if (speaker.type == "character") {
         characterId = speaker.id;
     }

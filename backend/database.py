@@ -80,8 +80,8 @@ class DocumentCollection(Generic[M]):
             )
         )
 
-    def update_many(self, filter: dict, update: dict, *args, **kwargs):
-        self.collection.update_many(self.pre_process_filter(filter), update, *args, **kwargs)
+    def update_many(self, filter: dict, update: dict, *args, **kwargs) -> int:
+        return self.collection.update_many(self.pre_process_filter(filter), update, *args, **kwargs).matched_count
 
     def upsert(self, filter: dict, update: dict, *args, **kwargs):
         return _jsonify_oid(self.collection.update_one(self.pre_process_filter(filter), update, *args, **kwargs, upsert=True).upserted_id)

@@ -19,6 +19,7 @@ import {
     applyLayout, SerializedWindow,
 } from "../windows/Window.ts";
 import { NoteListWindow } from "../windows/NoteList.ts";
+import { RecursiveAssign } from "../lib/Utils.ts";
 
 
 declare global {
@@ -106,12 +107,21 @@ async function OnLoad() {
     Session.user = response.user;
     Session.username = response.user.name;
 
+    await Subscribe(Session.id, update => {
+        if (update.type == "update") {
+            RecursiveAssign(Session.user, update.changes["$set"]);
+            Session.username = Session.user.name;
+        }
+    });
+
     for (const ruleset of Rulesets) {
         await ruleset.init();
     }
 
     // Add functions to the window
     window.Nonsense = {
+        Database,
+        Session,
         ApiRequest,
         LogOut,
         LoadCharacters,
@@ -267,6 +277,10 @@ async function Main() {
                 "Username": "text",
                 "Password": "text",
             }, "Create");
+            if (!selection || !selection.Username || !selection.Password) {
+                Notifications.WarningToast("User creation aborted");
+                return;
+            }
             await ApiRequest(
                 "/user/create",
                 {
@@ -274,7 +288,13 @@ async function Main() {
                     password: selection.Password,
                 }
             );
-        }
+        };
+        contextOptions["Settings"]["Release Character"] = async () => {
+            await ApiRequest("/user/update", {
+                id: Session.id,
+                changes: { "$set": { "character_id": null } },
+            });
+        };
     }
 
     ContextMenu.set(document.body, contextOptions);

@@ -232,6 +232,24 @@ async def user_create(request: UserCreateRequest):
     return {"status": "success", "id": user.id}
 
 
+class UserUpdateRequest(GMRequest):
+    id: str
+    changes: Dict
+
+
+@app.post("/api/user/update")
+async def user_update(request: UserUpdateRequest):
+    user = require(database.users.find_one_and_update(request.id, request.changes), "invalid user id")
+
+    await user.broadcast_changes(request.changes)
+    await get_pool("users").broadcast({
+        "type": "update",
+        "user": user.model_dump(),
+    })
+
+    return {"status": "success"}
+
+
 class UserDeleteRequest(GMRequest):
     id: str
 
@@ -376,6 +394,7 @@ async def character_delete(request: CharacterDeleteRequest):
     if not request.requester.is_gm:
         auth_require(character.has_permission(request.requester.id, "*", Permissions.OWNER))
     database.characters.delete_one(character.id)
+    database.users.update_many({"character_id": character.id}, {"$set": {"character_id": None}})
     await character.pool.broadcast({
         "type": "delete",
     })

@@ -43,6 +43,10 @@ export class EntryListWindow extends ContentWindow {
         this.ancestorIds = new Set();
     }
 
+    async contextMenuHook(id: string, contextOptions: { [choice: string]: (ev: MouseEvent) => void }) {
+
+    }
+
     async createFolderHandler() {
         const selection = await InputDialog(`Create ${TitleCase(this.entryType)} Folder`, { "Name": "text" }, "Create");
         if (!selection || !selection.Name) {
@@ -143,30 +147,32 @@ export class EntryListWindow extends ContentWindow {
         element.appendChild(document.createTextNode(name));
         element.addEventListener("click", () => this.openEntryHandler(id));
         AddDragListener(element, { type: this.entryType, id });
-        ContextMenu.set(element, {
-            [`Edit ${TitleCase(this.entryType)}`]: {
-                "Rename": async () => {
-                    const selection = await InputDialog(`Rename ${TitleCase(this.entryType)}`, { "Name": "text" }, "Rename");
-                    if (!selection || !selection.Name) {
-                        return;
-                    }
-                    await ApiRequest(`/${this.entryType}/update`, {
-                        id,
-                        changes: {
-                            "$set": {
-                                name: selection.Name,
-                            },
+        const contextOptions = {
+            "Rename": async () => {
+                const selection = await InputDialog(`Rename ${TitleCase(this.entryType)}`, { "Name": "text" }, "Rename");
+                if (!selection || !selection.Name) {
+                    return;
+                }
+                await ApiRequest(`/${this.entryType}/update`, {
+                    id,
+                    changes: {
+                        "$set": {
+                            name: selection.Name,
                         },
-                    });
-                },
-                "Delete": async () => {
-                    if (!await ConfirmDialog(`Delete '${name}'`)) {
-                        return;
-                    }
-                    await ApiRequest(`/${this.entryType}/delete`, { id });
-                    element.remove();
-                },
+                    },
+                });
             },
+            "Delete": async () => {
+                if (!await ConfirmDialog(`Delete '${name}'`)) {
+                    return;
+                }
+                await ApiRequest(`/${this.entryType}/delete`, { id });
+                element.remove();
+            },
+        };
+        this.contextMenuHook(id, contextOptions);
+        ContextMenu.set(element, {
+            [TitleCase(this.entryType)]: contextOptions,
         });
     }
 
