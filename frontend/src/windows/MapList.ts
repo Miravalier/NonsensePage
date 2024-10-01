@@ -7,6 +7,7 @@ import { Vector2 } from "../lib/Vector.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { Html } from "../lib/Elements.ts";
 import { MapWindow } from "./MapWindow.ts";
+import { PermissionsWindow } from "./Permissions.ts";
 
 
 export class MapListWindow extends ContentWindow {
@@ -67,6 +68,10 @@ export class MapListWindow extends ContentWindow {
                     await ApiRequest("/map/delete", { id });
                     element.remove();
                 },
+                "Edit Permissions": async () => {
+                    const permissionsEditor = new PermissionsWindow();
+                    permissionsEditor.load("map", id);
+                }
             },
         });
     }

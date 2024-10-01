@@ -6,6 +6,7 @@ import { ErrorToast } from "../lib/Notifications.ts";
 import { Parameter, IsDefined, GetThumbnail, Require } from "../lib/Utils.ts";
 import { TitleCase } from "../lib/Utils.ts";
 import { AddDragListener } from "../lib/Drag.ts";
+import { PermissionsWindow } from "./Permissions.ts";
 
 
 export class EntryListWindow extends ContentWindow {
@@ -127,7 +128,7 @@ export class EntryListWindow extends ContentWindow {
                         return;
                     }
                     await ApiRequest(`/${this.entryType}/folder/delete`, { folder_id: id });
-                }
+                },
             }
         });
     }
@@ -169,6 +170,10 @@ export class EntryListWindow extends ContentWindow {
                 await ApiRequest(`/${this.entryType}/delete`, { id });
                 element.remove();
             },
+            "Edit Permissions": async () => {
+                const permissionsEditor = new PermissionsWindow();
+                permissionsEditor.load(this.entryType, id);
+            }
         };
         this.contextMenuHook(id, contextOptions);
         ContextMenu.set(element, {

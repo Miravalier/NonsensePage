@@ -508,3 +508,34 @@ button:hover i {
 .template .roll .result {
     margin: 4px;
 }
+
+.permissions.window .content .buttons {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.permissions.window .content .group {
+    padding: 4px;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.permissions.window .content .group .label {
+    text-align: center;
+}
+
+.permissions.window .content .group .pair {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: stretch;
+    align-items: stretch;
+    width: 100%;
+}
+
+.permissions.window .content .group .pair .scope {
+    flex: 1;
+}
