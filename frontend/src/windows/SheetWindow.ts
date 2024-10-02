@@ -2,7 +2,7 @@ import { ContentWindow, registerWindowType } from "./Window.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { ApiRequest } from "../lib/Requests.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
-import { IsDefined, Parameter, Require } from "../lib/Utils.ts";
+import { IsDefined, Parameter, Require, TitleCase } from "../lib/Utils.ts";
 import { Permission } from "../lib/Models.ts";
 import { Sheet, SheetRegistry } from "../lib/Sheet.ts";
 
@@ -32,7 +32,6 @@ export class SheetWindow extends ContentWindow {
     }
 
     async load(id: string) {
-        console.log("DEBUG Loading", id);
         await super.load();
         this.content.innerHTML = "";
 
@@ -52,7 +51,7 @@ export class SheetWindow extends ContentWindow {
         }
 
         if (response.status != "success") {
-            ErrorToast("Character loading failed!");
+            ErrorToast(`${TitleCase(this.entryType)} loading failed!`);
             this.close();
             return;
         }

@@ -17,7 +17,6 @@ export class CharacterListWindow extends EntryListWindow {
         const characterSheetWindow = new CharacterSheetWindow({
             title: "Character Sheet",
         });
-        console.log("DEBUG Character Sheet Window Loading:", id);
         await characterSheetWindow.load(id);
     }
 

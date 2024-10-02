@@ -44,8 +44,18 @@ export class EntryListWindow extends ContentWindow {
         this.ancestorIds = new Set();
     }
 
-    async contextMenuHook(id: string, contextOptions: { [choice: string]: (ev: MouseEvent) => void }) {
+    async contextMenuHook(_id: string, _contextOptions: { [choice: string]: (ev: MouseEvent) => void }) { }
 
+    async onDrop(folderId: string, dropData: any) {
+        if (dropData.type == `${this.entryType}Folder`) {
+            if (dropData.id == folderId) {
+                return;
+            }
+            await ApiRequest(`/${this.entryType}/move`, { folder_id: dropData.id, dst_id: folderId });
+        }
+        else if (dropData.type == `${this.entryType}Entry`) {
+            await ApiRequest(`/${this.entryType}/move`, { [`${this.entryType}_id`]: dropData.id, dst_id: folderId });
+        }
     }
 
     async createFolderHandler() {
@@ -81,12 +91,7 @@ export class EntryListWindow extends ContentWindow {
             await this.load(id);
         });
         this.addDropListener(element, async (dropData) => {
-            if (dropData.type == `${this.entryType}Folder`) {
-                await ApiRequest(`/${this.entryType}/move`, { folder_id: dropData.id, dst_id: id });
-            }
-            else if (dropData.type == this.entryType) {
-                await ApiRequest(`/${this.entryType}/move`, { [`${this.entryType}_id`]: dropData.id, dst_id: id });
-            }
+            await this.onDrop(id, dropData);
         });
     }
 
@@ -100,16 +105,7 @@ export class EntryListWindow extends ContentWindow {
         });
         AddDragListener(element, { type: `${this.entryType}Folder`, id });
         this.addDropListener(element, async (dropData) => {
-            if (dropData.type == `${this.entryType}Folder`) {
-                if (dropData.id == id) {
-                    return;
-                }
-                await ApiRequest(`/${this.entryType}/move`, { folder_id: dropData.id, dst_id: id });
-
-            }
-            else if (dropData.type == this.entryType) {
-                await ApiRequest(`/${this.entryType}/move`, { [`${this.entryType}_id`]: dropData.id, dst_id: id });
-            }
+            await this.onDrop(id, dropData);
         });
         ContextMenu.set(element, {
             "Edit Folder": {
@@ -133,7 +129,7 @@ export class EntryListWindow extends ContentWindow {
         });
     }
 
-    async addEntry(id: string, name: string, image: string = null) {
+    async addEntry(id: string, name: string, image: string = undefined) {
         const element = this.entryList.appendChild(document.createElement("div"));
         element.dataset.id = id;
         element.className = `${this.entryType} entry`;
@@ -147,7 +143,7 @@ export class EntryListWindow extends ContentWindow {
         }
         element.appendChild(document.createTextNode(name));
         element.addEventListener("click", () => this.openEntryHandler(id));
-        AddDragListener(element, { type: this.entryType, id });
+        AddDragListener(element, { type: `${this.entryType}Entry`, id });
         const contextOptions = {
             "Rename": async () => {
                 const selection = await InputDialog(`Rename ${TitleCase(this.entryType)}`, { "Name": "text" }, "Rename");
@@ -219,6 +215,10 @@ export class EntryListWindow extends ContentWindow {
             await this.addEntry(id, name, image);
         }
 
+        this.addDropListener(this.viewPort, async (dropData) => {
+            await this.onDrop(this.folderId, dropData);
+        });
+
         await this.subscribe(`${Pluralize(this.entryType)}`, async updateData => {
             if (updateData.type == "delete") {
                 if (updateData.folder != this.folderId) {
@@ -233,7 +233,7 @@ export class EntryListWindow extends ContentWindow {
                 if (updateData.folder != this.folderId) {
                     return;
                 }
-                await this.addEntry(updateData.id, updateData.name, null);
+                await this.addEntry(updateData.id, updateData.name, updateData.image);
             }
             else if (updateData.type == "rename") {
                 if (updateData.folder != this.folderId) {
@@ -241,7 +241,7 @@ export class EntryListWindow extends ContentWindow {
                 }
                 const entryDiv = this.entryList.querySelector(`[data-id="${updateData.id}"]`);
                 if (entryDiv) {
-                    entryDiv.textContent = updateData.name;
+                    entryDiv.childNodes[1].textContent = updateData.name;
                 }
             }
             else if (updateData.type == "move") {

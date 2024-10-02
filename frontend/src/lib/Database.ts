@@ -76,6 +76,21 @@ export async function GetSpeaker() {
 }
 
 
+export async function GetCharacter() {
+    const user = users[Session.id];
+    if (user.character_id) {
+        try {
+            return await ResolveCharacter(user.character_id, true);
+        } catch {
+            return null;
+        }
+    }
+    else {
+        return null;
+    }
+}
+
+
 export async function ApplyHealing(amount: number) {
     TakeDamage(-amount);
 }

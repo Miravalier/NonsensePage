@@ -2,7 +2,7 @@ import { CharacterAbility, AbilityType, Character } from "../../lib/Models.ts";
 import { ErrorToast } from "../../lib/Notifications.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { BaseWindow } from "../../windows/Window.ts";
-import { getAbilityIcons } from "./Character.ts";
+import { GetAbilityIcons } from "./Utils.ts";
 
 // const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
 
@@ -156,7 +156,7 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
             if (ability.type == AbilityType.Passive) {
                 abilityElement.querySelector(".name").classList.add("passive");
             }
-            abilityElement.querySelector(".icons").innerHTML = getAbilityIcons(ability);
+            abilityElement.querySelector(".icons").innerHTML = GetAbilityIcons(ability);
             abilityElement.addEventListener("click", () => {
                 if (abilityElement.classList.contains("selected")) {
                     selectedAbilities.splice(selectedAbilities.indexOf(ability), 1);

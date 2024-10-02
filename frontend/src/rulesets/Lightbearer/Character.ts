@@ -1,58 +1,13 @@
 import * as ContextMenu from "../../lib/ContextMenu.ts";
 import * as Dice from "../../lib/Dice.ts";
 import { AddDragListener } from "../../lib/Drag.ts";
-import { PCG } from "../../lib/PcgRandom.ts";
 import { InputDialog } from "../../windows/Window.ts";
-import { CharacterAbility, AbilityType, Character, Roll, RollType } from "../../lib/Models.ts";
+import { CharacterAbility, AbilityType, Character } from "../../lib/Models.ts";
 import { Sheet } from "../../lib/Sheet.ts";
 import { GenerateId, GetPermissions, ResolvePath, SetPath } from "../../lib/Utils.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { Permissions } from "../../lib/Enums.ts";
-
-
-export function getAbilityIcons(ability: CharacterAbility) {
-    let icons = "";
-    const typeIcon = {
-        [AbilityType.Free]: "fa-regular fa-circle",
-        [AbilityType.Action]: "fa-solid fa-circle-a",
-        [AbilityType.Reaction]: "fa-duotone fa-exclamation-circle",
-    }[ability.type];
-    if (typeIcon) {
-        icons += '<div class="icon">';
-        icons += `<i class="${typeIcon}"></i>`;
-        icons += '</div>';
-    }
-    if (ability.cooldown > 0) {
-        icons += '<div class="icon">';
-        icons += `<span class="cooldown">${ability.cooldown}</span>`;
-        icons += `<i class="fa-solid fa-hourglass"></i>`;
-        icons += '</div>';
-    }
-    return icons;
-}
-
-
-function renderRolls(rolls: Roll[]): string {
-    let result = "";
-    for (const roll of rolls) {
-        let subresult = `<div class="${roll.type} roll">`;
-        subresult += `<div class="label">${roll.label}</div>`;
-        if (roll.type == RollType.Text) {
-            subresult += `<div class="result">${roll.formula}</div>`;
-        }
-        else if (roll.type == RollType.Dice) {
-            const rollResults = Dice.Roll(roll.formula);
-            subresult += `<div class="result" data-formula="${roll.formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>`;
-        }
-        else if (roll.type == RollType.Table) {
-            const choiceResult = PCG.choice(roll.formula.split(/ *, */));
-            subresult += `<div class="result">${choiceResult}</div>`;
-        }
-        subresult += '</div>';
-        result += subresult;
-    }
-    return result;
-}
+import { RenderRolls, GetAbilityIcons } from "./Utils.ts";
 
 
 export class LightbearerCharacterSheet extends Sheet {
@@ -74,7 +29,7 @@ export class LightbearerCharacterSheet extends Sheet {
                     },
                 },
             });
-            this.parent.addDropListener(abilityContainer, (data) => {
+            this.parent.addDropListener(this.container, (data) => {
                 if (data.type != "ability") {
                     return;
                 }
@@ -118,7 +73,7 @@ export class LightbearerCharacterSheet extends Sheet {
                 ability.rolls = value;
             });
             const updateIcons = () => {
-                abilityIcons.innerHTML = getAbilityIcons(ability);
+                abilityIcons.innerHTML = GetAbilityIcons(ability);
                 if (ability.type == AbilityType.Passive) {
                     abilityName.classList.add("passive");
                 }
@@ -223,12 +178,12 @@ export class LightbearerCharacterSheet extends Sheet {
                                 <div class="ability" data-character-id="${data.id}" data-id="${ability.id}">
                                     <div class="bar">
                                         <div class="row">
-                                            <div class="icons">${getAbilityIcons(ability)}</div>
+                                            <div class="icons">${GetAbilityIcons(ability)}</div>
                                             <div class="name">${ability.name}</div>
                                         </div>
                                     </div>
                                     <div class="details hidden">${ability.description.replace("\n", "<br>")}</div>
-                                    <div class="chat-rolls">${renderRolls(ability.rolls)}</div>
+                                    <div class="chat-rolls">${RenderRolls(ability.rolls)}</div>
                                 </div>
                             </div>
                         `,

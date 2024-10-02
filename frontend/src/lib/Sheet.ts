@@ -183,5 +183,5 @@ export function RegisterSheet(identifier: string, type: { new(entryType: string,
 }
 
 
-RegisterSheet("character.default", Sheet, "<p>Debug!</p>");
-RegisterSheet("ability.default", Sheet, "<p>Debug!</p>");
+RegisterSheet("character.default", Sheet, "");
+RegisterSheet("ability.default", Sheet, "");
