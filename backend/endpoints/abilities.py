@@ -1,3 +1,5 @@
+from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import APIRouter
 from typing import Optional
 
@@ -6,7 +8,7 @@ from ..lib.errors import JsonError
 from ..lib.folders import delete_folder
 from ..lib.utils import require, auth_require
 from ..models.database_models import Permissions, get_pool
-from ..models.request_models import AuthRequest
+from ..models.request_models import AuthRequest, GMRequest
 
 
 router = APIRouter()
@@ -109,34 +111,48 @@ async def ability_get(request: AbilityGetRequest):
 
 class AbilityListRequest(AuthRequest):
     folder_id: Optional[str] = None
+    retrieve_all: bool = False
 
 
 @router.post("/list")
 async def ability_list(request: AbilityListRequest):
     if request.folder_id is not None:
-        folder = require(database.ability_folders.find_one(request.folder_id), "invalid folder id")
+        try:
+            folder = require(database.ability_folders.find_one({"$or": [
+                {"_id": ObjectId(request.folder_id)},
+                {"alternate_id": request.folder_id},
+            ]}), "invalid folder id")
+        except InvalidId:
+            folder = require(database.ability_folders.find_one({
+                "alternate_id": request.folder_id
+            }), "invalid folder id")
+
+        folder_id = folder.id
         folder_name = folder.name
         parent_id = folder.parent_id
     else:
+        folder_id = None
         folder_name = "/"
         parent_id = None
-    subfolders = []
-    abilities = []
-    if request.requester.is_gm:
-        for folder in database.ability_folders.find({"parent_id": request.folder_id}):
-            subfolders.append((folder.id, folder.name))
-        for ability in database.abilities.find({"folder_id": request.folder_id}):
-            abilities.append((ability.id, ability.name, ability.image))
 
-    else:
-        for folder in database.ability_folders.find({"parent_id": request.folder_id}):
-            if folder.has_permission(request.requester.id, level=Permissions.READ):
-                subfolders.append((folder.id, folder.name))
-        for ability in database.abilities.find({"folder_id": request.folder_id}):
-            if ability.has_permission(request.requester.id, level=Permissions.READ):
-                abilities.append((ability.id, ability.name, ability.image))
+    subfolders = []
+    for folder in database.ability_folders.find({"parent_id": folder_id}):
+        if request.requester.is_gm or folder.has_permission(request.requester.id, level=Permissions.READ):
+            subfolders.append((folder.id, folder.name))
     subfolders.sort(key=lambda f: f[1])
-    abilities.sort(key=lambda c: c[1])
+
+    abilities = []
+    for ability in database.abilities.find({"folder_id": folder_id}):
+        if request.requester.is_gm or ability.has_permission(request.requester.id, level=Permissions.READ):
+            if request.retrieve_all:
+                abilities.append(ability.model_dump())
+            else:
+                abilities.append((ability.id, ability.name, ability.image))
+    if request.retrieve_all:
+        abilities.sort(key=lambda entry: entry["name"])
+    else:
+        abilities.sort(key=lambda c: c[1])
+
     return {
         "status": "success",
         "name": folder_name,
@@ -254,4 +270,18 @@ async def ability_folder_delete(request: AbilityFolderDeleteRequest):
         "type": "rmdir",
         "folder": folder.id,
     })
+    return {"status": "success"}
+
+
+class AbilityFolderSetAltIdRequest(GMRequest):
+    folder_id: str
+    alternate_id: str
+
+
+@router.post("/folder/alt-id")
+async def ability_folder_alt_id(request: AbilityFolderSetAltIdRequest):
+    require(database.ability_folders.find_one_and_update(
+        request.folder_id,
+        {"$set": {"alternate_id": request.alternate_id}}
+    ), "invalid folder_id")
     return {"status": "success"}

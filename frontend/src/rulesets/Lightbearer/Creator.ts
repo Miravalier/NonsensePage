@@ -1,4 +1,4 @@
-import { CharacterAbility, AbilityType, Character } from "../../lib/Models.ts";
+import { CharacterAbility, AbilityType, Character, Ability } from "../../lib/Models.ts";
 import { ErrorToast } from "../../lib/Notifications.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { BaseWindow } from "../../windows/Window.ts";
@@ -122,19 +122,27 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
     const finishButton = container.querySelector<HTMLButtonElement>(".finish");
 
     let selectedAbilities: CharacterAbility[] = [];
-    let selectedClass: Character;
+    let racialAbilities: CharacterAbility[] = [];
 
     const SelectClass = async (className: string) => {
         abilityContainer.innerHTML = "";
         selectedAbilities = [];
         classDescription.innerText = classDescriptions[className];
+
         const response: {
-            status: string;
-            character: Character;
-        } = await ApiRequest("/character/get", { name: className });
-        selectedClass = response.character;
-        for (const abilityId of response.character.ability_order) {
-            const ability = response.character.ability_map[abilityId];
+            status: string,
+            name: string,
+            parent_id: string,
+            subfolders: [string, string][],
+            entries: Ability[],
+        } = await ApiRequest("/ability/list", { folder_id: className, retrieve_all: true });
+
+        if (response.status !== "success") {
+            ErrorToast(`Failed to load class: ${className}`);
+            return;
+        }
+
+        for (const ability of response.entries) {
             if (ability.name.endsWith("+")) {
                 continue;
             }
@@ -172,8 +180,23 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
         }
     };
 
-    const SelectRace = (race: string) => {
+    const SelectRace = async (race: string) => {
         raceDescription.innerText = classDescriptions[race];
+
+        const response: {
+            status: string,
+            name: string,
+            parent_id: string,
+            subfolders: [string, string][],
+            entries: Ability[],
+        } = await ApiRequest("/ability/list", { folder_id: race, retrieve_all: true });
+
+        if (response.status !== "success") {
+            ErrorToast(`Failed to load race: ${race}`);
+            return;
+        }
+
+        racialAbilities = response.entries;
     };
 
     SelectClass(classSelect.value);
@@ -197,12 +220,14 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
             return;
         }
 
+        selectedAbilities.push(...racialAbilities);
+
         const abilityMap: { [id: string]: CharacterAbility } = {};
         for (const ability of selectedAbilities) {
             abilityMap[ability.id] = ability;
         }
         const characterInfo = {
-            image: selectedClass.image,
+            image: `/files/Lightbearer/${classSelect.value}.png`,
             hp: classMaxHp[classSelect.value],
             max_hp: classMaxHp[classSelect.value],
             data: {

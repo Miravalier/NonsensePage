@@ -176,6 +176,7 @@ class Item(Entity, Container):
 class Folder(Entry):
     entry_type: str = "folder"
     parent_id: Optional[str] = None
+    alternate_id: Optional[str] = None
 
 
 class Character(Entity, Container):

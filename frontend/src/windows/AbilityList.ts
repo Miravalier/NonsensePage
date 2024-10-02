@@ -1,10 +1,11 @@
-import { registerWindowType } from "./Window.ts";
+import { InputDialog, registerWindowType } from "./Window.ts";
 import { EntryListWindow } from "./EntryList.ts";
 import { AbilitySheetWindow } from "./AbilitySheet.ts";
 import { Parameter } from "../lib/Utils.ts";
 import { ApiRequest } from "../lib/Requests.ts";
 import { Ability, CharacterAbility } from "../lib/Models.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
+import { Session } from "../lib/Requests.ts";
 
 
 export class AbilityListWindow extends EntryListWindow {
@@ -47,6 +48,24 @@ export class AbilityListWindow extends EntryListWindow {
                 },
             });
         }
+    }
+
+    async contextMenuHook(type: string, id: string, contextOptions: { [choice: string]: (ev: MouseEvent) => void }) {
+        if (type != "folder" || !Session.gm) {
+            return;
+        }
+
+        contextOptions["Set Alt-Id"] = async () => {
+            const selection = await InputDialog(`Set Alternate Id`, { "ID": ["text"] }, "Set");
+            if (!selection || !selection.ID) {
+                return;
+            }
+
+            await ApiRequest("/ability/folder/alt-id", {
+                folder_id: id,
+                alternate_id: selection.ID,
+            });
+        };
     }
 }
 

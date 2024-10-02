@@ -45,7 +45,7 @@ export class EntryListWindow extends ContentWindow {
         this.ancestorIds = new Set();
     }
 
-    async contextMenuHook(_id: string, _contextOptions: { [choice: string]: (ev: MouseEvent) => void }) { }
+    async contextMenuHook(_type: string, _id: string, _contextOptions: { [choice: string]: (ev: MouseEvent) => void }) { }
 
     async onDrop(folderId: string, dropData: any) {
         if (dropData.type == `${this.entryType}Folder`) {
@@ -108,26 +108,27 @@ export class EntryListWindow extends ContentWindow {
         this.addDropListener(element, async (dropData) => {
             await this.onDrop(id, dropData);
         });
-        ContextMenu.set(element, {
-            "Edit Folder": {
-                "Rename": async () => {
-                    const selection = await InputDialog("Rename Folder", { "Name": "text" }, "Rename");
-                    if (!selection || !selection.Name) {
-                        return;
-                    }
-                    await ApiRequest(`/${this.entryType}/folder/rename`, {
-                        id,
-                        name: selection.Name,
-                    });
-                },
-                "Delete": async () => {
-                    if (!await ConfirmDialog(`Delete '${name}'`)) {
-                        return;
-                    }
-                    await ApiRequest(`/${this.entryType}/folder/delete`, { folder_id: id });
-                },
-            }
-        });
+        const contextOptions = {
+            "Rename": async () => {
+                const selection = await InputDialog("Rename Folder", { "Name": "text" }, "Rename");
+                if (!selection || !selection.Name) {
+                    return;
+                }
+                await ApiRequest(`/${this.entryType}/folder/rename`, {
+                    id,
+                    name: selection.Name,
+                });
+            },
+            "Delete": async () => {
+                if (!await ConfirmDialog(`Delete '${name}'`)) {
+                    return;
+                }
+                await ApiRequest(`/${this.entryType}/folder/delete`, { folder_id: id });
+            },
+        }
+
+        await this.contextMenuHook("folder", id, contextOptions);
+        ContextMenu.set(element, { "Edit Folder": contextOptions });
     }
 
     async addEntry(id: string, name: string, image: string = undefined) {
@@ -173,7 +174,7 @@ export class EntryListWindow extends ContentWindow {
                 permissionsEditor.load(this.entryType, id);
             }
         };
-        this.contextMenuHook(id, contextOptions);
+        this.contextMenuHook("entry", id, contextOptions);
         ContextMenu.set(element, {
             [TitleCase(this.entryType)]: contextOptions,
         });
