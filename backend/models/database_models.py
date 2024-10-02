@@ -8,12 +8,12 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Any, Dict, Iterator, List, Optional, Union, Set
 
-from enums import (
+from ..lib.enums import (
     Alignment, Language, Permissions,
     Layer, GridColor, AbilityType,
     ScaleType
 )
-from utils import current_timestamp
+from ..lib.utils import current_timestamp
 
 
 FILES_ROOT = Path("/files")

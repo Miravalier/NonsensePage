@@ -10,6 +10,19 @@ export function TitleCase(s: string): string {
 }
 
 
+export function Pluralize(s: string): string {
+    if (s.endsWith("y")) {
+        return s.substring(0, s.length - 1) + "ies";
+    }
+    else if (s.endsWith("s")) {
+        return s + "es";
+    }
+    else {
+        return s + "s";
+    }
+}
+
+
 export function NumberWithSign(value: number): string {
     return new Intl.NumberFormat("en-US", {
         signDisplay: "always"

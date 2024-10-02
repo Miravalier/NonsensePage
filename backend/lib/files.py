@@ -1,9 +1,11 @@
 import hashlib
 import os
-import shutil
 from pathlib import Path
 from wand.image import Image
 from wand.color import Color
+
+from .errors import JsonError
+from ..models.database_models import User
 
 
 THUMBNAILS_DIR = Path("/thumbnails")
@@ -177,3 +179,35 @@ def generate_thumbnail(image_path: Path, force: bool = False, svg: bool = False)
 def delete_thumbnail(image_path: Path):
     thumbnail_path = THUMBNAILS_DIR / (hashlib.sha256(bytes(image_path)).hexdigest() + ".png")
     thumbnail_path.unlink(missing_ok=True)
+
+
+
+def validate_path(requester: User, path: str) -> Path:
+    # Make sure path is absolute
+    path: Path = Path(path)
+    if not path.is_absolute():
+        raise JsonError("not an absolute path")
+    # Resolve '..' and symlinks in path
+    path = path.resolve(strict=False)
+    # Make path relative to user root
+    user_root = requester.file_root
+    path = user_root / Path(str(path)[1:])
+    if path == user_root:
+        raise JsonError("invalid path: file root")
+    return path
+
+
+def validate_directory(requester: User, path: str) -> Path:
+    # Make sure path is absolute
+    path: Path = Path(path)
+    if not path.is_absolute():
+        raise JsonError("not an absolute path")
+    # Resolve '..' and symlinks in path
+    path = path.resolve(strict=False)
+    # Make path relative to user root
+    user_root = requester.file_root
+    path = user_root / Path(str(path)[1:])
+    # Check that path is a directory that exists
+    if not path.is_dir():
+        raise JsonError("not a directory")
+    return path

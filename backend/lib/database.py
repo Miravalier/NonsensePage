@@ -5,7 +5,7 @@ from pymongo import ReturnDocument
 from pymongo.collection import Collection
 from typing import Generic, List, Type, TypeVar, Union
 
-import models
+from ..models import database_models as models
 
 
 M = TypeVar('M', bound=BaseModel)

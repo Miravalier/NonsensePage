@@ -4,7 +4,7 @@ import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from ".
 import { ApiRequest } from "../lib/Requests.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { Parameter, IsDefined, GetThumbnail, Require } from "../lib/Utils.ts";
-import { TitleCase } from "../lib/Utils.ts";
+import { Pluralize, TitleCase } from "../lib/Utils.ts";
 import { AddDragListener } from "../lib/Drag.ts";
 import { PermissionsWindow } from "./Permissions.ts";
 
@@ -204,11 +204,11 @@ export class EntryListWindow extends ContentWindow {
         }
 
         if (this.folderId) {
-            this.setTitle(`${TitleCase(this.entryType)}s - ${response.name}`);
+            this.setTitle(`${Pluralize(TitleCase(this.entryType))} - ${response.name}`);
             await this.addParentFolder(response.parent_id);
         }
         else {
-            this.setTitle(`${TitleCase(this.entryType)}s`);
+            this.setTitle(`${Pluralize(TitleCase(this.entryType))}`);
         }
 
         for (let [id, name] of response.subfolders) {
@@ -219,7 +219,7 @@ export class EntryListWindow extends ContentWindow {
             await this.addEntry(id, name, image);
         }
 
-        await this.subscribe(`${this.entryType}s`, async updateData => {
+        await this.subscribe(`${Pluralize(this.entryType)}`, async updateData => {
             if (updateData.type == "delete") {
                 if (updateData.folder != this.folderId) {
                     return;

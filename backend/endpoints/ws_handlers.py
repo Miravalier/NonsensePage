@@ -1,6 +1,7 @@
 import functools
-from models import Connection
 from typing import Dict, Any
+
+from ..models.database_models import Connection
 
 
 # Collection of handlers for inbound websocket messages

@@ -20,6 +20,7 @@ import {
 } from "../windows/Window.ts";
 import { NoteListWindow } from "../windows/NoteList.ts";
 import { RecursiveAssign } from "../lib/Utils.ts";
+import { AbilityListWindow } from "../windows/AbilityList.ts";
 
 
 declare global {
@@ -193,6 +194,12 @@ async function Main() {
                 });
                 await noteListWindow.load();
             },
+            "Abilities": async (ev: MouseEvent) => {
+                const abilityListWindow = new AbilityListWindow({
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await abilityListWindow.load();
+            }
         },
         "Layout": {
             "Save": async () => {

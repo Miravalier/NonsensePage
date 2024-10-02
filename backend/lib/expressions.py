@@ -6,7 +6,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from enum import IntEnum
 
-from pcg import engine
+from .pcg import engine
 
 
 class TokenizerState(IntEnum):
