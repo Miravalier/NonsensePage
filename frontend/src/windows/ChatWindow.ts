@@ -93,7 +93,7 @@ async function rollCommand(formulas: string) {
     let characterId = null;
     let diceResults = "";
     const speaker = await GetSpeaker();
-    if (speaker.type == "character") {
+    if (speaker.entry_type == "character") {
         characterId = speaker.id;
     }
     for (const formula of formulas.split(",")) {
@@ -171,7 +171,7 @@ async function narrateCommand(message) {
 async function speakCommand(message) {
     let characterId = null;
     const speaker = await GetSpeaker();
-    if (speaker.type == "character") {
+    if (speaker.entry_type == "character") {
         characterId = speaker.id;
     }
     await ApiRequest("/messages/speak", {

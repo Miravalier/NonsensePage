@@ -82,7 +82,7 @@ class Roll(BaseModel):
     formula: str
 
 
-class Ability(BaseModel):
+class CharacterAbility(BaseModel):
     id: str
     name: str = ""
     description: str = ""
@@ -168,17 +168,17 @@ class Container(Entry):
 
 
 class Item(Entity, Container):
-    type: str = "item"
+    entry_type: str = "item"
     description: str = ""
 
 
 class Folder(Entry):
-    type: str = "folder"
+    entry_type: str = "folder"
     parent_id: Optional[str] = None
 
 
 class Character(Entity, Container):
-    type: str = "character"
+    entry_type: str = "character"
     folder_id: Optional[str] = None
     description: str = ""
     image: str = ""
@@ -188,19 +188,27 @@ class Character(Entity, Container):
     size: float = 1
     scale: float = 1.0
     sheet_type: str = "default"
-    ability_map: Dict[str, Ability] = Field(default_factory=dict)
+    ability_map: Dict[str, CharacterAbility] = Field(default_factory=dict)
     ability_order: List[str] = Field(default_factory=list)
 
 
+class Ability(Entry):
+    entry_type: str = "ability"
+    description: str = ""
+    type: AbilityType = AbilityType.PASSIVE
+    cooldown: int = 0
+    rolls: list[Roll] = Field(default_factory=list)
+
+
 class Note(Entry):
-    type: str = "note"
+    entry_type: str = "note"
     folder_id: Optional[str] = None
     text: str = ""
     image: str = ""
 
 
 class User(Entry):
-    type: str = "user"
+    entry_type: str = "user"
     hashed_password: bytes = Field(exclude=True, default=b"")
     is_gm: bool = False
     character_id: Optional[str] = None
@@ -215,18 +223,18 @@ class User(Entry):
 
 
 class Combatant(Entry):
-    type: str = "combatant"
+    entry_type: str = "combatant"
     character_id: Optional[str] = None
     initiative: Optional[float] = None
 
 
 class Combat(Entry):
-    type: str = "combat"
+    entry_type: str = "combat"
     combatants: List[Combatant] = Field(default_factory=list)
 
 
 class Token(Entry):
-    type: str = "token"
+    entry_type: str = "token"
     layer: Layer = Layer.CHARACTERS
     src: str = ""
     x: float = 0.0
@@ -242,7 +250,7 @@ class Token(Entry):
 
 
 class Map(Entry):
-    type: str = "map"
+    entry_type: str = "map"
     tokens: Dict[str, Token] = Field(default_factory=dict)
     squareSize: int = 150
     color: GridColor = GridColor.WHITE

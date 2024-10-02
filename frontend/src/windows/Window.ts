@@ -176,7 +176,7 @@ export class BaseWindow {
             resizeHandle.className = "resizeHandle";
 
             Drag.AddPositionalListener(resizeHandle, {
-                onStart: (ctx, ev) => {
+                onStart: (ctx, _ev) => {
                     ctx.xMax = window.innerWidth - (this.container.offsetLeft + this.viewPort.offsetLeft + 1);
                     ctx.yMax = window.innerHeight - (this.container.offsetTop + this.viewPort.offsetTop + 1);
                 },
@@ -193,7 +193,7 @@ export class BaseWindow {
                     this.viewPort.style.height = `${this.size.y}px`;
                     this.onResizeStart();
                 },
-                onEnd: (ctx, ev) => {
+                onEnd: (_ctx, _ev) => {
                     this.onResizeStop();
                 },
             });

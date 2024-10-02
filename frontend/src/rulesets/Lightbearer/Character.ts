@@ -3,14 +3,14 @@ import * as Dice from "../../lib/Dice.ts";
 import { AddDragListener } from "../../lib/Drag.ts";
 import { PCG } from "../../lib/PcgRandom.ts";
 import { InputDialog } from "../../windows/Window.ts";
-import { Ability, AbilityType, Character, Roll, RollType } from "../../lib/Models.ts";
+import { CharacterAbility, AbilityType, Character, Roll, RollType } from "../../lib/Models.ts";
 import { Sheet } from "../../lib/Sheet.ts";
 import { GenerateId, GetPermissions, ResolvePath, SetPath } from "../../lib/Utils.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { Permissions } from "../../lib/Enums.ts";
 
 
-export function getAbilityIcons(ability: Ability) {
+export function getAbilityIcons(ability: CharacterAbility) {
     let icons = "";
     const typeIcon = {
         [AbilityType.Free]: "fa-regular fa-circle",
@@ -78,7 +78,7 @@ export class LightbearerSheet extends Sheet {
                 if (data.type != "ability") {
                     return;
                 }
-                const droppedAbility: Ability = data.ability;
+                const droppedAbility: CharacterAbility = data.ability;
                 droppedAbility.id = GenerateId();
                 this.update({
                     "$set": { [`ability_map.${droppedAbility.id}`]: droppedAbility },

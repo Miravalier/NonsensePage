@@ -1,7 +1,7 @@
 import * as PIXI from "pixi.js";
 
 import { CanvasWindow, registerWindowType } from "./Window.ts";
-import { Bound, Parameter, GenerateId, LocalPersist } from "../lib/Utils.ts";
+import { Parameter, GenerateId, LocalPersist } from "../lib/Utils.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { ApiRequest, Session } from "../lib/Requests.ts";
 import { MapCanvas } from "../lib/Canvas.ts";
@@ -154,7 +154,7 @@ export class MapWindow extends CanvasWindow {
             let previousTouchSecondary = new Vector2(ev.touches[1].clientX, ev.touches[1].clientY);
             let previousMagnitude = previousTouchPrimary.subtract(previousTouchSecondary).magnitude;
 
-            const onTouchEnd = (ev: TouchEvent) => {
+            const onTouchEnd = (_ev: TouchEvent) => {
                 touching = false;
                 abortController.abort();
             };

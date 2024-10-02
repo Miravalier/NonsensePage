@@ -98,14 +98,18 @@ client = pymongo.MongoClient("mongodb://nonsense_db:27017")
 db = client.nonsense_db
 
 # Collections
+abilities = DocumentCollection(db.abilities, models.Ability)
+abilities.create_index("folder_id")
 characters = DocumentCollection(db.characters, models.Character)
 characters.create_index("folder_id")
 notes = DocumentCollection(db.notes, models.Note)
+notes.create_index("folder_id")
 items = DocumentCollection(db.items, models.Item)
 users = DocumentCollection(db.users, models.User)
 combats = DocumentCollection(db.combats, models.Combat)
 maps = DocumentCollection(db.maps, models.Map)
 messages = DocumentCollection(db.messages, models.Message)
+ability_folders = DocumentCollection(db.ability_folders, models.Folder)
 character_folders = DocumentCollection(db.character_folders, models.Folder)
 note_folders = DocumentCollection(db.note_folders, models.Folder)
 

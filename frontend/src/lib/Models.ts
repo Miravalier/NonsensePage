@@ -55,7 +55,7 @@ export interface Roll {
     formula: string;
 }
 
-export interface Ability {
+export interface CharacterAbility {
     id: string;
     name: string;
     description: string;
@@ -71,15 +71,23 @@ export interface Entry {
     data: any;
 }
 
+export interface Ability extends Entry {
+    entry_type: "ability";
+    description: string;
+    type: AbilityType;
+    cooldown: number;
+    rolls: Roll[];
+}
+
 export interface User extends Entry {
-    type: "user";
+    entry_type: "user";
     is_gm: boolean;
     character_id: string | null;
     languages: Language[];
 }
 
 export interface Message {
-    type: "message";
+    entry_type: "message";
     id: string;
     sender_id: string;
     character_id: string;
@@ -98,14 +106,14 @@ export interface Entity extends Entry {
 }
 
 export interface Item extends Entity {
-    type: "item";
+    entry_type: "item";
     description: string;
     item_map: { [id: string]: Item };
     item_order: string[];
 }
 
 export interface Character extends Entity {
-    type: "character";
+    entry_type: "character";
     description: string;
     image: string;
     alignment: number;
@@ -116,7 +124,7 @@ export interface Character extends Entity {
     sheet_type: string;
     item_map: { [id: string]: Item };
     item_order: string[];
-    ability_map: { [id: string]: Ability };
+    ability_map: { [id: string]: CharacterAbility };
     ability_order: string[];
     // Doesn't come over the wire, added before rendering
     // and used by Sqrl helpers
@@ -124,18 +132,18 @@ export interface Character extends Entity {
 }
 
 export interface Note extends Entry {
-    type: "note";
+    entry_type: "note";
     image: string;
     text: string;
 }
 
 export interface Combatant extends Entry {
-    type: "combatant";
+    entry_type: "combatant";
     character_id: string;
     initiative: number;
 }
 
 export interface Combat extends Entry {
-    type: "combat";
+    entry_type: "combat";
     combatants: Combatant[];
 }

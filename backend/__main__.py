@@ -17,6 +17,7 @@ from .lib.utils import require
 from .models.database_models import User, Session, Connection, get_pool
 from .models.request_models import AuthRequest, GMRequest
 from .endpoints.admin import router as admin_router
+from .endpoints.abilities import router as ability_router
 from .endpoints.characters import router as character_router
 from .endpoints.maps import router as map_router
 from .endpoints.notes import router as notes_router
@@ -46,6 +47,7 @@ async def json_error_handler(request: Request, exc: JsonError):
 
 
 app.include_router(admin_router, prefix="/admin")
+app.include_router(ability_router, prefix="/api/ability")
 app.include_router(character_router, prefix="/api/character")
 app.include_router(combat_router, prefix="/api/combat")
 app.include_router(files_router, prefix="/api/files")

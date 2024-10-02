@@ -1,4 +1,4 @@
-import { Ability, AbilityType, Character } from "../../lib/Models.ts";
+import { CharacterAbility, AbilityType, Character } from "../../lib/Models.ts";
 import { ErrorToast } from "../../lib/Notifications.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { BaseWindow } from "../../windows/Window.ts";
@@ -121,7 +121,7 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
     const nameInput = container.querySelector<HTMLInputElement>(".characterName");
     const finishButton = container.querySelector<HTMLButtonElement>(".finish");
 
-    let selectedAbilities: Ability[] = [];
+    let selectedAbilities: CharacterAbility[] = [];
     let selectedClass: Character;
 
     const SelectClass = async (className: string) => {
@@ -197,7 +197,7 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
             return;
         }
 
-        const abilityMap: { [id: string]: Ability } = {};
+        const abilityMap: { [id: string]: CharacterAbility } = {};
         for (const ability of selectedAbilities) {
             abilityMap[ability.id] = ability;
         }
