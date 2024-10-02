@@ -171,3 +171,10 @@
 .Lightbearer.caption .die {
     margin: 4px;
 }
+
+.entry-list .ability.entry .icons {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    align-items: center;
+}

@@ -9,6 +9,20 @@ import { GetPermissions } from "../../lib/Utils.ts";
 import { Permissions } from "../../lib/Enums.ts";
 import { RenderRolls, GetAbilityIcons } from "./Utils.ts";
 import { ErrorToast } from "../../lib/Notifications.ts";
+import { Html } from "../../lib/Elements.ts";
+
+
+export async function onRenderAbilityEntry(element: HTMLDivElement) {
+    element.querySelector("img").remove();
+    const abilityId = element.dataset.id;
+
+    const response = await ApiRequest(`/ability/get`, { id: abilityId });
+    if (response.status !== "success") {
+        return;
+    }
+
+    element.insertBefore(Html(`<div class="icons">${GetAbilityIcons(response.ability)}</div>`), element.firstChild);
+}
 
 
 export class LightbearerAbilitySheet extends Sheet {

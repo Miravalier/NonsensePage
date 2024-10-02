@@ -1,4 +1,5 @@
 import * as ContextMenu from "../lib/ContextMenu.ts";
+import * as Events from "../lib/Events.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
 import { ApiRequest } from "../lib/Requests.ts";
@@ -146,7 +147,7 @@ export class EntryListWindow extends ContentWindow {
         AddDragListener(element, { type: `${this.entryType}Entry`, id });
         const contextOptions = {
             "Rename": async () => {
-                const selection = await InputDialog(`Rename ${TitleCase(this.entryType)}`, { "Name": "text" }, "Rename");
+                const selection = await InputDialog(`Rename ${TitleCase(this.entryType)}`, { "Name": ["text", name] }, "Rename");
                 if (!selection || !selection.Name) {
                     return;
                 }
@@ -158,6 +159,7 @@ export class EntryListWindow extends ContentWindow {
                         },
                     },
                 });
+                name = selection.Name;
             },
             "Delete": async () => {
                 if (!await ConfirmDialog(`Delete '${name}'`)) {
@@ -175,6 +177,7 @@ export class EntryListWindow extends ContentWindow {
         ContextMenu.set(element, {
             [TitleCase(this.entryType)]: contextOptions,
         });
+        Events.dispatch(`render${TitleCase(this.entryType)}Entry`, element);
     }
 
     async load(folderId?: string) {
