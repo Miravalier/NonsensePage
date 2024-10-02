@@ -4,13 +4,13 @@ import { Parameter } from "../lib/Utils.ts";
 import { SheetWindow } from "./SheetWindow.ts";
 
 
-export class CharacterSheetWindow extends SheetWindow {
+export class AbilitySheetWindow extends SheetWindow {
     constructor(options = undefined) {
         options = Parameter(options, {});
-        options.classList = ["character"];
+        options.classList = ["ability"];
         options.size = Parameter(options.size, new Vector2(540, 600));
-        options.entryType = "character";
+        options.entryType = "ability";
         super(options);
     }
 }
-registerWindowType(CharacterSheetWindow);
+registerWindowType(AbilitySheetWindow);

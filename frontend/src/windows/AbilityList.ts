@@ -1,6 +1,6 @@
 import { registerWindowType } from "./Window.ts";
 import { EntryListWindow } from "./EntryList.ts";
-import { NoteWindow } from "./NoteWindow.ts";
+import { AbilitySheetWindow } from "./AbilitySheetWindow.ts";
 import { Parameter } from "../lib/Utils.ts";
 
 
@@ -13,10 +13,10 @@ export class AbilityListWindow extends EntryListWindow {
     }
 
     async openEntryHandler(id: string) {
-        const noteWindow = new NoteWindow({
+        const abilityWindow = new AbilitySheetWindow({
             title: "Ability",
         });
-        await noteWindow.load(id);
+        await abilityWindow.load(id);
     }
 }
 

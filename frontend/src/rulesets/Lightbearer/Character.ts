@@ -55,7 +55,7 @@ function renderRolls(rolls: Roll[]): string {
 }
 
 
-export class LightbearerSheet extends Sheet {
+export class LightbearerCharacterSheet extends Sheet {
     onRender(data: Character): void {
         super.onRender(data);
         this.container.classList.add("Lightbearer");

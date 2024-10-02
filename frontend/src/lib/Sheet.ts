@@ -1,42 +1,44 @@
 import * as Templates from "./Templates.ts";
-import { Character, Permission } from "./Models.ts";
-import { GetPermissions, ResolvePath } from './Utils.ts';
+import { Permission } from "./Models.ts";
+import { GetPermissions, ResolvePath, TitleCase } from './Utils.ts';
 import { ApiRequest } from "./Requests.ts";
 import { ErrorToast } from "./Notifications.ts";
-import { CharacterSheetWindow } from "../windows/CharacterSheet.ts";
 import { AddDropListener } from "./Drag.ts";
+import { SheetWindow } from "../windows/SheetWindow.ts";
 
 
 /**
- * Base class for all character sheets. Each ruleset will create a subclass of this
+ * Base class for all entity sheets. Each ruleset will create a subclass of this
  * and register their subclass in index.ts
  */
 export class Sheet {
     template: (data: any) => string;
-    characterId: string;
-    parent: CharacterSheetWindow;
+    entryType: string;
+    id: string;
+    parent: SheetWindow;
     container: HTMLDivElement;
     setTriggers: { [key: string]: ((value: any) => void)[] };
 
-    constructor(characterId: string, parent: CharacterSheetWindow) {
+    constructor(entryType: string, id: string, parent: SheetWindow) {
         this.template = null;
-        this.characterId = characterId;
+        this.entryType = entryType;
+        this.id = id;
         this.parent = parent;
         this.container = parent.content;
         this.setTriggers = {};
     }
 
     /**
-     * Make a full-capability update to the underlying character
+     * Make a full-capability update to the underlying entry
      *
      * @param changes MongoDB update, i.e. {"$set": {"name": "Bob"}}
      */
     async update(changes: any) {
-        return await ApiRequest("/character/update", { id: this.characterId, changes });
+        return await ApiRequest(`/${this.entryType}/update`, { id: this.id, changes });
     }
 
     /**
-     * Make a simple key-value update to the underlying character
+     * Make a simple key-value update to the underlying entry
      */
     async set(key: string, value: any) {
         this.onSet(key, value);
@@ -57,16 +59,13 @@ export class Sheet {
             return;
         }
         // Re-render everything
-        const response: {
-            status: string;
-            character: Character;
-        } = await ApiRequest("/character/get", { id: this.characterId });
+        const response = await ApiRequest(`/${this.entryType}/get`, { id: this.id });
         if (response.status != "success") {
-            ErrorToast("Character loading failed!");
+            ErrorToast(`${TitleCase(this.entryType)} loading failed!`);
             this.container.innerHTML = "";
             return;
         }
-        await this.render(response.character);
+        await this.render(response[this.entryType]);
     }
 
     /**
@@ -100,10 +99,10 @@ export class Sheet {
     }
 
     /**
-     * Triggers when the character is rendered from scratch. Sets up all of the
+     * Triggers when the entry is rendered from scratch. Sets up all of the
      * event listeners.
      */
-    onRender(data: Character) {
+    onRender(data: any) {
         this.setTriggers = {};
         const permission = GetPermissions(data);
         if (permission == Permission.Read) {
@@ -142,9 +141,9 @@ export class Sheet {
     }
 
     /**
-     * Draw the character sheet to the DOM from scratch.
+     * Draw the sheet to the DOM from scratch.
      */
-    async render(data: Character) {
+    async render(data: any) {
         data.helperData = { sheet: this, fragmentCallbacks: [] };
         const html = this.template(data);
         this.container.innerHTML = html;
@@ -158,7 +157,7 @@ export class Sheet {
      * Called exactly once, after the constructor. Loads the async resources
      * associated with this sheet, then renders it.
      */
-    async init(data: Character) {
+    async init(data: any) {
         this.container.classList.add("sheet");
         const { html } = SheetRegistry[this.constructor.name];
         this.template = Templates.LoadTemplate(this.constructor.name, html);
@@ -171,18 +170,18 @@ export const SheetRegistry: {
     [name: string]:
     {
         type: {
-            new(characterId: string, parent: CharacterSheetWindow): Sheet
+            new(entryType: string, id: string, parent: SheetWindow): Sheet
         },
         html: string
     }
-} = { default: { type: Sheet, html: "" } };
+} = {};
 
 
-export function RegisterSheet(type: { new(characterId: string, parent: CharacterSheetWindow): Sheet }, html: string) {
+export function RegisterSheet(identifier: string, type: { new(entryType: string, id: string, parent: SheetWindow): Sheet }, html: string) {
     SheetRegistry[type.name] = { type, html };
+    SheetRegistry[identifier] = { type, html };
 }
 
-export function RegisterDefaultSheet(type: { new(characterId: string, parent: CharacterSheetWindow): Sheet }, html: string) {
-    SheetRegistry[type.name] = { type, html };
-    SheetRegistry.default = SheetRegistry[type.name];
-}
+
+RegisterSheet("character.default", Sheet, "<p>Debug!</p>");
+RegisterSheet("ability.default", Sheet, "<p>Debug!</p>");

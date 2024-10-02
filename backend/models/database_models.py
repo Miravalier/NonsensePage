@@ -85,6 +85,7 @@ class Roll(BaseModel):
 class CharacterAbility(BaseModel):
     id: str
     name: str = ""
+    image: str = ""
     description: str = ""
     type: AbilityType = AbilityType.PASSIVE
     cooldown: int = 0
@@ -180,8 +181,8 @@ class Folder(Entry):
 class Character(Entity, Container):
     entry_type: str = "character"
     folder_id: Optional[str] = None
-    description: str = ""
     image: str = ""
+    description: str = ""
     alignment: Alignment = Alignment.NEUTRAL
     hp: float = 0
     max_hp: float = 0
@@ -194,6 +195,9 @@ class Character(Entity, Container):
 
 class Ability(Entry):
     entry_type: str = "ability"
+    folder_id: Optional[str] = None
+    image: str = ""
+    sheet_type: str = "default"
     description: str = ""
     type: AbilityType = AbilityType.PASSIVE
     cooldown: int = 0
@@ -203,8 +207,8 @@ class Ability(Entry):
 class Note(Entry):
     entry_type: str = "note"
     folder_id: Optional[str] = None
-    text: str = ""
     image: str = ""
+    text: str = ""
 
 
 class User(Entry):

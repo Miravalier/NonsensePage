@@ -58,6 +58,7 @@ export interface Roll {
 export interface CharacterAbility {
     id: string;
     name: string;
+    image: string;
     description: string;
     type: AbilityType;
     cooldown: number;
@@ -73,6 +74,8 @@ export interface Entry {
 
 export interface Ability extends Entry {
     entry_type: "ability";
+    folder_id: string;
+    image: string;
     description: string;
     type: AbilityType;
     cooldown: number;
@@ -114,8 +117,9 @@ export interface Item extends Entity {
 
 export interface Character extends Entity {
     entry_type: "character";
-    description: string;
+    folder_id: string;
     image: string;
+    description: string;
     alignment: number;
     hp: number;
     max_hp: number;
@@ -126,13 +130,11 @@ export interface Character extends Entity {
     item_order: string[];
     ability_map: { [id: string]: CharacterAbility };
     ability_order: string[];
-    // Doesn't come over the wire, added before rendering
-    // and used by Sqrl helpers
-    helperData: any;
 }
 
 export interface Note extends Entry {
     entry_type: "note";
+    folder_id: string;
     image: string;
     text: string;
 }
