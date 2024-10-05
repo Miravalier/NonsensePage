@@ -187,6 +187,7 @@ class Character(Entity, Container):
     alignment: Alignment = Alignment.NEUTRAL
     hp: float = 0
     max_hp: float = 0
+    temp_hp: float = 0
     size: float = 1
     scale: float = 1.0
     sheet_type: str = "default"

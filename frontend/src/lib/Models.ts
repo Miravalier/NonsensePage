@@ -28,6 +28,9 @@ export enum RollType {
     Text = "text",
     Dice = "dice",
     Table = "table",
+    Damage = "damage",
+    Healing = "healing",
+    Shield = "shield",
 }
 
 export enum ScaleType {
@@ -123,6 +126,7 @@ export interface Character extends Entity {
     alignment: number;
     hp: number;
     max_hp: number;
+    temp_hp: number;
     size: number;
     scale: number;
     sheet_type: string;

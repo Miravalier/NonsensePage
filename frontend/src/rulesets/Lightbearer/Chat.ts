@@ -1,5 +1,5 @@
-import { TakeDamage } from "../../lib/Database.ts";
-import { Message } from "../../lib/Models.ts";
+import { ApplyDamage, ApplyHealing, ApplyShield } from "../../lib/Database.ts";
+import { Message, RollType } from "../../lib/Models.ts";
 import { DieResult } from "../../lib/Dice.ts";
 import { NumberWithSign } from "../../lib/Utils.ts";
 import * as Hoverable from "../../lib/Hoverable.ts";
@@ -10,7 +10,12 @@ export function onRenderMessage(_message: Message, element: HTMLDivElement) {
     element.querySelector(".bar")?.addEventListener("click", () => {
         element.querySelector(".details")?.classList.toggle("hidden");
     });
-    for (const resultElement of element.querySelectorAll<HTMLDivElement>(".dice.roll .result")) {
+    for (const resultElement of element.querySelectorAll<HTMLDivElement>(".roll .result")) {
+        const category = resultElement.dataset.category;
+        if (category != RollType.Dice && category != RollType.Damage && category != RollType.Healing && category != RollType.Shield) {
+            continue;
+        }
+
         let captionContent = "";
 
         const formula = resultElement.dataset.formula;
@@ -42,14 +47,29 @@ export function onRenderMessage(_message: Message, element: HTMLDivElement) {
         }
 
         resultElement.parentElement.addEventListener("dblclick", () => {
-            TakeDamage(parseInt(resultElement.textContent));
-        })
+            const category = resultElement.dataset.category;
+            if (category == "healing") {
+                ApplyHealing(parseInt(resultElement.textContent));
+            }
+            else if (category == "shield") {
+                ApplyShield(parseInt(resultElement.textContent));
+            }
+            else {
+                ApplyDamage(parseInt(resultElement.textContent));
+            }
+        });
 
         ContextMenu.set(resultElement.parentElement, {
             "Dice Result": {
-                "Take as Damage": async () => {
-                    TakeDamage(parseInt(resultElement.textContent));
+                "Apply Damage": () => {
+                    ApplyDamage(parseInt(resultElement.textContent));
                 },
+                "Apply Healing": () => {
+                    ApplyHealing(parseInt(resultElement.textContent));
+                },
+                "Apply Shield": () => {
+                    ApplyShield(parseInt(resultElement.textContent));
+                }
             },
         });
     }

@@ -10,8 +10,11 @@ export function RollsFragmentRender(element: HTMLDivElement, ability: CharacterA
         const typeElement = rollElement.appendChild(document.createElement("select"));
         typeElement.innerHTML = `
             <option value="text">Text</option>
-            <option value="dice">Dice</option>
+            <option value="dice">Misc Dice</option>
             <option value="table">Table</option>
+            <option value="damage">Damage</option>
+            <option value="healing">Healing</option>
+            <option value="shield">Shield</option>
         `;
         const labelElement = rollElement.appendChild(document.createElement("input"));
         labelElement.type = "text";

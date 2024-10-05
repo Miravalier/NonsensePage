@@ -260,6 +260,10 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
         for (const skill of classSkills[raceSelect.value]) {
             characterInfo.data[skill] += 3;
         }
+        if (raceSelect.value == "Dwarf") {
+            characterInfo.max_hp += 5;
+            characterInfo.hp += 5;
+        }
         const response: {
             status: string;
             id: string;

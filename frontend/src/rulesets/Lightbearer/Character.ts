@@ -212,7 +212,7 @@ export class LightbearerCharacterSheet extends Sheet {
                                     <div class="chat-rolls">
                                         <div class="dice roll">
                                             <div class="label">${label.innerText}</div>
-                                            <div class="result" data-formula="${formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>
+                                            <div class="result" data-category="dice" data-formula="${formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>
                                         </div>
                                     </div>
                                 </div>

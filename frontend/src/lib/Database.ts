@@ -91,12 +91,7 @@ export async function GetCharacter() {
 }
 
 
-export async function ApplyHealing(amount: number) {
-    TakeDamage(-amount);
-}
-
-
-export async function TakeDamage(amount: number) {
+export async function ApplyShield(amount: number) {
     let character: Character = null;
     try {
         character = await ResolveCharacter(Session.user.character_id);
@@ -105,25 +100,65 @@ export async function TakeDamage(amount: number) {
         return;
     }
 
-
     await ApiRequest("/character/update", {
         id: character.id,
         changes: {
             "$set": {
-                "hp": Bound(0, character.hp - amount, character.max_hp),
+                "temp_hp": Math.max(character.temp_hp, amount),
             }
         },
     });
 
     const notifications = document.getElementById("notifications") as HTMLDivElement;
-    if (amount > 0) {
-        notifications.classList.add("damage");
-        await Sleep(500);
-        notifications.classList.remove("damage");
+    notifications.classList.add("shielded");
+    await Sleep(500);
+    notifications.classList.remove("shielded");
+}
+
+
+export async function ApplyHealing(amount: number) {
+    if (amount <= 0) {
+        return;
     }
-    else if (amount < 0) {
-        notifications.classList.add("healing");
+    await ApplyDamage(-amount);
+}
+
+
+export async function ApplyDamage(amount: number) {
+    let character: Character = null;
+    try {
+        character = await ResolveCharacter(Session.user.character_id);
+    } catch {
+        ErrorToast("You are not controlling a character.");
+        return;
+    }
+
+    let style: string = null;
+    const updates = {};
+    if (amount < 0) {
+        updates["hp"] = Bound(0, character.hp - amount, character.max_hp);
+        style = "healing";
+    }
+    else if (amount <= character.temp_hp) {
+        style = "shielded";
+        updates["temp_hp"] = character.temp_hp - amount;
+    }
+    else {
+        style = "damage";
+        updates["temp_hp"] = 0;
+        amount -= character.temp_hp
+        updates["hp"] = Bound(0, character.hp - amount, character.max_hp);
+    }
+
+    await ApiRequest("/character/update", {
+        id: character.id,
+        changes: { "$set": updates },
+    });
+
+    if (style) {
+        const notifications = document.getElementById("notifications") as HTMLDivElement;
+        notifications.classList.add(style);
         await Sleep(500);
-        notifications.classList.remove("healing");
+        notifications.classList.remove(style);
     }
 }

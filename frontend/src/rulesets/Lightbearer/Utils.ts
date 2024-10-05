@@ -35,11 +35,15 @@ export function RenderRolls(rolls: Roll[]): string {
         }
         else if (roll.type == RollType.Dice) {
             const rollResults = Dice.Roll(roll.formula);
-            subresult += `<div class="result" data-formula="${roll.formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>`;
+            subresult += `<div class="result" data-category="${roll.type}" data-formula="${roll.formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>`;
         }
         else if (roll.type == RollType.Table) {
             const choiceResult = PCG.choice(roll.formula.split(/ *, */));
             subresult += `<div class="result">${choiceResult}</div>`;
+        }
+        else if (roll.type == RollType.Damage || roll.type == RollType.Healing || roll.type == RollType.Shield) {
+            const rollResults = Dice.Roll(roll.formula);
+            subresult += `<div class="result" data-category="${roll.type}" data-formula="${roll.formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>`;
         }
         subresult += '</div>';
         result += subresult;
