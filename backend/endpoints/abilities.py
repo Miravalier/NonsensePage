@@ -111,7 +111,6 @@ async def ability_get(request: AbilityGetRequest):
 
 class AbilityListRequest(AuthRequest):
     folder_id: Optional[str] = None
-    retrieve_all: bool = False
 
 
 @router.post("/list")
@@ -144,14 +143,8 @@ async def ability_list(request: AbilityListRequest):
     abilities = []
     for ability in database.abilities.find({"folder_id": folder_id}):
         if request.requester.is_gm or ability.has_permission(request.requester.id, level=Permissions.READ):
-            if request.retrieve_all:
-                abilities.append(ability.model_dump())
-            else:
-                abilities.append((ability.id, ability.name, ability.image))
-    if request.retrieve_all:
-        abilities.sort(key=lambda entry: entry["name"])
-    else:
-        abilities.sort(key=lambda c: c[1])
+            abilities.append(ability.model_dump())
+    abilities.sort(key=lambda entry: entry["name"])
 
     return {
         "status": "success",

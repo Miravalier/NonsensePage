@@ -66,16 +66,17 @@ export interface CharacterAbility {
 }
 
 export interface Entry {
+    entry_type: string;
     id: string;
     name: string;
     permissions: PermissionTable;
     data: any;
+    image: string;
 }
 
 export interface Ability extends Entry {
     entry_type: "ability";
     folder_id: string;
-    image: string;
     description: string;
     type: AbilityType;
     cooldown: number;
@@ -118,7 +119,6 @@ export interface Item extends Entity {
 export interface Character extends Entity {
     entry_type: "character";
     folder_id: string;
-    image: string;
     description: string;
     alignment: number;
     hp: number;
@@ -135,7 +135,6 @@ export interface Character extends Entity {
 export interface Note extends Entry {
     entry_type: "note";
     folder_id: string;
-    image: string;
     text: string;
 }
 

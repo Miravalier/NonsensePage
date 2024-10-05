@@ -1,4 +1,4 @@
-import { CharacterAbility, AbilityType, Character, Ability } from "../../lib/Models.ts";
+import { CharacterAbility, AbilityType, Ability } from "../../lib/Models.ts";
 import { ErrorToast } from "../../lib/Notifications.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { BaseWindow } from "../../windows/Window.ts";
@@ -135,7 +135,7 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
             parent_id: string,
             subfolders: [string, string][],
             entries: Ability[],
-        } = await ApiRequest("/ability/list", { folder_id: className, retrieve_all: true });
+        } = await ApiRequest("/ability/list", { folder_id: className });
 
         if (response.status !== "success") {
             ErrorToast(`Failed to load class: ${className}`);
@@ -189,7 +189,7 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
             parent_id: string,
             subfolders: [string, string][],
             entries: Ability[],
-        } = await ApiRequest("/ability/list", { folder_id: race, retrieve_all: true });
+        } = await ApiRequest("/ability/list", { folder_id: race });
 
         if (response.status !== "success") {
             ErrorToast(`Failed to load race: ${race}`);

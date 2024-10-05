@@ -58,30 +58,6 @@ function LogOut() {
 }
 
 
-async function LoadCharacters(path: string = null) {
-    const response: {
-        status: string,
-        characters: [string, string][],
-    } = await ApiRequest("/character/list", { path });
-    if (response.status != "success") {
-        throw Error("failed to list characters");
-    }
-
-    const results = [];
-    for (let [id, _name] of response.characters) {
-        const response: {
-            status: string;
-            character: Character;
-        } = await ApiRequest("/character/get", { id });
-        if (response.status == "success") {
-            results.push(response.character);
-        }
-    }
-
-    return results;
-}
-
-
 async function OnLoad() {
     await Notifications.init();
 
@@ -125,7 +101,6 @@ async function OnLoad() {
         Session,
         ApiRequest,
         LogOut,
-        LoadCharacters,
         Warning: Notifications.WarningToast,
         Error: Notifications.ErrorToast,
         Info: Notifications.InfoToast,

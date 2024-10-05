@@ -1,3 +1,5 @@
+from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import APIRouter
 from typing import Optional
 
@@ -146,29 +148,36 @@ class CharacterListRequest(AuthRequest):
 @router.post("/list")
 async def character_list(request: CharacterListRequest):
     if request.folder_id is not None:
-        folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
+        try:
+            folder = require(database.character_folders.find_one({"$or": [
+                {"_id": ObjectId(request.folder_id)},
+                {"alternate_id": request.folder_id},
+            ]}), "invalid folder id")
+        except InvalidId:
+            folder = require(database.character_folders.find_one({
+                "alternate_id": request.folder_id
+            }), "invalid folder id")
+
+        folder_id = folder.id
         folder_name = folder.name
         parent_id = folder.parent_id
     else:
+        folder_id = None
         folder_name = "/"
         parent_id = None
-    subfolders = []
-    characters = []
-    if request.requester.is_gm:
-        for folder in database.character_folders.find({"parent_id": request.folder_id}):
-            subfolders.append((folder.id, folder.name))
-        for character in database.characters.find({"folder_id": request.folder_id}):
-            characters.append((character.id, character.name, character.image))
 
-    else:
-        for folder in database.character_folders.find({"parent_id": request.folder_id}):
-            if folder.has_permission(request.requester.id, level=Permissions.READ):
-                subfolders.append((folder.id, folder.name))
-        for character in database.characters.find({"folder_id": request.folder_id}):
-            if character.has_permission(request.requester.id, level=Permissions.READ):
-                characters.append((character.id, character.name, character.image))
+    subfolders = []
+    for folder in database.character_folders.find({"parent_id": folder_id}):
+        if request.requester.is_gm or folder.has_permission(request.requester.id, level=Permissions.READ):
+            subfolders.append((folder.id, folder.name))
     subfolders.sort(key=lambda f: f[1])
-    characters.sort(key=lambda c: c[1])
+
+    characters = []
+    for character in database.characters.find({"folder_id": folder_id}):
+        if request.requester.is_gm or character.has_permission(request.requester.id, level=Permissions.READ):
+            characters.append(character.model_dump())
+    characters.sort(key=lambda entry: entry["name"])
+
     return {
         "status": "success",
         "name": folder_name,

@@ -8,6 +8,7 @@ import { Parameter, IsDefined, GetThumbnail, Require } from "../lib/Utils.ts";
 import { Pluralize, TitleCase } from "../lib/Utils.ts";
 import { AddDragListener } from "../lib/Drag.ts";
 import { PermissionsWindow } from "./Permissions.ts";
+import { Entry } from "../lib/Models.ts";
 
 
 export class EntryListWindow extends ContentWindow {
@@ -131,54 +132,55 @@ export class EntryListWindow extends ContentWindow {
         ContextMenu.set(element, { "Edit Folder": contextOptions });
     }
 
-    async addEntry(id: string, name: string, image: string = undefined) {
-        const element = this.entryList.appendChild(document.createElement("div"));
-        element.dataset.id = id;
+    async addEntry(entry: Entry) {
+        const element = document.createElement("div");
+        element.dataset.id = entry.id;
         element.className = `${this.entryType} entry`;
         const icon = element.appendChild(document.createElement("img"));
         icon.className = "thumbnail";
-        if (image) {
-            icon.src = await GetThumbnail(image);
+        if (entry.image) {
+            icon.src = await GetThumbnail(entry.image);
         }
         else {
             icon.src = "/unknown.png";
         }
-        element.appendChild(document.createTextNode(name));
-        element.addEventListener("click", () => this.openEntryHandler(id));
-        AddDragListener(element, { type: `${this.entryType}Entry`, id });
+        element.appendChild(document.createTextNode(entry.name));
+        element.addEventListener("click", () => this.openEntryHandler(entry.id));
+        AddDragListener(element, { type: `${this.entryType}Entry`, id: entry.id });
         const contextOptions = {
             "Rename": async () => {
-                const selection = await InputDialog(`Rename ${TitleCase(this.entryType)}`, { "Name": ["text", name] }, "Rename");
+                const selection = await InputDialog(`Rename ${TitleCase(this.entryType)}`, { "Name": ["text", entry.name] }, "Rename");
                 if (!selection || !selection.Name) {
                     return;
                 }
                 await ApiRequest(`/${this.entryType}/update`, {
-                    id,
+                    id: entry.id,
                     changes: {
                         "$set": {
                             name: selection.Name,
                         },
                     },
                 });
-                name = selection.Name;
+                entry.name = selection.Name;
             },
             "Delete": async () => {
-                if (!await ConfirmDialog(`Delete '${name}'`)) {
+                if (!await ConfirmDialog(`Delete '${entry.name}'`)) {
                     return;
                 }
-                await ApiRequest(`/${this.entryType}/delete`, { id });
+                await ApiRequest(`/${this.entryType}/delete`, { id: entry.id });
                 element.remove();
             },
             "Edit Permissions": async () => {
                 const permissionsEditor = new PermissionsWindow();
-                permissionsEditor.load(this.entryType, id);
+                permissionsEditor.load(this.entryType, entry.id);
             }
         };
-        this.contextMenuHook("entry", id, contextOptions);
+        this.contextMenuHook("entry", entry.id, contextOptions);
         ContextMenu.set(element, {
             [TitleCase(this.entryType)]: contextOptions,
         });
-        Events.dispatch(`render${TitleCase(this.entryType)}Entry`, element);
+        await Events.dispatch(`render${TitleCase(this.entryType)}Entry`, element, entry);
+        this.entryList.appendChild(element);
     }
 
     async load(folderId?: string) {
@@ -195,7 +197,7 @@ export class EntryListWindow extends ContentWindow {
             name: string,
             parent_id: string,
             subfolders: [string, string][],
-            entries: [string, string, string][],
+            entries: Entry[],
         } = await ApiRequest(`/${this.entryType}/list`, { folder_id: this.folderId });
         if (response.status != "success") {
             ErrorToast(`Failed to load ${this.entryType} list.`);
@@ -215,8 +217,8 @@ export class EntryListWindow extends ContentWindow {
             await this.addFolder(id, name);
         }
 
-        for (let [id, name, image] of response.entries) {
-            await this.addEntry(id, name, image);
+        for (let entry of response.entries) {
+            await this.addEntry(entry);
         }
 
         this.addDropListener(this.viewPort, async (dropData) => {
@@ -237,7 +239,7 @@ export class EntryListWindow extends ContentWindow {
                 if (updateData.folder != this.folderId) {
                     return;
                 }
-                await this.addEntry(updateData.id, updateData.name, updateData.image);
+                this.refresh();
             }
             else if (updateData.type == "rename") {
                 if (updateData.folder != this.folderId) {
@@ -256,7 +258,7 @@ export class EntryListWindow extends ContentWindow {
                     }
                 }
                 else if (updateData.dst == this.folderId) {
-                    await this.addEntry(updateData.id, updateData.name, updateData.image);
+                    this.refresh();
                 }
             }
             else if (updateData.type == "rmdir") {
@@ -274,7 +276,7 @@ export class EntryListWindow extends ContentWindow {
                 if (updateData.folder != this.folderId) {
                     return;
                 }
-                await this.addFolder(updateData.id, updateData.name);
+                this.refresh();
             }
             else if (updateData.type == "movedir") {
                 if (updateData.src == this.folderId) {
@@ -284,7 +286,7 @@ export class EntryListWindow extends ContentWindow {
                     }
                 }
                 else if (updateData.dst == this.folderId) {
-                    await this.addFolder(updateData.id, updateData.name);
+                    this.refresh();
                 }
             }
             else if (updateData.type == "renamedir") {

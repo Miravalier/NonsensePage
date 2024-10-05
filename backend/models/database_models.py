@@ -112,6 +112,7 @@ class Entry(BaseModel):
     name: Optional[str] = None
     permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
     data: Dict = Field(default_factory=dict)
+    image: str = ""
 
     def __hash__(self):
         return hash(self.id)
@@ -182,7 +183,6 @@ class Folder(Entry):
 class Character(Entity, Container):
     entry_type: str = "character"
     folder_id: Optional[str] = None
-    image: str = ""
     description: str = ""
     alignment: Alignment = Alignment.NEUTRAL
     hp: float = 0
@@ -197,7 +197,6 @@ class Character(Entity, Container):
 class Ability(Entry):
     entry_type: str = "ability"
     folder_id: Optional[str] = None
-    image: str = ""
     sheet_type: str = "default"
     description: str = ""
     type: AbilityType = AbilityType.PASSIVE
@@ -208,7 +207,6 @@ class Ability(Entry):
 class Note(Entry):
     entry_type: str = "note"
     folder_id: Optional[str] = None
-    image: str = ""
     text: str = ""
 
 

@@ -12,16 +12,9 @@ import { ErrorToast } from "../../lib/Notifications.ts";
 import { Html } from "../../lib/Elements.ts";
 
 
-export async function onRenderAbilityEntry(element: HTMLDivElement) {
+export async function onRenderAbilityEntry(element: HTMLDivElement, ability: Ability) {
     element.querySelector("img").remove();
-    const abilityId = element.dataset.id;
-
-    const response = await ApiRequest(`/ability/get`, { id: abilityId });
-    if (response.status !== "success") {
-        return;
-    }
-
-    element.insertBefore(Html(`<div class="icons">${GetAbilityIcons(response.ability)}</div>`), element.firstChild);
+    element.insertBefore(Html(`<div class="icons">${GetAbilityIcons(ability)}</div>`), element.firstChild);
 }
 
 
