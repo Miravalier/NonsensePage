@@ -5,10 +5,10 @@ from typing import Optional
 
 from ..lib import database
 from ..lib.errors import JsonError
-from ..lib.folders import delete_folder
+from ..lib.folders import delete_folder, set_folder_permissions
 from ..lib.utils import require, auth_require
 from ..models.database_models import Alignment, Permissions, get_pool
-from ..models.request_models import AuthRequest
+from ..models.request_models import AuthRequest, GMRequest
 
 
 router = APIRouter()
@@ -295,4 +295,17 @@ async def character_folder_delete(request: CharacterFolderDeleteRequest):
         "type": "rmdir",
         "folder": folder.id,
     })
+    return {"status": "success"}
+
+
+class CharacterFolderUpdatePermissionsRequest(GMRequest):
+    folder_id: str
+    permissions: dict
+
+@router.post("/folder/update-permissions")
+async def character_folder_set_permissions(request: CharacterFolderUpdatePermissionsRequest):
+    folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
+
+    set_folder_permissions("character", folder, request.permissions)
+
     return {"status": "success"}

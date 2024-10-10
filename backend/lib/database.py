@@ -115,4 +115,4 @@ note_folders = DocumentCollection(db.note_folders, models.Folder)
 
 sessions = DocumentCollection(db.sessions, models.Session)
 sessions.create_index("auth_token")
-sessions.create_index("last_auth_date", expireAfterSeconds=3600)
+sessions.create_index("last_auth_date", expireAfterSeconds=2592000)

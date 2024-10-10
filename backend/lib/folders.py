@@ -13,3 +13,14 @@ def delete_folder(collection: str, folder: Folder):
     # Recursively delete all child folders
     for subfolder in folders.find({"parent_id": folder.id}):
         delete_folder(subfolder)
+
+
+def set_folder_permissions(collection: str, folder: Folder, permissions: dict):
+    entries: database.DocumentCollection[Entry] = getattr(database, f"{pluralize(collection)}")
+    entries.update_many({"folder_id": folder.id}, {"$set": {"permissions": permissions}})
+
+    folders: database.DocumentCollection[Folder] = getattr(database, f"{collection}_folders")
+    for subfolder in folders.find({"parent_id": folder.id}):
+        set_folder_permissions(collection, subfolder, permissions)
+
+    return {"status": "success"}

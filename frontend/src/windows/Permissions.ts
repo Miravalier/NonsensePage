@@ -35,13 +35,8 @@ export class PermissionsWindow extends ContentWindow {
 
         this.setTitle(`${TitleCase(this.entryType)} Permissions`);
 
-        const response = await ApiRequest(`/${this.entryType}/get`, { id: this.id });
-        if (response.status !== "success") {
-            ErrorToast(`Failed to load permissions for ${this.entryType}.`);
-            this.close();
-        }
+        await this.getPermissions();
 
-        this.permissions = response[this.entryType].permissions;
         this.groups = this.content.appendChild(Html('<div class="groups"></div>')) as HTMLDivElement;
         this.renderPermissions();
 
@@ -49,12 +44,9 @@ export class PermissionsWindow extends ContentWindow {
 
         const saveButton = buttons.appendChild(Html('<button type="button">Save</button>')) as HTMLButtonElement;
         saveButton.addEventListener("click", async () => {
-            await ApiRequest(`/${this.entryType}/update`, {
-                id: this.id,
-                changes: { "$set": { "permissions": this.permissions } }
-            })
+            await this.setPermissions();
             this.close();
-        })
+        });
 
         const cancelButton = buttons.appendChild(Html('<button type="button">Cancel</button>')) as HTMLButtonElement;
         cancelButton.addEventListener("click", () => {
@@ -65,6 +57,23 @@ export class PermissionsWindow extends ContentWindow {
             "Permissions": {
                 "Add Player": () => this.addSource(),
             }
+        });
+    }
+
+    async getPermissions() {
+        const response = await ApiRequest(`/${this.entryType}/get`, { id: this.id });
+        if (response.status !== "success") {
+            ErrorToast(`Failed to load permissions for ${this.entryType}.`);
+            this.close();
+        }
+
+        this.permissions = response[this.entryType].permissions;
+    }
+
+    async setPermissions() {
+        await ApiRequest(`/${this.entryType}/update`, {
+            id: this.id,
+            changes: { "$set": { "permissions": this.permissions } }
         });
     }
 

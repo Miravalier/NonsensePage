@@ -1,12 +1,14 @@
 from fastapi import APIRouter
 from typing import Optional
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from ..lib import database
 from ..lib.errors import JsonError
-from ..lib.folders import delete_folder
+from ..lib.folders import delete_folder, set_folder_permissions
 from ..lib.utils import require, auth_require
 from ..models.database_models import Permissions, get_pool
-from ..models.request_models import AuthRequest
+from ..models.request_models import AuthRequest, GMRequest
 
 
 router = APIRouter()
@@ -114,29 +116,36 @@ class NoteListRequest(AuthRequest):
 @router.post("/list")
 async def note_list(request: NoteListRequest):
     if request.folder_id is not None:
-        folder = require(database.note_folders.find_one(request.folder_id), "invalid folder id")
+        try:
+            folder = require(database.note_folders.find_one({"$or": [
+                {"_id": ObjectId(request.folder_id)},
+                {"alternate_id": request.folder_id},
+            ]}), "invalid folder id")
+        except InvalidId:
+            folder = require(database.note_folders.find_one({
+                "alternate_id": request.folder_id
+            }), "invalid folder id")
+
+        folder_id = folder.id
         folder_name = folder.name
         parent_id = folder.parent_id
     else:
+        folder_id = None
         folder_name = "/"
         parent_id = None
-    subfolders = []
-    notes = []
-    if request.requester.is_gm:
-        for folder in database.note_folders.find({"parent_id": request.folder_id}):
-            subfolders.append((folder.id, folder.name))
-        for note in database.notes.find({"folder_id": request.folder_id}):
-            notes.append((note.id, note.name, note.image))
 
-    else:
-        for folder in database.note_folders.find({"parent_id": request.folder_id}):
-            if folder.has_permission(request.requester.id, level=Permissions.READ):
-                subfolders.append((folder.id, folder.name))
-        for note in database.notes.find({"folder_id": request.folder_id}):
-            if note.has_permission(request.requester.id, level=Permissions.READ):
-                notes.append((note.id, note.name, note.image))
+    subfolders = []
+    for folder in database.note_folders.find({"parent_id": folder_id}):
+        if request.requester.is_gm or folder.has_permission(request.requester.id, level=Permissions.READ):
+            subfolders.append((folder.id, folder.name))
     subfolders.sort(key=lambda f: f[1])
-    notes.sort(key=lambda c: c[1])
+
+    notes = []
+    for note in database.notes.find({"folder_id": folder_id}):
+        if request.requester.is_gm or note.has_permission(request.requester.id, level=Permissions.READ):
+            notes.append(note.model_dump())
+    notes.sort(key=lambda entry: entry["name"])
+
     return {
         "status": "success",
         "name": folder_name,
@@ -254,4 +263,17 @@ async def note_folder_delete(request: NoteFolderDeleteRequest):
         "type": "rmdir",
         "folder": folder.id,
     })
+    return {"status": "success"}
+
+
+class NoteFolderUpdatePermissionsRequest(GMRequest):
+    folder_id: str
+    permissions: dict
+
+@router.post("/folder/update-permissions")
+async def note_folder_set_permissions(request: NoteFolderUpdatePermissionsRequest):
+    folder = require(database.note_folders.find_one(request.folder_id), "invalid folder id")
+
+    set_folder_permissions("note", folder, request.permissions)
+
     return {"status": "success"}

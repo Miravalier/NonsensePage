@@ -2,6 +2,7 @@ import * as ContextMenu from "../lib/ContextMenu.ts";
 import * as Database from "../lib/Database.ts";
 import * as Notifications from "../lib/Notifications.ts";
 import * as Templates from "../lib/Templates.ts";
+import { users } from "../lib/Database.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { IntroRegistry } from "../lib/Intro.ts";
 import { Rulesets } from "../rulesets/index.ts";
@@ -13,7 +14,7 @@ import { ApiRequest, Session, Subscribe, WsConnect } from "../lib/Requests.ts";
 import { CharacterListWindow } from "../windows/CharacterList.ts";
 import { MapListWindow } from "../windows/MapList.ts";
 import { CharacterCreatorWindow } from "../windows/CharacterCreator.ts";
-import { Character } from "../lib/Models.ts";
+import { CharacterSheetWindow } from "../windows/CharacterSheet.ts";
 import {
     launchWindow, windows, InputDialog,
     applyLayout, SerializedWindow,
@@ -45,6 +46,7 @@ window.addEventListener("load", async () => {
         }
     }
     catch (error) {
+        console.error(error);
         document.body.innerHTML = '<div class="watermark">Failed to connect to the server. Wait a while and refresh the page.</div>';
     }
 });
@@ -251,6 +253,10 @@ async function Main() {
             },
         },
         "Settings": {
+            "Refresh": () => {
+                // @ts-ignore
+                location.reload(true);
+            },
             "Log Out": () => {
                 LogOut();
             }
@@ -285,9 +291,33 @@ async function Main() {
 
     ContextMenu.set(document.body, contextOptions);
 
-    if (!Session.gm && !Session.user.character_id && IntroRegistry.html !== null) {
-        const characterCreator = new CharacterCreatorWindow();
+    const windowsContainer = document.querySelector("#windows") as HTMLDivElement;
+    windowsContainer.addEventListener("dblclick", async (ev) => {
+        if (windowsContainer != ev.target) {
+            return;
+        }
+
+        if (!users[Session.id].character_id) {
+            return;
+        }
+
+        const characterSheetWindow = new CharacterSheetWindow({
+            title: "Character Sheet",
+        });
+        await characterSheetWindow.load(users[Session.id].character_id);
+    });
+
+    LoadStartingWindows();
+}
+
+async function LoadStartingWindows() {
+    if (!Session.gm && !users[Session.id].character_id && IntroRegistry.html !== null) {
+        const characterCreator = new CharacterCreatorWindow({
+            size: new Vector2(window.innerWidth - 40, window.innerHeight - 80),
+            position: new Vector2(20, 20),
+        });
         await characterCreator.load();
+        characterCreator.on_close.push(LoadStartingWindows);
     }
     else {
         const defaultLayout = localStorage.getItem("defaultLayout");

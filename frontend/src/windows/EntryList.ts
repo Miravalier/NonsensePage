@@ -2,12 +2,13 @@ import * as ContextMenu from "../lib/ContextMenu.ts";
 import * as Events from "../lib/Events.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { ConfirmDialog, ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
-import { ApiRequest } from "../lib/Requests.ts";
+import { ApiRequest, Session } from "../lib/Requests.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { Parameter, IsDefined, GetThumbnail, Require } from "../lib/Utils.ts";
 import { Pluralize, TitleCase } from "../lib/Utils.ts";
 import { AddDragListener } from "../lib/Drag.ts";
 import { PermissionsWindow } from "./Permissions.ts";
+import { FolderPermissionsWindow } from "./FolderPermissions.ts";
 import { Entry } from "../lib/Models.ts";
 
 
@@ -125,7 +126,13 @@ export class EntryListWindow extends ContentWindow {
                     return;
                 }
                 await ApiRequest(`/${this.entryType}/folder/delete`, { folder_id: id });
-            },
+            }
+        }
+        if (Session.user.is_gm) {
+            contextOptions["Permissions"] = async () => {
+                const permissionsEditor = new FolderPermissionsWindow();
+                permissionsEditor.load(this.entryType, id);
+            }
         }
 
         await this.contextMenuHook("folder", id, contextOptions);
@@ -169,12 +176,14 @@ export class EntryListWindow extends ContentWindow {
                 }
                 await ApiRequest(`/${this.entryType}/delete`, { id: entry.id });
                 element.remove();
-            },
-            "Edit Permissions": async () => {
+            }
+        };
+        if (Session.user.is_gm) {
+            contextOptions["Permissions"] = async () => {
                 const permissionsEditor = new PermissionsWindow();
                 permissionsEditor.load(this.entryType, entry.id);
             }
-        };
+        }
         this.contextMenuHook("entry", entry.id, contextOptions);
         ContextMenu.set(element, {
             [TitleCase(this.entryType)]: contextOptions,

@@ -5,7 +5,7 @@ from typing import Optional
 
 from ..lib import database
 from ..lib.errors import JsonError
-from ..lib.folders import delete_folder
+from ..lib.folders import delete_folder, set_folder_permissions
 from ..lib.utils import require, auth_require
 from ..models.database_models import Permissions, get_pool
 from ..models.request_models import AuthRequest, GMRequest
@@ -277,4 +277,17 @@ async def ability_folder_alt_id(request: AbilityFolderSetAltIdRequest):
         request.folder_id,
         {"$set": {"alternate_id": request.alternate_id}}
     ), "invalid folder_id")
+    return {"status": "success"}
+
+
+class AbilityFolderUpdatePermissionsRequest(GMRequest):
+    folder_id: str
+    permissions: dict
+
+@router.post("/folder/update-permissions")
+async def ability_folder_set_permissions(request: AbilityFolderUpdatePermissionsRequest):
+    folder = require(database.ability_folders.find_one(request.folder_id), "invalid folder id")
+
+    set_folder_permissions("ability", folder, request.permissions)
+
     return {"status": "success"}
