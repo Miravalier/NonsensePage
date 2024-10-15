@@ -270,6 +270,7 @@ export class ChatWindow extends ContentWindow {
                 }
                 const contentElement = message.querySelector(".text");
                 contentElement.innerHTML = data.content;
+                Events.dispatch("renderMessage", message);
             }
             else if (data.type == "delete") {
                 const message = this.messages[data.id];
@@ -363,7 +364,7 @@ export class ChatWindow extends ContentWindow {
         this.viewPort.scrollTop = this.viewPort.scrollHeight;
 
         this.messages[message.id] = element;
-        Events.dispatch("renderMessage", message, element);
+        Events.dispatch("renderMessage", element);
         return element;
     }
 }

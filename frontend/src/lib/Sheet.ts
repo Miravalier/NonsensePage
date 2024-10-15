@@ -1,8 +1,7 @@
 import * as Templates from "./Templates.ts";
 import { Permission } from "./Models.ts";
-import { GetPermissions, RecursiveAssign, ResolvePath, TitleCase } from './Utils.ts';
+import { GetPermissions, RecursiveAssign, ResolvePath } from './Utils.ts';
 import { ApiRequest } from "./Requests.ts";
-import { ErrorToast } from "./Notifications.ts";
 import { AddDropListener } from "./Drag.ts";
 import { SheetWindow } from "../windows/SheetWindow.ts";
 

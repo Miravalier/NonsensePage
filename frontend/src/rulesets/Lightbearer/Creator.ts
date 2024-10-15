@@ -1,6 +1,6 @@
 import { CharacterAbility, AbilityType, Ability } from "../../lib/Models.ts";
 import { ErrorToast } from "../../lib/Notifications.ts";
-import { ApiRequest, Session } from "../../lib/Requests.ts";
+import { ApiRequest } from "../../lib/Requests.ts";
 import { BaseWindow } from "../../windows/Window.ts";
 import { GetAbilityIcons } from "./Utils.ts";
 import { Html } from "../../lib/Elements.ts";
@@ -137,7 +137,6 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
         subfolders: [string, string][],
         entries: Ability[],
     } = await ApiRequest("/ability/list", { folder_id: "Weapons" });
-    console.log(weaponResponse);
 
     for (const ability of weaponResponse.entries) {
         weaponAbilities[ability.name] = ability;

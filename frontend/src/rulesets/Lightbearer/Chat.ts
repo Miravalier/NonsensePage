@@ -1,12 +1,60 @@
 import { ApplyDamage, ApplyHealing, ApplyShield } from "../../lib/Database.ts";
-import { Message, RollType } from "../../lib/Models.ts";
+import { RollType } from "../../lib/Models.ts";
 import { DieResult } from "../../lib/Dice.ts";
 import { NumberWithSign } from "../../lib/Utils.ts";
 import * as Hoverable from "../../lib/Hoverable.ts";
 import * as ContextMenu from "../../lib/ContextMenu.ts";
+import { ApiRequest, Session } from "../../lib/Requests.ts";
+import { Button } from "../../lib/Elements.ts";
+import { Future } from "../../lib/Async.ts";
+import { Dialog, InputDialog } from "../../windows/Window.ts";
 
 
-export function onRenderMessage(_message: Message, element: HTMLDivElement) {
+export async function ResultEditDialog(resultElement: HTMLDivElement) {
+    const halveButton = Button("chevrons-down");
+    halveButton.appendChild(document.createTextNode("Halve"));
+
+    const setButton = Button("equals");
+    setButton.appendChild(document.createTextNode("Set"));
+
+    const doubleButton = Button("chevrons-up");
+    doubleButton.appendChild(document.createTextNode("Double"));
+
+    const future = new Future<boolean>();
+    const dialog = new Dialog({
+        title: "Edit Dice Result",
+        description: `Total: ${resultElement.textContent}`,
+        elements: [
+            [halveButton, setButton, doubleButton],
+        ],
+    });
+    dialog.on_close.push(() => {
+        future.resolve(false);
+    });
+
+    setButton.addEventListener("click", async () => {
+        const selection = await InputDialog("Set Result", { "Total": ["number", parseInt(resultElement.textContent)] }, "Set");
+        if (!selection) {
+            return;
+        }
+        resultElement.textContent = selection.Total;
+        dialog.description.textContent = `Total: ${resultElement.textContent}`;
+    });
+    halveButton.addEventListener("click", () => {
+        resultElement.textContent = Math.round(parseInt(resultElement.textContent) / 2).toString();
+        dialog.description.textContent = `Total: ${resultElement.textContent}`;
+    });
+    doubleButton.addEventListener("click", () => {
+        resultElement.textContent = (parseInt(resultElement.textContent) * 2).toString();
+        dialog.description.textContent = `Total: ${resultElement.textContent}`;
+    });
+
+    return await future
+}
+
+
+export function onRenderMessage(element: HTMLDivElement) {
+    const textElement = element.querySelector(".text") as HTMLDivElement;
     element.querySelector(".bar")?.addEventListener("click", () => {
         element.querySelector(".details")?.classList.toggle("hidden");
     });
@@ -59,18 +107,28 @@ export function onRenderMessage(_message: Message, element: HTMLDivElement) {
             }
         });
 
-        ContextMenu.set(resultElement.parentElement, {
-            "Dice Result": {
-                "Apply Damage": () => {
-                    ApplyDamage(parseInt(resultElement.textContent));
-                },
-                "Apply Healing": () => {
-                    ApplyHealing(parseInt(resultElement.textContent));
-                },
-                "Apply Shield": () => {
-                    ApplyShield(parseInt(resultElement.textContent));
-                }
+        const diceResultOptions = {
+            "Apply Damage": () => {
+                ApplyDamage(parseInt(resultElement.textContent));
             },
+            "Apply Healing": () => {
+                ApplyHealing(parseInt(resultElement.textContent));
+            },
+            "Apply Shield": () => {
+                ApplyShield(parseInt(resultElement.textContent));
+            }
+        };
+        if (Session.gm) {
+            diceResultOptions["Edit"] = async () => {
+                // Modify the resultElement in-place
+                await ResultEditDialog(resultElement);
+
+                // Apply changes back to the DB
+                await ApiRequest("/messages/edit", { id: element.dataset.id, content: textElement.innerHTML });
+            };
+        }
+        ContextMenu.set(resultElement.parentElement, {
+            "Dice Result": diceResultOptions,
         });
     }
 }

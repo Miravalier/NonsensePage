@@ -414,6 +414,7 @@ button:hover i {
 .dialog .description {
     margin: 2px;
     padding: 2px;
+    text-align: center;
 }
 
 .dialog textarea {
