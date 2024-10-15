@@ -77,13 +77,13 @@ export class LocalPersist {
 export function RecursiveAssign(target: any, source: any) {
     for (const [key, value] of Object.entries(source)) {
         if (typeof target[key] === "undefined") {
-            target[key] = value;
+            SetPath(target, key, value);
         }
         else if (IsObject(value)) {
             RecursiveAssign(target[key], value);
         }
         else {
-            target[key] = value;
+            SetPath(target, key, value);
         }
     }
 }

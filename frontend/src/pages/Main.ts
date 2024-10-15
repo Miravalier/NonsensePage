@@ -20,7 +20,6 @@ import {
     applyLayout, SerializedWindow,
 } from "../windows/Window.ts";
 import { NoteListWindow } from "../windows/NoteList.ts";
-import { RecursiveAssign } from "../lib/Utils.ts";
 import { AbilityListWindow } from "../windows/AbilityList.ts";
 
 
@@ -77,21 +76,13 @@ async function OnLoad() {
         window.location.href = "/login";
     }
 
+    Session.gm = response.user.is_gm;
+    Session.id = response.user.id;
+    Session.username = response.user.name;
+
     // Re-auth now and every 15 minutes
     ApiRequest("/re-auth");
     setInterval(ApiRequest, 900000, "/re-auth");
-
-    Session.gm = response.user.is_gm;
-    Session.id = response.user.id;
-    Session.user = response.user;
-    Session.username = response.user.name;
-
-    await Subscribe(Session.id, update => {
-        if (update.type == "update") {
-            RecursiveAssign(Session.user, update.changes["$set"]);
-            Session.username = Session.user.name;
-        }
-    });
 
     for (const ruleset of Rulesets) {
         await ruleset.init();

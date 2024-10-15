@@ -21,7 +21,7 @@ export class CharacterListWindow extends EntryListWindow {
     }
 
     async contextMenuHook(type: string, id: string, contextOptions: { [choice: string]: (ev: MouseEvent) => void }) {
-        if (type != "entry" || !Session.gm) {
+        if (type != "entry") {
             return;
         }
 

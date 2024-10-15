@@ -1,6 +1,6 @@
 import * as Templates from "./Templates.ts";
 import { Permission } from "./Models.ts";
-import { GetPermissions, ResolvePath, TitleCase } from './Utils.ts';
+import { GetPermissions, RecursiveAssign, ResolvePath, TitleCase } from './Utils.ts';
 import { ApiRequest } from "./Requests.ts";
 import { ErrorToast } from "./Notifications.ts";
 import { AddDropListener } from "./Drag.ts";
@@ -18,6 +18,7 @@ export class Sheet {
     parent: SheetWindow;
     container: HTMLDivElement;
     setTriggers: { [key: string]: ((value: any) => void)[] };
+    data: any;
 
     constructor(entryType: string, id: string, parent: SheetWindow) {
         this.template = null;
@@ -26,6 +27,7 @@ export class Sheet {
         this.parent = parent;
         this.container = parent.content;
         this.setTriggers = {};
+        this.data = null;
     }
 
     /**
@@ -41,7 +43,6 @@ export class Sheet {
      * Make a simple key-value update to the underlying entry
      */
     async set(key: string, value: any) {
-        this.onSet(key, value);
         return await this.update({ "$set": { [key]: value } });
     }
 
@@ -53,19 +54,14 @@ export class Sheet {
     async onUpdate(changes: any) {
         // Check if the changes can be made without a re-render
         if (changes["$set"] && Object.keys(changes).length == 1) {
+            RecursiveAssign(this.data, changes["$set"]);
             for (const [key, value] of Object.entries(changes["$set"])) {
                 await this.onSet(key, value);
             }
             return;
         }
-        // Re-render everything
-        const response = await ApiRequest(`/${this.entryType}/get`, { id: this.id });
-        if (response.status != "success") {
-            ErrorToast(`${TitleCase(this.entryType)} loading failed!`);
-            this.container.innerHTML = "";
-            return;
-        }
-        await this.render(response[this.entryType]);
+        // Re-load the character sheet otherwise
+        await this.parent.refresh();
     }
 
     /**
@@ -102,9 +98,9 @@ export class Sheet {
      * Triggers when the entry is rendered from scratch. Sets up all of the
      * event listeners.
      */
-    onRender(data: any) {
+    onRender() {
         this.setTriggers = {};
-        const permission = GetPermissions(data);
+        const permission = GetPermissions(this.data);
         if (permission == Permission.Read) {
             for (const inputElement of this.container.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")) {
                 inputElement.disabled = true;
@@ -115,7 +111,7 @@ export class Sheet {
             if (!inputElement.dataset.attr) {
                 continue;
             }
-            inputElement.value = ResolvePath(data, inputElement.dataset.attr);
+            inputElement.value = ResolvePath(this.data, inputElement.dataset.attr);
             inputElement.addEventListener("change", async () => {
                 await this.set(inputElement.dataset.attr, inputElement.value);
             });
@@ -127,7 +123,7 @@ export class Sheet {
             if (!imageElement.dataset.attr) {
                 continue;
             }
-            imageElement.src = ResolvePath(data, imageElement.dataset.attr);
+            imageElement.src = ResolvePath(this.data, imageElement.dataset.attr);
             AddDropListener(imageElement, async (dropData) => {
                 if (dropData.type != "file") {
                     return;
@@ -143,14 +139,14 @@ export class Sheet {
     /**
      * Draw the sheet to the DOM from scratch.
      */
-    async render(data: any) {
-        data.helperData = { sheet: this, fragmentCallbacks: [] };
-        const html = this.template(data);
+    async render() {
+        this.data.helperData = { sheet: this, fragmentCallbacks: [] };
+        const html = this.template(this.data);
         this.container.innerHTML = html;
-        for (const callback of data.helperData.fragmentCallbacks) {
-            callback(this.container, data);
+        for (const callback of this.data.helperData.fragmentCallbacks) {
+            callback(this.container, this.data);
         }
-        this.onRender(data);
+        this.onRender();
     }
 
     /**
@@ -158,10 +154,11 @@ export class Sheet {
      * associated with this sheet, then renders it.
      */
     async init(data: any) {
+        this.data = data;
         this.container.classList.add("sheet");
         const { html } = SheetRegistry[this.constructor.name];
         this.template = Templates.LoadTemplate(this.constructor.name, html);
-        await this.render(data);
+        await this.render();
     }
 }
 

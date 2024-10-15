@@ -1,6 +1,6 @@
 import { User } from "./Models.ts";
 import { ErrorToast } from "./Notifications.ts";
-import { Sleep } from "./Async.ts";
+import { Future, Sleep } from "./Async.ts";
 
 
 export class Session {
@@ -10,7 +10,6 @@ export class Session {
     static id: string = null as any;
     static ws: WebSocket;
     static subscriptions: { [pool: string]: Set<Subscription> } = {};
-    static user: User;
     static connectionFailures: number = 0;
 }
 
@@ -32,6 +31,8 @@ export function HandleWsMessage(data: any) {
 
 
 export async function WsConnect() {
+    const connected = new Future();
+
     let ws_prefix = (location.protocol === "https:" ? "wss:" : "ws:");
     Session.ws = new WebSocket(`${ws_prefix}//${location.host}/api/live`);
     Session.ws.onopen = () => {
@@ -45,6 +46,7 @@ export async function WsConnect() {
             }
         }
         Session.connectionFailures = 0;
+        connected.resolve(null);
     }
     Session.ws.onmessage = ev => {
         const data = JSON.parse(ev.data);
@@ -62,6 +64,8 @@ export async function WsConnect() {
 
         WsConnect();
     };
+
+    await connected;
 }
 
 
@@ -118,7 +122,6 @@ export async function LoginRequest(username: string, password: string) {
         Session.token = response.token;
         Session.gm = response.user.is_gm;
         Session.id = response.user.id;
-        Session.user = response.user;
         Session.username = response.user.name;
     }
     return response;

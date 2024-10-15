@@ -2,19 +2,21 @@ import * as ContextMenu from "../../lib/ContextMenu.ts";
 import * as Dice from "../../lib/Dice.ts";
 import { AddDragListener } from "../../lib/Drag.ts";
 import { InputDialog } from "../../windows/Window.ts";
-import { CharacterAbility, AbilityType, Character } from "../../lib/Models.ts";
+import { CharacterAbility, AbilityType, Character, Ability } from "../../lib/Models.ts";
 import { Sheet } from "../../lib/Sheet.ts";
-import { GenerateId, GetPermissions, ResolvePath, SetPath } from "../../lib/Utils.ts";
+import { GenerateId, GetPermissions, ResolvePath } from "../../lib/Utils.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { Permissions } from "../../lib/Enums.ts";
 import { RenderRolls, GetAbilityIcons } from "./Utils.ts";
 
 
 export class LightbearerCharacterSheet extends Sheet {
-    onRender(data: Character): void {
-        super.onRender(data);
+    declare data: Character;
+
+    onRender(): void {
+        super.onRender();
         this.container.classList.add("Lightbearer");
-        const permission = GetPermissions(data);
+        const permission = GetPermissions(this.data);
 
         if (permission >= Permissions.WRITE) {
             const abilityContainer = this.container.querySelector<HTMLDivElement>(".abilities");
@@ -29,11 +31,19 @@ export class LightbearerCharacterSheet extends Sheet {
                     },
                 },
             });
-            this.parent.addDropListener(this.container, (data) => {
-                if (data.type != "ability") {
+            this.parent.addDropListener(this.container, async (data) => {
+                let droppedAbility: CharacterAbility | Ability;
+                if (data.type == "ability") {
+                    droppedAbility = data.ability;
+                }
+                else if (data.type == "abilityEntry") {
+                    const response = await ApiRequest("/ability/get", { id: data.id });
+                    droppedAbility = response.ability;
+                }
+                else {
                     return;
                 }
-                const droppedAbility: CharacterAbility = data.ability;
+
                 droppedAbility.id = GenerateId();
                 this.update({
                     "$set": { [`ability_map.${droppedAbility.id}`]: droppedAbility },
@@ -49,9 +59,9 @@ export class LightbearerCharacterSheet extends Sheet {
             const abilityIcons = abilityBar.querySelector(".icons");
             const useButton = abilityBar.querySelector("i.button");
             const abilityId = abilityElement.dataset.id;
-            const ability = data.ability_map[abilityId];
+            const ability = this.data.ability_map[abilityId];
 
-            AddDragListener(abilityElement, { type: "ability", characterId: data.id, ability });
+            AddDragListener(abilityElement, { type: "ability", characterId: this.data.id, ability });
 
             // If the entire ability changes, propagate to each subfield
             this.addTrigger(`ability_map.${abilityId}`, (value) => {
@@ -171,11 +181,11 @@ export class LightbearerCharacterSheet extends Sheet {
                 useButton.addEventListener("click", async (ev) => {
                     ev.stopPropagation();
                     await ApiRequest("/messages/speak", {
-                        speaker: data.name,
-                        character_id: data.id,
+                        speaker: this.data.name,
+                        character_id: this.data.id,
                         content: `
                             <div class="Lightbearer template">
-                                <div class="ability" data-character-id="${data.id}" data-id="${ability.id}">
+                                <div class="ability" data-character-id="${this.data.id}" data-id="${ability.id}">
                                     <div class="bar">
                                         <div class="row">
                                             <div class="icons">${GetAbilityIcons(ability)}</div>
@@ -196,19 +206,19 @@ export class LightbearerCharacterSheet extends Sheet {
             for (const field of statsContainer.querySelectorAll<HTMLDivElement>(".field")) {
                 const label = field.querySelector<HTMLDivElement>(".label");
                 const statInput = field.querySelector("input");
-                this.addTrigger(statInput.dataset.attr, (value) => {
-                    SetPath(data, statInput.dataset.attr, value);
-                });
+                // this.addTrigger(statInput.dataset.attr, (value) => {
+                //     SetPath(this.data, statInput.dataset.attr, value);
+                // });
                 label.addEventListener("click", async () => {
-                    const stat = ResolvePath(data, statInput.dataset.attr);
+                    const stat = ResolvePath(this.data, statInput.dataset.attr);
                     const formula = `2d6+${Math.floor(stat / 2)}`;
                     const rollResults = Dice.Roll(formula);
                     await ApiRequest("/messages/speak", {
-                        speaker: data.name,
-                        character_id: data.id,
+                        speaker: this.data.name,
+                        character_id: this.data.id,
                         content: `
                             <div class="template">
-                                <div class="stat" data-character-id="${data.id}" data-attr="${statInput.dataset.attr}">
+                                <div class="stat" data-character-id="${this.data.id}" data-attr="${statInput.dataset.attr}">
                                     <div class="chat-rolls">
                                         <div class="dice roll">
                                             <div class="label">${label.innerText}</div>

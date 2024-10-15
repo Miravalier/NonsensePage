@@ -128,7 +128,7 @@ export class EntryListWindow extends ContentWindow {
                 await ApiRequest(`/${this.entryType}/folder/delete`, { folder_id: id });
             }
         }
-        if (Session.user.is_gm) {
+        if (Session.gm) {
             contextOptions["Permissions"] = async () => {
                 const permissionsEditor = new FolderPermissionsWindow();
                 permissionsEditor.load(this.entryType, id);
@@ -178,7 +178,7 @@ export class EntryListWindow extends ContentWindow {
                 element.remove();
             }
         };
-        if (Session.user.is_gm) {
+        if (Session.gm) {
             contextOptions["Permissions"] = async () => {
                 const permissionsEditor = new PermissionsWindow();
                 permissionsEditor.load(this.entryType, entry.id);

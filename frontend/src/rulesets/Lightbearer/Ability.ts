@@ -19,10 +19,12 @@ export async function onRenderAbilityEntry(element: HTMLDivElement, ability: Abi
 
 
 export class LightbearerAbilitySheet extends Sheet {
-    onRender(data: Ability): void {
-        super.onRender(data);
+    declare data: Ability;
+
+    onRender(): void {
+        super.onRender();
         this.container.classList.add("Lightbearer");
-        const permission = GetPermissions(data);
+        const permission = GetPermissions(this.data);
 
         const abilityElement = this.container.querySelector(".ability") as HTMLDivElement;
         const abilityBar = abilityElement.querySelector(".bar");
@@ -31,25 +33,22 @@ export class LightbearerAbilitySheet extends Sheet {
         const abilityDescription = abilityDetails.querySelector(".description");
         const abilityIcons = abilityBar.querySelector(".icons");
         const useButton = abilityBar.querySelector("i.button");
-        const ability = data;
 
-        AddDragListener(abilityElement, { type: "ability", ability });
+        AddDragListener(abilityElement, { type: "ability", ability: this.data });
 
         // Handle changes on this ability
         this.addTrigger(`name`, (value) => {
-            ability.name = value;
             abilityName.textContent = value;
         });
         this.addTrigger(`description`, (value) => {
-            ability.description = value;
             abilityDescription.innerHTML = value.replace("\n", "<br>");
         });
         this.addTrigger(`rolls`, (value) => {
-            ability.rolls = value;
+            this.data.rolls = value;
         });
         const updateIcons = () => {
-            abilityIcons.innerHTML = GetAbilityIcons(ability);
-            if (ability.type == AbilityType.Passive) {
+            abilityIcons.innerHTML = GetAbilityIcons(this.data);
+            if (this.data.type == AbilityType.Passive) {
                 abilityName.classList.add("passive");
             }
             else {
@@ -57,12 +56,10 @@ export class LightbearerAbilitySheet extends Sheet {
             }
         }
         updateIcons();
-        this.addTrigger(`type`, (value) => {
-            ability.type = value;
+        this.addTrigger(`type`, () => {
             updateIcons();
         });
-        this.addTrigger(`cooldown`, (value) => {
-            ability.cooldown = value;
+        this.addTrigger(`cooldown`, () => {
             updateIcons();
         });
 
@@ -71,11 +68,11 @@ export class LightbearerAbilitySheet extends Sheet {
             ContextMenu.set(abilityElement, {
                 "Ability": {
                     "Edit": async () => {
-                        const savedRolls = structuredClone(ability.rolls);
+                        const savedRolls = structuredClone(this.data.rolls);
                         const selection = await InputDialog(
                             "Edit Ability",
                             {
-                                "Name": ["text", ability.name],
+                                "Name": ["text", this.data.name],
                                 "Type": [
                                     "select",
                                     {
@@ -84,7 +81,7 @@ export class LightbearerAbilitySheet extends Sheet {
                                         "2": "Action",
                                         "3": "Reaction",
                                     },
-                                    ability.type,
+                                    this.data.type,
                                 ],
                                 "Cooldown": [
                                     "select",
@@ -94,15 +91,15 @@ export class LightbearerAbilitySheet extends Sheet {
                                         "2": "2 Rounds",
                                         "3": "3 Rounds",
                                     },
-                                    ability.cooldown,
+                                    this.data.cooldown,
                                 ],
-                                "Description": ["paragraph", ability.description],
-                                "Rolls": ["fragment", "rolls", ability],
+                                "Description": ["paragraph", this.data.description],
+                                "Rolls": ["fragment", "rolls", this.data],
                             },
                             "Save"
                         );
                         if (!selection) {
-                            ability.rolls = savedRolls;
+                            this.data.rolls = savedRolls;
                             return;
                         }
                         await this.update({
@@ -111,7 +108,7 @@ export class LightbearerAbilitySheet extends Sheet {
                                 description: selection.Description,
                                 type: selection.Type,
                                 cooldown: selection.Cooldown,
-                                rolls: ability.rolls,
+                                rolls: this.data.rolls,
                             }
                         });
                     },
@@ -131,15 +128,15 @@ export class LightbearerAbilitySheet extends Sheet {
                 character_id: character.id,
                 content: `
                     <div class="Lightbearer template">
-                        <div class="ability" data-character-id="${character.id}" data-id="${ability.id}">
+                        <div class="ability" data-character-id="${character.id}" data-id="${this.data.id}">
                             <div class="bar">
                                 <div class="row">
-                                    <div class="icons">${GetAbilityIcons(ability)}</div>
-                                    <div class="name">${ability.name}</div>
+                                    <div class="icons">${GetAbilityIcons(this.data)}</div>
+                                    <div class="name">${this.data.name}</div>
                                 </div>
                             </div>
-                            <div class="details hidden">${ability.description.replace("\n", "<br>")}</div>
-                            <div class="chat-rolls">${RenderRolls(ability.rolls)}</div>
+                            <div class="details hidden">${this.data.description.replace("\n", "<br>")}</div>
+                            <div class="chat-rolls">${RenderRolls(this.data.rolls)}</div>
                         </div>
                     </div>
                 `,

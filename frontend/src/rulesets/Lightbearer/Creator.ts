@@ -1,8 +1,9 @@
 import { CharacterAbility, AbilityType, Ability } from "../../lib/Models.ts";
 import { ErrorToast } from "../../lib/Notifications.ts";
-import { ApiRequest } from "../../lib/Requests.ts";
+import { ApiRequest, Session } from "../../lib/Requests.ts";
 import { BaseWindow } from "../../windows/Window.ts";
 import { GetAbilityIcons } from "./Utils.ts";
+import { Html } from "../../lib/Elements.ts";
 
 // const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
 
@@ -112,17 +113,36 @@ const classDescriptions = {
 
 
 
-export function LightbearerCreatorRender(container: HTMLDivElement, data: { window: BaseWindow }) {
+export async function LightbearerCreatorRender(container: HTMLDivElement, data: { window: BaseWindow }) {
     const classSelect = container.querySelector<HTMLSelectElement>(".class");
     const raceSelect = container.querySelector<HTMLSelectElement>(".race");
+    const weaponSelect = container.querySelector<HTMLSelectElement>(".weapon");
     const classDescription = container.querySelector<HTMLDivElement>(".class-description");
     const raceDescription = container.querySelector<HTMLDivElement>(".race-description");
     const abilityContainer = container.querySelector<HTMLDivElement>(".abilities");
     const nameInput = container.querySelector<HTMLInputElement>(".characterName");
     const finishButton = container.querySelector<HTMLButtonElement>(".finish");
 
+    const abilityCount = 3;
+    let runeEtched = false;
+
     let selectedAbilities: CharacterAbility[] = [];
     let racialAbilities: CharacterAbility[] = [];
+    let weaponAbilities: { [name: string]: CharacterAbility } = {};
+
+    const weaponResponse: {
+        status: string,
+        name: string,
+        parent_id: string,
+        subfolders: [string, string][],
+        entries: Ability[],
+    } = await ApiRequest("/ability/list", { folder_id: "Weapons" });
+    console.log(weaponResponse);
+
+    for (const ability of weaponResponse.entries) {
+        weaponAbilities[ability.name] = ability;
+        weaponSelect.appendChild(Html(`<option value="${ability.name}">${ability.name}</option>`));
+    }
 
     const SelectClass = async (className: string) => {
         abilityContainer.innerHTML = "";
@@ -170,7 +190,7 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
                     selectedAbilities.splice(selectedAbilities.indexOf(ability), 1);
                 }
                 else {
-                    if (selectedAbilities.length >= 3) {
+                    if (selectedAbilities.length >= abilityCount) {
                         return;
                     }
                     selectedAbilities.push(ability);
@@ -210,8 +230,8 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
     });
 
     finishButton.addEventListener("click", async () => {
-        if (selectedAbilities.length < 3) {
-            ErrorToast("You must select 3 abilities");
+        if (selectedAbilities.length < abilityCount) {
+            ErrorToast("You must select 4 abilities");
             return;
         }
 
@@ -221,6 +241,16 @@ export function LightbearerCreatorRender(container: HTMLDivElement, data: { wind
         }
 
         selectedAbilities.push(...racialAbilities);
+
+        const weapon = weaponAbilities[weaponSelect.value];
+        if (runeEtched) {
+            weapon.name = `Rune-etched ${weapon.name}`;
+            weapon.description = weapon.description.replace("2", "3");
+            for (const roll of weapon.rolls) {
+                roll.formula = roll.formula.replace("2", "3");
+            }
+        }
+        selectedAbilities.push(weapon);
 
         const abilityMap: { [id: string]: CharacterAbility } = {};
         for (const ability of selectedAbilities) {

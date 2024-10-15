@@ -94,7 +94,7 @@ export async function GetCharacter() {
 export async function ApplyShield(amount: number) {
     let character: Character = null;
     try {
-        character = await ResolveCharacter(Session.user.character_id);
+        character = await ResolveCharacter(users[Session.id].character_id);
     } catch {
         ErrorToast("You are not controlling a character.");
         return;
@@ -127,7 +127,7 @@ export async function ApplyHealing(amount: number) {
 export async function ApplyDamage(amount: number) {
     let character: Character = null;
     try {
-        character = await ResolveCharacter(Session.user.character_id);
+        character = await ResolveCharacter(users[Session.id].character_id);
     } catch {
         ErrorToast("You are not controlling a character.");
         return;
