@@ -1,6 +1,6 @@
 import pymongo
 from bson import ObjectId
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pymongo import ReturnDocument
 from pymongo.collection import Collection
 from typing import Generic, List, Type, TypeVar, Union
@@ -17,7 +17,9 @@ def _jsonify_oid(obj: Union[dict, ObjectId, None]):
     elif isinstance(obj, ObjectId):
         return obj.binary.hex()
     else:
-        obj["id"] = obj.pop("_id").binary.hex()
+        oid: ObjectId = obj.pop("_id", None)
+        if oid is not None:
+            obj["id"] = oid.binary.hex()
         return obj
 
 
@@ -44,7 +46,7 @@ class DocumentCollection(Generic[M]):
 
     def create(self, obj):
         obj["id"] = self.insert_one(obj)
-        return self.model.model_validate(obj)
+        return self.post_process_result(obj)
 
     def pre_process_filter(self, filter: dict):
         return _prepare_filter(filter)
@@ -52,7 +54,29 @@ class DocumentCollection(Generic[M]):
     def post_process_result(self, document: dict) -> M:
         if document is None:
             return None
-        return self.model.model_validate(_jsonify_oid(document))
+
+        try:
+            return self.model.model_validate(_jsonify_oid(document))
+        except ValidationError as exc:
+            for error in exc.errors():
+                location = list(error['loc'])
+                terminal = location.pop()
+
+                ancestry: list[tuple[dict|list, str|int]] = []
+                cursor = document
+                for component in location:
+                    ancestry.append((cursor, component))
+                    cursor = cursor[component]
+
+                if isinstance(cursor, list):
+                    cursor.pop(terminal)
+                elif isinstance(cursor, set):
+                    cursor.discard(error['input'])
+                else:
+                    del cursor[terminal]
+
+            return self.model.model_validate(_jsonify_oid(document))
+
 
     def create_index(self, *args, **kwargs):
         self.collection.create_index(*args, **kwargs)
