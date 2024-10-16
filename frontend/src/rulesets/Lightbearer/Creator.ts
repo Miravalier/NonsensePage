@@ -136,7 +136,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
         parent_id: string,
         subfolders: [string, string][],
         entries: Ability[],
-    } = await ApiRequest("/ability/list", { folder_id: "Weapons" });
+    } = await ApiRequest("/folder/ability/list", { folder_id: "Weapons" });
 
     for (const ability of weaponResponse.entries) {
         weaponAbilities[ability.name] = ability;
@@ -154,7 +154,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             parent_id: string,
             subfolders: [string, string][],
             entries: Ability[],
-        } = await ApiRequest("/ability/list", { folder_id: className });
+        } = await ApiRequest("/folder/ability/list", { folder_id: className });
 
         if (response.status !== "success") {
             ErrorToast(`Failed to load class: ${className}`);
@@ -208,7 +208,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             parent_id: string,
             subfolders: [string, string][],
             entries: Ability[],
-        } = await ApiRequest("/ability/list", { folder_id: race });
+        } = await ApiRequest("/folder/ability/list", { folder_id: race });
 
         if (response.status !== "success") {
             ErrorToast(`Failed to load race: ${race}`);

@@ -10,7 +10,7 @@ export class FolderPermissionsWindow extends PermissionsWindow {
     }
 
     async setPermissions() {
-        await ApiRequest(`/${this.entryType}/folder/update-permissions`, {
+        await ApiRequest(`/folder/${this.entryType}/update-permissions`, {
             folder_id: this.id,
             permissions: this.permissions,
         });

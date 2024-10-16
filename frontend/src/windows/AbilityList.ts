@@ -61,7 +61,7 @@ export class AbilityListWindow extends EntryListWindow {
                 return;
             }
 
-            await ApiRequest("/ability/folder/alt-id", {
+            await ApiRequest("/folder/ability/alt-id", {
                 folder_id: id,
                 alternate_id: selection.ID,
             });

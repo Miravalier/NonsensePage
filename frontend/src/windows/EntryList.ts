@@ -54,10 +54,10 @@ export class EntryListWindow extends ContentWindow {
             if (dropData.id == folderId) {
                 return;
             }
-            await ApiRequest(`/${this.entryType}/move`, { folder_id: dropData.id, dst_id: folderId });
+            await ApiRequest(`/folder/${this.entryType}/move`, { folder_id: dropData.id, dst_id: folderId });
         }
         else if (dropData.type == `${this.entryType}Entry`) {
-            await ApiRequest(`/${this.entryType}/move`, { [`${this.entryType}_id`]: dropData.id, dst_id: folderId });
+            await ApiRequest(`/folder/${this.entryType}/move`, { entry_id: dropData.id, dst_id: folderId });
         }
     }
 
@@ -66,7 +66,7 @@ export class EntryListWindow extends ContentWindow {
         if (!selection || !selection.Name) {
             return;
         }
-        await ApiRequest(`/${this.entryType}/folder/create`, { name: selection.Name, parent: this.folderId });
+        await ApiRequest(`/folder/${this.entryType}/create`, { name: selection.Name, parent: this.folderId });
     }
 
     async createEntryHandler() {
@@ -116,7 +116,7 @@ export class EntryListWindow extends ContentWindow {
                 if (!selection || !selection.Name) {
                     return;
                 }
-                await ApiRequest(`/${this.entryType}/folder/rename`, {
+                await ApiRequest(`/folder/${this.entryType}/rename`, {
                     id,
                     name: selection.Name,
                 });
@@ -125,7 +125,7 @@ export class EntryListWindow extends ContentWindow {
                 if (!await ConfirmDialog(`Delete '${name}'`)) {
                     return;
                 }
-                await ApiRequest(`/${this.entryType}/folder/delete`, { folder_id: id });
+                await ApiRequest(`/folder/${this.entryType}/delete`, { folder_id: id });
             }
         }
         if (Session.gm) {
@@ -207,7 +207,7 @@ export class EntryListWindow extends ContentWindow {
             parent_id: string,
             subfolders: [string, string][],
             entries: Entry[],
-        } = await ApiRequest(`/${this.entryType}/list`, { folder_id: this.folderId });
+        } = await ApiRequest(`/folder/${this.entryType}/list`, { folder_id: this.folderId });
         if (response.status != "success") {
             ErrorToast(`Failed to load ${this.entryType} list.`);
             this.close();

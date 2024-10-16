@@ -25,6 +25,7 @@ from .endpoints.users import router as user_router
 from .endpoints.combat import router as combat_router
 from .endpoints.messages import router as messages_router
 from .endpoints.files import router as files_router
+from .endpoints.folders import router as folder_router
 
 
 app = FastAPI()
@@ -55,6 +56,7 @@ app.include_router(notes_router, prefix="/api/note")
 app.include_router(map_router, prefix="/api/map")
 app.include_router(messages_router, prefix="/api/messages")
 app.include_router(user_router, prefix="/api/user")
+app.include_router(folder_router, prefix="/api/folder")
 
 
 class LoginRequest(BaseModel):
