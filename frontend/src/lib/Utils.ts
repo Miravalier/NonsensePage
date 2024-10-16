@@ -74,16 +74,70 @@ export class LocalPersist {
 }
 
 
-export function RecursiveAssign(target: any, source: any) {
+export function ApplyChanges(target: any, changes: any, callback = undefined) {
+    if (changes["$unset"]) {
+        UnsetOperator(target, changes["$unset"], callback);
+    }
+    if (changes["$pull"]) {
+        PullOperator(target, changes["$pull"], callback);
+    }
+    if (changes["$set"]) {
+        SetOperator(target, changes["$set"], callback);
+    }
+    if (changes["$push"]) {
+        PushOperator(target, changes["$push"], callback);
+    }
+}
+
+
+export function PullOperator(target: any, source: any, callback = undefined) {
     for (const [key, value] of Object.entries(source)) {
-        if (typeof target[key] === "undefined") {
-            SetPath(target, key, value);
+        const container: any[] = ResolvePath(target, key);
+        if (!container) {
+            continue;
         }
-        else if (IsObject(value)) {
-            RecursiveAssign(target[key], value);
+        const index = container.indexOf(value);
+        if (index == -1) {
+            continue;
         }
-        else {
-            SetPath(target, key, value);
+        container.splice(index, 1);
+        if (callback) {
+            callback("pull", key, value);
+        }
+    }
+}
+
+
+export function PushOperator(target: any, source: any, callback = undefined) {
+    for (const [key, value] of Object.entries(source)) {
+        let container: any[] = ResolvePath(target, key);
+        if (!container) {
+            container = [];
+            SetPath(target, key, container);
+        }
+        container.push(value);
+        if (callback) {
+            callback("push", key, value);
+        }
+    }
+}
+
+
+export function UnsetOperator(target: any, source: any, callback = undefined) {
+    for (const key of Object.keys(source)) {
+        UnsetPath(target, key);
+        if (callback) {
+            callback("unset", key, null);
+        }
+    }
+}
+
+
+export function SetOperator(target: any, source: any, callback = undefined) {
+    for (const [key, value] of Object.entries(source)) {
+        SetPath(target, key, value);
+        if (callback) {
+            callback("set", key, value);
         }
     }
 }
@@ -108,6 +162,22 @@ export function InflateDocument(document: any) {
         cursor[terminal] = InflateDocument(value);
     }
     return result;
+}
+
+
+export function UnsetPath(object: any, path: string) {
+    const components = path.split(".");
+    const finalComponent = components.pop();
+
+    let cursor = object;
+    for (const component of components) {
+        if (!cursor[component]) {
+            cursor[component] = {};
+        }
+        cursor = cursor[component];
+    }
+
+    delete cursor[finalComponent];
 }
 
 

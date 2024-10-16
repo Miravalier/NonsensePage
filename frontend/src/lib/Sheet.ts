@@ -1,6 +1,6 @@
 import * as Templates from "./Templates.ts";
 import { Permission } from "./Models.ts";
-import { GetPermissions, RecursiveAssign, ResolvePath } from './Utils.ts';
+import { GetPermissions, ApplyChanges, ResolvePath } from './Utils.ts';
 import { ApiRequest } from "./Requests.ts";
 import { AddDropListener } from "./Drag.ts";
 import { SheetWindow } from "../windows/SheetWindow.ts";
@@ -51,32 +51,29 @@ export class Sheet {
      * @param changes MongoDB update, i.e. {"$set": {"name": "Bob"}}
      */
     async onUpdate(changes: any) {
-        // Check if the changes can be made without a re-render
-        if (changes["$set"] && Object.keys(changes).length == 1) {
-            RecursiveAssign(this.data, changes["$set"]);
-            for (const [key, value] of Object.entries(changes["$set"])) {
-                await this.onSet(key, value);
-            }
-            return;
-        }
-        // Re-load the character sheet otherwise
-        await this.parent.refresh();
+        ApplyChanges(this.data, changes, (event: string, key: string, value: any) => {
+            this.onTrigger(event, key, value);
+        });
     }
 
     /**
-     * Triggers when an update comes in with simple $set data. Dispatches
-     * each callback registered with the particular key that was changed
+     * Dispatches each callback registered with a particular event and key
+     *
+     * @returns true if at least 1 callback was registered for that event
      */
-    async onSet(key: string, value: any) {
+    onTrigger(event: string, key: string, value: any): boolean {
         if (key == "name") {
             this.parent.setTitle(value);
         }
-        let triggerArray = this.setTriggers[key];
-        if (triggerArray) {
-            for (const trigger of triggerArray) {
-                trigger(value);
-            }
+        let triggerArray = this.setTriggers[`${event}:${key}`];
+        if (!triggerArray || triggerArray.length == 0) {
+            return false;
         }
+
+        for (const trigger of triggerArray) {
+            trigger(value);
+        }
+        return true;
     }
 
     /**
@@ -84,11 +81,11 @@ export class Sheet {
      *
      * All triggers should be idempotent, events may be delivered multiple times
      */
-    addTrigger(key: string, trigger: (value: any) => void) {
-        let triggerArray = this.setTriggers[key]
+    addTrigger(event: string, key: string, trigger: (value: any) => void) {
+        let triggerArray = this.setTriggers[`${event}:${key}`]
         if (!triggerArray) {
             triggerArray = [];
-            this.setTriggers[key] = triggerArray;
+            this.setTriggers[`${event}:${key}`] = triggerArray;
         }
         triggerArray.push(trigger);
     }
@@ -114,7 +111,7 @@ export class Sheet {
             inputElement.addEventListener("change", async () => {
                 await this.set(inputElement.dataset.attr, inputElement.value);
             });
-            this.addTrigger(inputElement.dataset.attr, (value) => {
+            this.addTrigger("set", inputElement.dataset.attr, (value) => {
                 inputElement.value = value;
             });
         }
@@ -129,7 +126,7 @@ export class Sheet {
                 }
                 await this.set(imageElement.dataset.attr, dropData.urlPath);
             });
-            this.addTrigger(imageElement.dataset.attr, (value) => {
+            this.addTrigger("set", imageElement.dataset.attr, (value) => {
                 imageElement.src = value;
             });
         }

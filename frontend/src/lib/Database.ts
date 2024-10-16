@@ -1,6 +1,6 @@
 import { Character, User } from "./Models.ts";
 import { ApiRequest, Session, Subscribe } from "./Requests.ts";
-import { Bound, RecursiveAssign } from "./Utils.ts";
+import { Bound, ApplyChanges } from "./Utils.ts";
 import { ErrorToast } from "./Notifications.ts";
 import { Sleep } from "./Async.ts";
 
@@ -49,7 +49,7 @@ export async function ResolveCharacter(id: string, cache: boolean = undefined): 
         characters[id] = response.character;
         await Subscribe(id, update => {
             if (update.type == "update") {
-                RecursiveAssign(characters[id], update.changes["$set"]);
+                ApplyChanges(characters[id], update.changes);
             }
             if (update.type == "delete") {
                 delete characters[id];

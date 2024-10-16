@@ -1,5 +1,6 @@
 import * as Sqrl from 'squirrelly';
 import { Fragments } from './Fragments.ts';
+import { Html } from './Elements.ts';
 
 
 const fetchCache: { [url: string]: any } = {};
@@ -199,5 +200,17 @@ export function RenderFragment(container: HTMLDivElement, name: string, data: an
     const [fragmentTemplate, fragmentCallback] = Fragments[name];
     const template = LoadTemplate("fragment-" + name, fragmentTemplate);
     container.innerHTML = template(data);
-    fragmentCallback(container, data);
+    if (fragmentCallback) {
+        fragmentCallback(container, data);
+    }
+}
+
+export function AppendFragment(container: HTMLDivElement, name: string, data: any = {}) {
+    const [fragmentTemplate, fragmentCallback] = Fragments[name];
+    const template = LoadTemplate("fragment-" + name, fragmentTemplate);
+    const element = container.appendChild(Html(template(data)));
+    if (fragmentCallback) {
+        fragmentCallback(element, data);
+    }
+    return element;
 }

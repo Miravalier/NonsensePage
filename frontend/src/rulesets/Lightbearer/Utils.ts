@@ -25,7 +25,7 @@ export function GetAbilityIcons(ability: Ability | CharacterAbility) {
 }
 
 
-export function RenderRolls(rolls: Roll[]): string {
+export function RenderRolls(rolls: Roll[], data = null): string {
     let result = "";
     for (const roll of rolls) {
         let subresult = `<div class="${roll.type} roll">`;
@@ -34,7 +34,7 @@ export function RenderRolls(rolls: Roll[]): string {
             subresult += `<div class="result">${roll.formula}</div>`;
         }
         else if (roll.type == RollType.Dice) {
-            const rollResults = Dice.Roll(roll.formula);
+            const rollResults = Dice.Roll(roll.formula, data);
             subresult += `<div class="result" data-category="${roll.type}" data-formula="${roll.formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>`;
         }
         else if (roll.type == RollType.Table) {
@@ -42,7 +42,7 @@ export function RenderRolls(rolls: Roll[]): string {
             subresult += `<div class="result">${choiceResult}</div>`;
         }
         else if (roll.type == RollType.Damage || roll.type == RollType.Healing || roll.type == RollType.Shield) {
-            const rollResults = Dice.Roll(roll.formula);
+            const rollResults = Dice.Roll(roll.formula, data);
             subresult += `<div class="result" data-category="${roll.type}" data-formula="${roll.formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>`;
         }
         subresult += '</div>';

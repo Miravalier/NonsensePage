@@ -37,13 +37,13 @@ export class LightbearerAbilitySheet extends Sheet {
         AddDragListener(abilityElement, { type: "ability", ability: this.data });
 
         // Handle changes on this ability
-        this.addTrigger(`name`, (value) => {
+        this.addTrigger("set", `name`, (value) => {
             abilityName.textContent = value;
         });
-        this.addTrigger(`description`, (value) => {
+        this.addTrigger("set", `description`, (value) => {
             abilityDescription.innerHTML = value.replace("\n", "<br>");
         });
-        this.addTrigger(`rolls`, (value) => {
+        this.addTrigger("set", `rolls`, (value) => {
             this.data.rolls = value;
         });
         const updateIcons = () => {
@@ -56,10 +56,10 @@ export class LightbearerAbilitySheet extends Sheet {
             }
         }
         updateIcons();
-        this.addTrigger(`type`, () => {
+        this.addTrigger("set", `type`, () => {
             updateIcons();
         });
-        this.addTrigger(`cooldown`, () => {
+        this.addTrigger("set", `cooldown`, () => {
             updateIcons();
         });
 
@@ -136,7 +136,7 @@ export class LightbearerAbilitySheet extends Sheet {
                                 </div>
                             </div>
                             <div class="details hidden">${this.data.description.replace("\n", "<br>")}</div>
-                            <div class="chat-rolls">${RenderRolls(this.data.rolls)}</div>
+                            <div class="chat-rolls">${RenderRolls(this.data.rolls, character.data)}</div>
                         </div>
                     </div>
                 `,
