@@ -1,6 +1,8 @@
 import * as Sqrl from 'squirrelly';
 import { Fragments } from './Fragments.ts';
 import { Html } from './Elements.ts';
+import { Session } from './Requests.ts';
+import { IsDefined } from './Utils.ts';
 
 
 const fetchCache: { [url: string]: any } = {};
@@ -9,6 +11,23 @@ const config = Sqrl.getConfig({ varName: "data" });
 
 
 export async function init() {
+    Sqrl.helpers.define("gm", function (content, blocks, _config): string {
+        // Sort out parameters
+        if (content.params.length != 0) {
+            throw Error("@gm helper requires 0 parameters");
+        }
+        if (blocks.length != 0) {
+            throw Error("@gm helper requires 0 blocks");
+        }
+
+        if (Session.gm) {
+            return content.exec();
+        }
+        else {
+            return "";
+        }
+    });
+
     Sqrl.helpers.define("fragment", function (content, _blocks, _config): string {
         // Sort out parameters
         if (content.params.length != 2) {
@@ -50,6 +69,7 @@ export async function init() {
         let label: string;
         let type = "text";
         let id = "";
+        let secondId = undefined;
         let attributes = [];
         if (content.params.length == 0) {
             throw Error("@input helper requires at least 1 parameter");
@@ -80,15 +100,30 @@ export async function init() {
             id = content.params[2];
         }
         if (content.params.length >= 4) {
+            secondId = content.params[3];
+        }
+        if (content.params.length >= 5) {
             throw Error(`@input helper received too many parameters: ${content.params.length}`);
         }
         // Render output
-        return `
-            <div class="field">
-                <div class="label">${label}</div>
-                <input data-attr="${id}" class="${id} ${type}" type="${type}" ${attributes.join(" ")}>
-            </div>
-        `;
+        if (IsDefined(secondId)) {
+            return `
+                <div class="field">
+                    <div class="label">${label}</div>
+                    <input data-attr="${id}" class="${id} ${type}" type="${type}" ${attributes.join(" ")}>
+                    /
+                    <input data-attr="${secondId}" class="${secondId} ${type}" type="${type}" ${attributes.join(" ")}>
+                </div>
+            `;
+        }
+        else {
+            return `
+                <div class="field">
+                    <div class="label">${label}</div>
+                    <input data-attr="${id}" class="${id} ${type}" type="${type}" ${attributes.join(" ")}>
+                </div>
+            `;
+        }
     });
 
     Sqrl.helpers.define("select", function (content, _blocks, _config): string {

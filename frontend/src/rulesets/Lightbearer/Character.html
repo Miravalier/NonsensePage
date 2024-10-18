@@ -4,17 +4,22 @@
 </div>
 <div class="region">
     {{ @input("Shield", "number", "temp_hp") /}}
-    {{ @input("HP", "number", "hp") /}}
-    {{ @input("Max HP", "number", "max_hp") /}}
+    {{ @input("HP", "number", "hp", "max_hp") /}}
+    {{ @input("Actions", "number", "actions") /}}
+    {{ @input("Reactions", "number", "reactions") /}}
+    {{ @gm }}
+    {{ @input("Max Actions", "number", "max_actions") /}}
+    {{ @input("Max Reactions", "number", "max_reactions") /}}
     {{
-        @select({
-            "Regular": 1,
-            "Large": 2,
-            "Huge": 3,
-            "Massive": 4
-        }, "Size", "number", "size")
-    /}}
+            @select({
+                "Regular": 1,
+                "Large": 2,
+                "Huge": 3,
+                "Massive": 4
+            }, "Size", "number", "size")
+        /}}
     {{ @input("Scale", "number : 0.1 : 10.0 : 0.1", "scale") /}}
+    {{ /gm }}
 </div>
 {{ @textarea("description") /}}
 
