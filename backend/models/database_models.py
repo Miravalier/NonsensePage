@@ -203,6 +203,10 @@ class Character(Entity, Container):
     temp_hp: float = 0
     size: float = 1
     scale: float = 1.0
+    actions: int = 0
+    max_actions: int = 1
+    reactions: int = 0
+    max_reactions: int = 2
     sheet_type: str = "default"
     ability_map: Dict[str, CharacterAbility] = Field(default_factory=dict)
     ability_order: List[str] = Field(default_factory=list)

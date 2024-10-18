@@ -196,18 +196,36 @@ export class CombatTrackerWindow extends ContentWindow {
                     maxHpNode.textContent = value.toString();
                 });
             }
+            if (character && GetSetting("combat-tracker.columns.actions", false)) {
+                const actionsElement = combatantElement.appendChild(Html(`
+                    <span class="actions"><i class="fa-solid fa-circle-a"></i></span>
+                `));
+                const actionsText = actionsElement.appendChild(document.createTextNode(character.actions.toString()));
+                this.register(`${character.id}.actions`, (value) => {
+                    actionsText.textContent = value.toString();
+                });
+            }
+            if (character && GetSetting("combat-tracker.columns.reactions", false)) {
+                const reactionsElement = combatantElement.appendChild(Html(`
+                    <span class="reactions"><i class="fa-duotone fa-exclamation-circle"></i></span>
+                `));
+                const reactionsText = reactionsElement.appendChild(document.createTextNode(character.reactions.toString()));
+                this.register(`${character.id}.reactions`, (value) => {
+                    reactionsText.textContent = value.toString();
+                });
+            }
             if (GetSetting("combat-tracker.columns.initiative", false)) {
                 combatantElement.appendChild(Html(`
                     <span class="initiative">${initiative}</span>
                 `));
             }
-            if (combatant.character_id) {
-                combatantElement.dataset.character = combatant.character_id;
+            if (character) {
+                combatantElement.dataset.character = character.id;
                 combatantElement.addEventListener("click", async () => {
                     const characterSheetWindow = new CharacterSheetWindow({
                         title: "Character Sheet",
                     });
-                    await characterSheetWindow.load(combatant.character_id);
+                    await characterSheetWindow.load(character.id);
                 });
             }
             if (Session.gm) {

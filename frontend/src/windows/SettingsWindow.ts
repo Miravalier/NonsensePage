@@ -94,8 +94,8 @@ export class SettingsWindow extends ContentWindow {
             this.addCheckbox("name", "combat-tracker.columns.name", true);
             this.addCheckbox("shield", "combat-tracker.columns.shield", false);
             this.addCheckbox("hp", "combat-tracker.columns.hp", false);
-            // this.addCheckbox("actions", "combat-tracker.columns.actions", false);
-            // this.addCheckbox("reactions", "combat-tracker.columns.reactions", false);
+            this.addCheckbox("actions", "combat-tracker.columns.actions", false);
+            this.addCheckbox("reactions", "combat-tracker.columns.reactions", false);
             this.addCheckbox("initiative", "combat-tracker.columns.initiative", false);
         });
 

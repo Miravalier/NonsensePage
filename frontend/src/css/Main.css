@@ -216,6 +216,14 @@
     margin: 0 4px;
 }
 
+.combat-tracker .combatants .combatant .actions {
+    margin: 0 4px;
+}
+
+.combat-tracker .combatants .combatant .reactions {
+    margin: 0 4px;
+}
+
 .combat-tracker .combatants .combatant .initiative {
     flex: 0 24px;
     text-align: right;

@@ -128,6 +128,10 @@ export interface Character extends Entity {
     hp: number;
     max_hp: number;
     temp_hp: number;
+    actions: number;
+    max_actions: number;
+    reactions: number;
+    max_reactions: number;
     size: number;
     scale: number;
     sheet_type: string;
