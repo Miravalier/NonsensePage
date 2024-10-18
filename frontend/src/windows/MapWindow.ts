@@ -346,19 +346,9 @@ export class MapWindow extends CanvasWindow {
                         status: string;
                         id: string;
                     } = await ApiRequest("/character/create", {
-                        name: character.name,
+                        document: character,
                     });
                     character.id = createResponse.id;
-                    const characterInfo = {
-                        image: character.image,
-                        hp: character.max_hp,
-                        max_hp: character.max_hp,
-                        data: character.data,
-                        ability_order: character.ability_order,
-                        ability_map: character.ability_map,
-                        description: character.description,
-                    };
-                    await ApiRequest("/character/update", { id: createResponse.id, changes: { "$set": characterInfo } });
                 }
 
                 const worldCoords = this.canvas.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));

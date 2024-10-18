@@ -75,8 +75,10 @@ export class EntryListWindow extends ContentWindow {
             return;
         }
         await ApiRequest(`/${this.entryType}/create`, {
-            name: selection.Name,
-            folder_id: this.folderId,
+            document: {
+                name: selection.Name,
+                folder_id: this.folderId,
+            }
         });
     }
 
@@ -155,6 +157,13 @@ export class EntryListWindow extends ContentWindow {
         element.addEventListener("click", () => this.openEntryHandler(entry.id));
         AddDragListener(element, { type: `${this.entryType}Entry`, id: entry.id });
         const contextOptions = {
+            "Duplicate": async () => {
+                const newEntry = structuredClone(entry);
+                newEntry.name += " (Copy)";
+                await ApiRequest(`/${this.entryType}/create`, {
+                    document: newEntry
+                });
+            },
             "Rename": async () => {
                 const selection = await InputDialog(`Rename ${TitleCase(this.entryType)}`, { "Name": ["text", entry.name] }, "Rename");
                 if (!selection || !selection.Name) {

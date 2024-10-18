@@ -128,7 +128,18 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
 
     let selectedAbilities: CharacterAbility[] = [];
     let racialAbilities: CharacterAbility[] = [];
+    let basicAbilities: CharacterAbility[] = [];
     let weaponAbilities: { [name: string]: CharacterAbility } = {};
+
+    const basicResponse: {
+        status: string,
+        name: string,
+        parent_id: string,
+        subfolders: [string, string][],
+        entries: Ability[],
+    } = await ApiRequest("/folder/ability/list", { folder_id: "Lightbearer.BasicActions" });
+
+    basicAbilities = basicResponse.entries;
 
     const weaponResponse: {
         status: string,
@@ -136,7 +147,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
         parent_id: string,
         subfolders: [string, string][],
         entries: Ability[],
-    } = await ApiRequest("/folder/ability/list", { folder_id: "Weapons" });
+    } = await ApiRequest("/folder/ability/list", { folder_id: "Lightbearer.Weapons" });
 
     for (const ability of weaponResponse.entries) {
         weaponAbilities[ability.name] = ability;
@@ -154,7 +165,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             parent_id: string,
             subfolders: [string, string][],
             entries: Ability[],
-        } = await ApiRequest("/folder/ability/list", { folder_id: className });
+        } = await ApiRequest("/folder/ability/list", { folder_id: `Lightbearer.Classes.${className}` });
 
         if (response.status !== "success") {
             ErrorToast(`Failed to load class: ${className}`);
@@ -208,7 +219,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             parent_id: string,
             subfolders: [string, string][],
             entries: Ability[],
-        } = await ApiRequest("/folder/ability/list", { folder_id: race });
+        } = await ApiRequest("/folder/ability/list", { folder_id: `Lightbearer.Races.${race}` });
 
         if (response.status !== "success") {
             ErrorToast(`Failed to load race: ${race}`);
@@ -239,6 +250,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             return;
         }
 
+        selectedAbilities.push(...basicAbilities);
         selectedAbilities.push(...racialAbilities);
 
         const weapon = weaponAbilities[weaponSelect.value];
@@ -256,6 +268,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             abilityMap[ability.id] = ability;
         }
         const characterInfo = {
+            name: nameInput.value,
             image: `/files/Lightbearer/${classSelect.value}.png`,
             hp: classMaxHp[classSelect.value],
             max_hp: classMaxHp[classSelect.value],
@@ -293,15 +306,8 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             characterInfo.max_hp += 5;
             characterInfo.hp += 5;
         }
-        const response: {
-            status: string;
-            id: string;
-        } = await ApiRequest("/character/create", { name: nameInput.value });
-        await ApiRequest("/character/update", {
-            id: response.id, changes: {
-                "$set": characterInfo,
-            }
-        });
+
+        await ApiRequest("/character/create", { document: characterInfo });
 
         data.window.close();
     });

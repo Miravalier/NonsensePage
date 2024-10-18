@@ -4,7 +4,7 @@ from typing import Optional
 from ..lib import database
 from ..lib.errors import JsonError
 from ..lib.utils import require, auth_require
-from ..models.database_models import Permissions, get_pool
+from ..models.database_models import Ability, Permissions, get_pool
 from ..models.request_models import AuthRequest
 
 
@@ -12,22 +12,26 @@ router = APIRouter()
 
 
 class AbilityCreateRequest(AuthRequest):
-    name: str
-    folder_id: Optional[str] = None
+    document: Ability
 
 
 @router.post("/create")
 async def ability_create(request: AbilityCreateRequest):
-    options = {"name": request.name}
+    ability = request.document
+
+    if ability.name is None:
+        ability.name = "New Ability"
+
     if not request.requester.is_gm:
-        options["permissions"] = {"*": {"*": Permissions.READ}, request.requester.id: {"*": Permissions.OWNER}}
-    if request.folder_id is not None:
-        folder = require(database.ability_folders.find_one(request.folder_id), "invalid folder id")
+        ability.add_permission("*", "*", Permissions.READ)
+        ability.add_permission(request.requester.id, "*", Permissions.OWNER)
+
+    if ability.folder_id is not None:
+        folder = require(database.ability_folders.find_one(ability.folder_id), "invalid folder id")
         if not request.requester.is_gm:
             auth_require(folder.has_permission(request.requester.id, "*", Permissions.WRITE))
-        options["folder_id"] = request.folder_id
 
-    ability = database.abilities.create(options)
+    ability = database.abilities.create(ability.model_dump(exclude_defaults=True))
 
     await get_pool("abilities").broadcast({
         "type": "create",

@@ -4,7 +4,7 @@ from typing import Optional
 from ..lib import database
 from ..lib.errors import JsonError
 from ..lib.utils import require, auth_require
-from ..models.database_models import Alignment, Permissions, get_pool
+from ..models.database_models import Alignment, Character, Permissions, get_pool
 from ..models.request_models import AuthRequest
 
 
@@ -12,32 +12,25 @@ router = APIRouter()
 
 
 class CharacterCreateRequest(AuthRequest):
-    name: str
-    alignment: Optional[Alignment] = None
-    folder_id: Optional[str] = None
+    document: Character
 
 
 @router.post("/create")
 async def character_create(request: CharacterCreateRequest):
-    options = {"name": request.name}
-    if request.alignment is None:
-        if request.requester.is_gm:
-            options["alignment"] = Alignment.NEUTRAL
-        elif request.requester.character_id is None:
-            options["alignment"] = Alignment.PLAYER
-        else:
-            options["alignment"] = Alignment.ALLY
-    else:
-        options["alignment"] = request.alignment
+    character = request.document
+    if character.name is None:
+        character.name = "New Character"
+
     if not request.requester.is_gm:
-        options["permissions"] = {"*": {"*": Permissions.READ}, request.requester.id: {"*": Permissions.OWNER}}
-    if request.folder_id is not None:
-        folder = require(database.character_folders.find_one(request.folder_id), "invalid folder id")
+        character.add_permission("*", "*", Permissions.READ)
+        character.add_permission(request.requester.id, "*", Permissions.OWNER)
+
+    if character.folder_id is not None:
+        folder = require(database.character_folders.find_one(character.folder_id), "invalid folder id")
         if not request.requester.is_gm:
             auth_require(folder.has_permission(request.requester.id, "*", Permissions.WRITE))
-        options["folder_id"] = request.folder_id
 
-    character = database.characters.create(options)
+    character = database.characters.create(character.model_dump(exclude_defaults=True))
 
     if request.requester.character_id is None and character.alignment == Alignment.PLAYER:
         user = database.users.find_one_and_update(request.requester.id, {"$set": {"character_id": character.id}})

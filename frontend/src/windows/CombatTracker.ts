@@ -280,8 +280,8 @@ export class CombatTrackerWindow extends ContentWindow {
         });
 
         this.addDropListener(this.viewPort, async (data) => {
-            if (data.type != "character") {
-                return false;
+            if (data.type != "characterEntry") {
+                return;
             }
             await ApiRequest("/combat/add-combatant", {
                 combat_id: combat.id,

@@ -36,6 +36,7 @@ export class Sheet {
      */
     async update(changes: any) {
         return await ApiRequest(`/${this.entryType}/update`, { id: this.id, changes });
+
     }
 
     /**
@@ -57,9 +58,9 @@ export class Sheet {
     }
 
     /**
-     * Dispatches each callback registered with a particular event and key
+     * Dispatches all callbacks registered with a particular event and key
      *
-     * @returns true if at least 1 callback was registered for that event
+     * @returns true if at least 1 callback was dispatched
      */
     onTrigger(event: string, key: string, value: any): boolean {
         if (key == "name") {

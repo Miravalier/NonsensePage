@@ -73,10 +73,20 @@ export class LightbearerCharacterSheet extends Sheet {
         if (permission >= Permissions.WRITE) {
             ContextMenu.set(abilityElement, {
                 "Create": {
-                    "New Ability": () => {
+                    "New Ability": async () => {
                         const abilityId = GenerateId();
-                        this.update({
-                            "$set": { [`ability_map.${abilityId}`]: { id: abilityId, name: "New Ability" } },
+                        await this.update({
+                            "$set": {
+                                [`ability_map.${abilityId}`]: {
+                                    id: abilityId,
+                                    name: "New Ability",
+                                    image: "",
+                                    description: "",
+                                    type: AbilityType.Passive,
+                                    cooldown: 0,
+                                    rolls: [],
+                                }
+                            },
                             "$push": { "ability_order": abilityId },
                         });
                     },
@@ -135,6 +145,14 @@ export class LightbearerCharacterSheet extends Sheet {
                             "$pull": { "ability_order": abilityId },
                         });
                     },
+                    "Duplicate": () => {
+                        const copiedAbility = structuredClone(ability);
+                        copiedAbility.id = GenerateId();
+                        this.update({
+                            "$set": { [`ability_map.${copiedAbility.id}`]: copiedAbility },
+                            "$push": { "ability_order": copiedAbility.id },
+                        });
+                    },
                 },
             });
         }
@@ -161,7 +179,7 @@ export class LightbearerCharacterSheet extends Sheet {
                                         </div>
                                     </div>
                                     <div class="details hidden">${ability.description.replace("\n", "<br>")}</div>
-                                    <div class="chat-rolls">${RenderRolls(ability.rolls)}</div>
+                                    <div class="chat-rolls">${RenderRolls(ability.rolls, this.data.data)}</div>
                                 </div>
                             </div>
                         `,
@@ -210,6 +228,7 @@ export class LightbearerCharacterSheet extends Sheet {
         }
 
         this.addTrigger("push", "ability_order", (abilityId) => {
+            console.log(this.data.ability_map[abilityId]);
             const abilityElement = AppendFragment(abilityContainer, "ability", this.data.ability_map[abilityId]) as HTMLDivElement;
             this.addAbilityTriggers(abilityElement, permission);
         });

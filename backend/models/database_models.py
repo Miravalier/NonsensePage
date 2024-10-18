@@ -108,7 +108,7 @@ class Session(BaseModel):
 
 
 class Entry(BaseModel):
-    id: str
+    id: str = None
     name: Optional[str] = None
     permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
     data: Dict = Field(default_factory=dict)
@@ -126,6 +126,16 @@ class Entry(BaseModel):
             "type": "update",
             "changes": changes,
         }))
+
+    def add_permission(self, id: str = "*", field: str = "*", level: Permissions = Permissions.READ):
+        """
+        Add the given level of permission to this document, if the existing level is not higher.
+        """
+        sub_permissions = self.permissions.get(id, None)
+        if sub_permissions is None:
+            sub_permissions = {}
+            self.permissions[id] = sub_permissions
+        sub_permissions[field] = max(sub_permissions.get(field, Permissions.INHERIT), level)
 
     def get_permission(self, id: str = "*", field: str = "*") -> Permissions:
         """
@@ -146,6 +156,9 @@ class Entry(BaseModel):
         return field_permission
 
     def has_permission(self, id: str = "*", field: str = "*", level: Permissions = Permissions.READ) -> bool:
+        """
+        Check if the given ID has at least the given level of permission for the given field.
+        """
         return self.get_permission(id, field) >= level
 
 

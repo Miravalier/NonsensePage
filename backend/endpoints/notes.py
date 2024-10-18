@@ -1,10 +1,9 @@
 from fastapi import APIRouter
-from typing import Optional
 
 from ..lib import database
 from ..lib.errors import JsonError
 from ..lib.utils import require, auth_require
-from ..models.database_models import Permissions, get_pool
+from ..models.database_models import Note, Permissions, get_pool
 from ..models.request_models import AuthRequest
 
 
@@ -12,22 +11,26 @@ router = APIRouter()
 
 
 class NoteCreateRequest(AuthRequest):
-    name: str
-    folder_id: Optional[str] = None
+    document: Note
 
 
 @router.post("/create")
 async def note_create(request: NoteCreateRequest):
-    options = {"name": request.name}
+    note = request.document
+
+    if note.name is None:
+        note.name = "New Note"
+
     if not request.requester.is_gm:
-        options["permissions"] = {"*": {"*": Permissions.READ}, request.requester.id: {"*": Permissions.OWNER}}
-    if request.folder_id is not None:
-        folder = require(database.note_folders.find_one(request.folder_id), "invalid folder id")
+        note.add_permission("*", "*", Permissions.READ)
+        note.add_permission(request.requester.id, "*", Permissions.OWNER)
+
+    if note.folder_id is not None:
+        folder = require(database.note_folders.find_one(note.folder_id), "invalid folder id")
         if not request.requester.is_gm:
             auth_require(folder.has_permission(request.requester.id, "*", Permissions.WRITE))
-        options["folder_id"] = request.folder_id
 
-    note = database.notes.create(options)
+    note = database.notes.create(note.model_dump(exclude_defaults=True))
 
     await get_pool("notes").broadcast({
         "type": "create",
