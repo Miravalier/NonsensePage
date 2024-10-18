@@ -8,7 +8,8 @@ import { ErrorToast } from "../lib/Notifications.ts";
 import { Html } from "../lib/Elements.ts";
 import { Roll } from "../lib/Dice.ts";
 import { Permissions } from "../lib/Enums.ts";
-import { Combat, Combatant } from "../lib/Models.ts";
+import { Character, Combat, Combatant } from "../lib/Models.ts";
+import { GetSetting, ResolveCharacter } from "../lib/Database.ts";
 
 
 export class CombatTrackerWindow extends ContentWindow {
@@ -109,13 +110,35 @@ export class CombatTrackerWindow extends ContentWindow {
                 });
             });
         }
+
+        this.register("settings.combat-tracker", () => {
+            this.HardRefresh();
+        });
     }
 
-    AddCombatant(index: number, combatant: Combatant) {
+    async HardRefresh() {
+        this.content.style.display = "none";
+        this.combatantContainer.innerHTML = "";
+        this.combatantElements = {};
+        this.combatantIndexes = {};
+        await this.load();
+        this.content.style.display = null;
+    }
+
+    async AddCombatant(index: number, combatant: Combatant) {
+        let character: Character = null;
+        if (combatant.character_id) {
+            try {
+                character = await ResolveCharacter(combatant.character_id, true);
+            }
+            catch { }
+        }
+
         this.combatantIndexes[combatant.id] = index;
+
         let initiative: string;
         if (combatant.initiative === null) {
-            initiative = "";
+            initiative = "-";
         }
         else {
             initiative = combatant.initiative.toString();
@@ -123,16 +146,61 @@ export class CombatTrackerWindow extends ContentWindow {
         let combatantElement = this.combatantElements[combatant.id];
         if (combatantElement) {
             this.combatantContainer.appendChild(combatantElement);
-            combatantElement.querySelector(".name").textContent = combatant.name;
-            combatantElement.querySelector(".initiative").textContent = initiative;
+            const combatantName = combatantElement.querySelector(".name");
+            if (combatantName) {
+                combatantName.textContent = combatant.name;
+            }
+            const combatantInitiative = combatantElement.querySelector(".initiative");
+            if (combatantInitiative) {
+                combatantInitiative.textContent = initiative;
+            }
         }
         else {
             combatantElement = this.combatantContainer.appendChild(Html(`
-                <div class="combatant" data-id="${combatant.id}">
-                    <span class="name">${combatant.name}</span>
-                    <span class="initiative">${initiative}</span>
-                </div>
+                <div class="combatant" data-id="${combatant.id}"></div>
             `) as HTMLDivElement);
+            if (GetSetting("combat-tracker.columns.image", true)) {
+                let image = combatant.image;
+                if (!image) {
+                    image = "/unknown.png";
+                }
+                combatantElement.appendChild(Html(`
+                    <img class="image" src="${image}">
+                `));
+            }
+            if (GetSetting("combat-tracker.columns.name", true)) {
+                combatantElement.appendChild(Html(`
+                    <span class="name">${combatant.name}</span>
+                `));
+            }
+            if (character && GetSetting("combat-tracker.columns.shield", false)) {
+                const shieldElement = combatantElement.appendChild(Html(`
+                    <span class="shield"><i class="fa-solid fa-shield-quartered"></i></span>
+                `));
+                const shieldNode = shieldElement.appendChild(document.createTextNode(character.temp_hp.toString()));
+                this.register(`${character.id}.temp_hp`, (value) => {
+                    shieldNode.textContent = value.toString();
+                });
+            }
+            if (character && GetSetting("combat-tracker.columns.hp", false)) {
+                const hpElement = combatantElement.appendChild(Html(`
+                    <span class="shield"><i class="fa-solid fa-heart"></i></span>
+                `));
+                const hpNode = hpElement.appendChild(document.createTextNode(character.hp.toString()));
+                hpElement.appendChild(document.createTextNode("/"));
+                const maxHpNode = hpElement.appendChild(document.createTextNode(character.max_hp.toString()));
+                this.register(`${character.id}.hp`, (value) => {
+                    hpNode.textContent = value.toString();
+                });
+                this.register(`${character.id}.max_hp`, (value) => {
+                    maxHpNode.textContent = value.toString();
+                });
+            }
+            if (GetSetting("combat-tracker.columns.initiative", false)) {
+                combatantElement.appendChild(Html(`
+                    <span class="initiative">${initiative}</span>
+                `));
+            }
             if (combatant.character_id) {
                 combatantElement.dataset.character = combatant.character_id;
                 combatantElement.addEventListener("click", async () => {
@@ -252,7 +320,7 @@ export class CombatTrackerWindow extends ContentWindow {
         const combatantIds = new Set();
         for (let i = 0; i < combat.combatants.length; i++) {
             const combatant = combat.combatants[i];
-            this.AddCombatant(i, combatant);
+            await this.AddCombatant(i, combatant);
             combatantIds.add(combatant.id);
         }
 

@@ -7,6 +7,7 @@ import { ErrorToast } from "../lib/Notifications.ts";
 import { IntroRegistry } from "../lib/Intro.ts";
 import { Rulesets } from "../rulesets/index.ts";
 import { Vector2 } from "../lib/Vector.ts";
+import { LogOut } from "../lib/Utils.ts";
 import { CombatTrackerWindow } from "../windows/CombatTracker.ts";
 import { ChatWindow } from "../windows/ChatWindow.ts";
 import { FileWindow } from "../windows/FileWindow.ts";
@@ -21,6 +22,7 @@ import {
 } from "../windows/Window.ts";
 import { NoteListWindow } from "../windows/NoteList.ts";
 import { AbilityListWindow } from "../windows/AbilityList.ts";
+import { SettingsWindow } from "../windows/SettingsWindow.ts";
 
 
 declare global {
@@ -49,14 +51,6 @@ window.addEventListener("load", async () => {
         document.body.innerHTML = '<div class="watermark">Failed to connect to the server. Wait a while and refresh the page.</div>';
     }
 });
-
-
-function LogOut() {
-    localStorage.removeItem("token");
-    Session.token = null as any;
-    console.log("Logged out, redirecting to /login");
-    window.location.href = "/login";
-}
 
 
 async function OnLoad() {
@@ -167,6 +161,12 @@ async function Main() {
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await abilityListWindow.load();
+            },
+            "Settings": async (ev: MouseEvent) => {
+                const settingsWindow = new SettingsWindow({
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await settingsWindow.load();
             }
         },
         "Layout": {
@@ -242,43 +242,12 @@ async function Main() {
                 }
                 window.localStorage.setItem("layouts", JSON.stringify(layouts));
             },
-        },
-        "Settings": {
             "Refresh": () => {
                 // @ts-ignore
                 location.reload(true);
             },
-            "Log Out": () => {
-                LogOut();
-            }
-        }
+        },
     };
-
-    if (Session.gm) {
-        contextOptions["Settings"]["Create User"] = async () => {
-            const selection = await InputDialog("Create User", {
-                "Username": "text",
-                "Password": "text",
-            }, "Create");
-            if (!selection || !selection.Username || !selection.Password) {
-                Notifications.WarningToast("User creation aborted");
-                return;
-            }
-            await ApiRequest(
-                "/user/create",
-                {
-                    username: selection.Username,
-                    password: selection.Password,
-                }
-            );
-        };
-        contextOptions["Settings"]["Release Character"] = async () => {
-            await ApiRequest("/user/update", {
-                id: Session.id,
-                changes: { "$set": { "character_id": null } },
-            });
-        };
-    }
 
     ContextMenu.set(document.body, contextOptions);
 

@@ -91,6 +91,7 @@ export interface User extends Entry {
     is_gm: boolean;
     character_id: string | null;
     languages: Language[];
+    settings: any;
 }
 
 export interface Message {

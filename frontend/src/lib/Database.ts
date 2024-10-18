@@ -1,6 +1,7 @@
+import * as Events from "../lib/Events.ts";
 import { Character, User } from "./Models.ts";
 import { ApiRequest, Session, Subscribe } from "./Requests.ts";
-import { Bound, ApplyChanges } from "./Utils.ts";
+import { Bound, ApplyChanges, ResolvePath, IsDefined } from "./Utils.ts";
 import { ErrorToast } from "./Notifications.ts";
 import { Sleep } from "./Async.ts";
 
@@ -27,6 +28,32 @@ export async function init() {
 }
 
 
+export function GetSetting(path: string, defaultValue = undefined): string | boolean | number | null {
+    const result = ResolvePath(users[Session.id].settings, path);
+    if (IsDefined(result)) {
+        return result;
+    }
+    else if (IsDefined(defaultValue)) {
+        return defaultValue;
+    }
+    else {
+        return null;
+    }
+}
+
+export function ChangeSetting(path: string, value: string | boolean | number) {
+    ApiRequest("/user/settings", { changes: { [path]: value } });
+
+    Events.dispatch("settings", path, value);
+
+    let prefix = "settings";
+    for (const component of path.split(".")) {
+        prefix += "." + component;
+        Events.dispatch(prefix, path, value);
+    }
+}
+
+
 export async function ResolveCharacter(id: string, cache: boolean = undefined): Promise<Character> {
     if (id === null || typeof id === "undefined") {
         throw Error("null or undefined character id");
@@ -49,7 +76,11 @@ export async function ResolveCharacter(id: string, cache: boolean = undefined): 
         characters[id] = response.character;
         await Subscribe(id, update => {
             if (update.type == "update") {
-                ApplyChanges(characters[id], update.changes);
+                ApplyChanges(characters[id], update.changes, (operator, key, value) => {
+                    if (operator == "set") {
+                        Events.dispatch(`${id}.${key}`, value);
+                    }
+                });
             }
             if (update.type == "delete") {
                 delete characters[id];

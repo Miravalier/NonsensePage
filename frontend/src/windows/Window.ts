@@ -1,5 +1,6 @@
 import * as ContextMenu from "../lib/ContextMenu.ts";
 import * as Drag from "../lib/Drag.ts";
+import * as Events from "../lib/Events.ts";
 import * as Templates from "../lib/Templates.ts";
 import { Button } from "../lib/Elements.ts";
 import { Vector2 } from "../lib/Vector.ts";
@@ -43,6 +44,7 @@ export class BaseWindow {
     on_close: CallableFunction[];
     subscriptions: Subscription[];
     abortControllers: AbortController[];
+    events: [string, CallableFunction][];
     intervalIds: number[];
     windowId: string;
     minimized: boolean;
@@ -78,6 +80,7 @@ export class BaseWindow {
         this.subscriptions = [];
         this.abortControllers = [];
         this.intervalIds = [];
+        this.events = [];
         this.windowId = GenerateId();
         if (register) {
             windows[this.windowId] = this;
@@ -243,6 +246,11 @@ export class BaseWindow {
 
     onResizeStop() { }
 
+    register(event: string, callback: CallableFunction) {
+        Events.register(event, callback);
+        this.events.push([event, callback]);
+    }
+
     repeatFunction(func: CallableFunction, delay: number): number {
         const intervalId = setInterval(func, delay);
         this.intervalIds.push(intervalId);
@@ -281,13 +289,17 @@ export class BaseWindow {
         for (let intervalId of this.intervalIds) {
             clearInterval(intervalId);
         }
+        for (let [event, callback] of this.events) {
+            Events.deregister(event, callback);
+        }
         this.subscriptions = [];
         this.abortControllers = [];
         this.intervalIds = [];
+        this.events = [];
     }
 
-    refresh() {
-        this.load();
+    async refresh() {
+        await this.load();
     }
 
     toggleFullscreen() {
@@ -352,6 +364,9 @@ export class BaseWindow {
         }
         for (let intervalId of this.intervalIds) {
             clearInterval(intervalId);
+        }
+        for (let [event, callback] of this.events) {
+            Events.deregister(event, callback);
         }
         delete windows[this.windowId];
     }

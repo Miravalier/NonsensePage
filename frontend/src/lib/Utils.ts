@@ -5,6 +5,14 @@ import { Permissions } from "./Enums.ts";
 import { Entry } from "./Models.ts";
 
 
+export function LogOut() {
+    localStorage.removeItem("token");
+    Session.token = null as any;
+    console.log("Logged out, redirecting to /login");
+    window.location.href = "/login";
+}
+
+
 export function TitleCase(s: string): string {
     return s[0].toUpperCase() + s.substring(1).toLowerCase()
 }

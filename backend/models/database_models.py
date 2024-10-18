@@ -230,6 +230,7 @@ class User(Entry):
     is_gm: bool = False
     character_id: Optional[str] = None
     languages: List[Language] = Field(default_factory=list)
+    settings: Dict = Field(default_factory=dict)
 
     @property
     def file_root(self) -> Path:

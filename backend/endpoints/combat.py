@@ -263,6 +263,7 @@ async def add_combatant(request: AddCombatantRequest):
         combatant["name"] = character.name
         combatant["permissions"] = character.permissions
         combatant["character_id"] = character.id
+        combatant["image"] = character.image
 
     if request.name is not None:
         combatant["name"] = request.name

@@ -1,20 +1,29 @@
-const registeredEvents: { [event: string]: CallableFunction[] } = {};
+const registeredEvents: { [event: string]: Set<CallableFunction> } = {};
+
+
+export function deregister(event: string, callback: CallableFunction) {
+    let callbackSet = registeredEvents[event]
+    if (callbackSet) {
+        return;
+    }
+    callbackSet.delete(callback);
+}
 
 
 export function register(event: string, callback: CallableFunction) {
-    let callbackArray = registeredEvents[event]
-    if (!callbackArray) {
-        callbackArray = [];
-        registeredEvents[event] = callbackArray;
+    let callbackSet = registeredEvents[event]
+    if (!callbackSet) {
+        callbackSet = new Set();
+        registeredEvents[event] = callbackSet;
     }
-    callbackArray.push(callback);
+    callbackSet.add(callback);
 }
 
 
 export async function dispatch(event: string, ...data: any) {
-    const callbackArray = registeredEvents[event];
-    if (callbackArray) {
-        for (const callback of callbackArray) {
+    const callbackSet = registeredEvents[event];
+    if (callbackSet) {
+        for (const callback of callbackSet) {
             await callback(...data);
         }
     }

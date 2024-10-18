@@ -188,18 +188,42 @@
     display: flex;
     cursor: pointer;
     border-radius: 2px;
-    justify-content: space-between;
     flex-flow: row nowrap;
     margin: 2px;
     padding: 1px 2px;
 }
 
+.combat-tracker .combatants .combatant .image {
+    flex: 0;
+    height: 24px;
+    width: 24px;
+}
+
 .combat-tracker .combatants .combatant .name {
     margin: 0 2px;
+    flex: 1;
 }
 
 .combat-tracker .combatants .combatant:hover {
     background-color: #ffffff4f;
+}
+
+.combat-tracker .combatants .combatant .shield {
+    margin: 0 4px;
+}
+
+.combat-tracker .combatants .combatant .hp {
+    margin: 0 4px;
+}
+
+.combat-tracker .combatants .combatant .initiative {
+    flex: 0 24px;
+    text-align: right;
+}
+
+.combat-tracker .combatants .combatant .initiative {
+    flex: 0 24px;
+    text-align: right;
 }
 
 .entry-list .entry {
@@ -539,4 +563,36 @@ button:hover i {
 
 .permissions.window .content .group .pair .scope {
     flex: 1;
+}
+
+.settings.window .content {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.settings.window .content .group {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.settings.window .content .group>* {
+    margin: 4px;
+}
+
+.settings.window .content .category {
+    font-weight: bold;
+    text-decoration: underline;
+    margin-top: 12px;
+}
+
+.settings.window .content label {
+    margin-left: 2px;
+}
+
+.settings.window .content button {
+    padding: 2px 8px;
 }

@@ -47,6 +47,30 @@ async def user_update(request: UserUpdateRequest):
     return {"status": "success"}
 
 
+class SettingsUpdateRequest(AuthRequest):
+    changes: dict[str, str|bool|int|float]
+
+
+@router.post("/settings")
+async def settings_update(request: SettingsUpdateRequest):
+    user = request.requester
+
+    changes = {}
+    for path, value in request.changes.items():
+        changes[f"settings.{path}"] = value
+
+    update_document = {"$set": changes}
+    user = database.users.find_one_and_update(user.id, update_document)
+
+    await user.broadcast_changes(update_document)
+    await get_pool("users").broadcast({
+        "type": "update",
+        "user": user.model_dump(),
+    })
+
+    return {"status": "success"}
+
+
 class UserDeleteRequest(GMRequest):
     id: str
 
