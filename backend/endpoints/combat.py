@@ -189,11 +189,11 @@ class EndTurnRequest(AuthRequest):
 @router.post("/end-turn")
 async def combat_end_turn(request: EndTurnRequest):
     combat = require(database.combats.find_one(request.id), "invalid combat id")
-    require(len(combat.combatants) > 1, "not enough combatants")
+    require(len(combat.combatants) >= 1, "not enough combatants")
     combatant = combat.combatants[0]
+    character = database.characters.find_one(combatant.character_id)
     if not request.requester.is_gm:
-        if combatant.character_id is not None:
-            character = require(database.characters.find_one(combatant.character_id), "invalid character id")
+        if character is not None:
             auth_require(
                 combat.has_permission(request.requester.id, "*", Permissions.WRITE)
                 or
@@ -202,24 +202,37 @@ async def combat_end_turn(request: EndTurnRequest):
         else:
             auth_require(combat.has_permission(request.requester.id, "*", Permissions.WRITE))
 
-    database.combats.find_one_and_update(request.id, {
+    combat = database.combats.find_one_and_update(request.id, {
         "$pull": {
             "combatants": {
                 "id": combatant.id,
             },
         },
     })
-    database.combats.find_one_and_update(request.id, {
+    combat = database.combats.find_one_and_update(request.id, {
         "$push": {
             "combatants": combatant.model_dump()
         }
     })
 
+    next_combatant = combat.combatants[0]
+    next_character = database.characters.find_one(next_combatant.character_id)
+
     await combat.pool.broadcast({"type": "end-turn", "id": combatant.id})
+
     await send_message(
-        f'<div class="turn-start">Turn Start: {combat.combatants[1].name}</div>',
+        f'<div class="turn-start">Turn Start: {combat.combatants[0].name}</div>',
         user=request.requester,
     )
+
+    if next_character:
+        changes = {"$set": {
+            "actions": next_character.max_actions,
+            "reactions": next_character.max_reactions,
+        }}
+        database.characters.find_one_and_update(next_character.id, changes)
+        await next_character.broadcast_changes(changes)
+
     return {"status": "success"}
 
 

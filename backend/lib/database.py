@@ -82,6 +82,8 @@ class DocumentCollection(Generic[M]):
         self.collection.create_index(*args, **kwargs)
 
     def find_one(self, filter: Union[dict, str]) -> M:
+        if filter is None:
+            return None
         return self.post_process_result(self.collection.find_one(self.pre_process_filter(filter)))
 
     def find(self, filter: dict = None, *args, **kwargs) -> List[M]:
@@ -94,6 +96,8 @@ class DocumentCollection(Generic[M]):
         return self.collection.delete_many(self.pre_process_filter(filter), *args, **kwargs).deleted_count
 
     def find_one_and_update(self, filter: dict, update: dict, *args, **kwargs) -> M:
+        if filter is None:
+            return None
         return self.post_process_result(
             self.collection.find_one_and_update(
                 self.pre_process_filter(filter),

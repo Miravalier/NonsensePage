@@ -107,6 +107,10 @@
     margin: 2px;
 }
 
+.window .content button {
+    padding: 2px 8px;
+}
+
 .chat.window .turn-start {
     display: flex;
     flex-flow: column nowrap;
@@ -599,8 +603,4 @@ button:hover i {
 
 .settings.window .content label {
     margin-left: 2px;
-}
-
-.settings.window .content button {
-    padding: 2px 8px;
 }
