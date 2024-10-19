@@ -333,15 +333,21 @@ export class MapWindow extends CanvasWindow {
                     }
                 });
             }
-            else if (data.type == "character") {
-                const getResponse: {
-                    status: string;
-                    character: Character;
-                } = await ApiRequest("/character/get", { id: data.id });
-                let character = getResponse.character;
+            else if (data.type == "characterEntry" || data.type == "character") {
+                let character: Character = null;
+                if (data.type == "characterEntry") {
+                    const getResponse: {
+                        status: string;
+                        character: Character;
+                    } = await ApiRequest("/character/get", { id: data.id });
+                    character = getResponse.character;
+                }
+                else if (data.type == "character") {
+                    character = structuredClone(data.character);
+                }
 
                 if (character.alignment != Alignment.PLAYER) {
-                    character.name = `${getResponse.character.name} - ${PCG.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ" as any)}${PCG.choice("0123456789" as any)}`;
+                    character.name = `${character.name} - ${PCG.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ" as any)}${PCG.choice("0123456789" as any)}`;
                     const createResponse: {
                         status: string;
                         id: string;
@@ -379,55 +385,56 @@ export class MapWindow extends CanvasWindow {
         });
 
         await this.subscribe(this.mapId, async update => {
-            if (update.type == "update"
-                && Object.keys(update.changes).length == 1
-                && update.changes["$set"]) {
+            if (update.type == "update") {
+                if (Object.keys(update.changes).length == 1 && update.changes["$set"]) {
+                    const changes = update.changes["$set"];
+                    let simpleChanges = true;
 
-                const changes = update.changes["$set"];
-                let simpleChanges = true;
-
-                for (const [key, value] of Object.entries(changes)) {
-                    if (key.startsWith("tokens.")) {
-                        const [upperAttr, tokenId, attribute] = key.split(".");
-                        if (upperAttr != "tokens" || !tokenId || !attribute) {
-                            simpleChanges = false;
-                            break;
-                        }
-                        const sprite = this.canvas.tokenNodes[tokenId];
-                        const numericValue = value as number;
-                        if (attribute == "x" || attribute == "y" || attribute == "rotation") {
-                            sprite.parent.addChild(sprite);
-                            sprite[attribute] = numericValue;
-                        }
-                        else if (attribute == "width" || attribute == "height") {
-                            sprite.emit("resized", attribute, numericValue);
-                        }
-                        else if (attribute == "z") {
-                            sprite.zIndex = numericValue;
-                            if (numericValue > this.canvas.highestZIndex) {
-                                this.canvas.highestZIndex = numericValue;
+                    for (const [key, value] of Object.entries(changes)) {
+                        if (key.startsWith("tokens.")) {
+                            const [upperAttr, tokenId, attribute] = key.split(".");
+                            if (upperAttr != "tokens" || !tokenId || !attribute) {
+                                simpleChanges = false;
+                                break;
                             }
+                            const sprite = this.canvas.tokenNodes[tokenId];
+                            const numericValue = value as number;
+                            if (attribute == "x" || attribute == "y" || attribute == "rotation") {
+                                sprite.parent.addChild(sprite);
+                                sprite[attribute] = numericValue;
+                            }
+                            else if (attribute == "width" || attribute == "height") {
+                                sprite.emit("resized", attribute, numericValue);
+                            }
+                            else if (attribute == "z") {
+                                sprite.zIndex = numericValue;
+                                if (numericValue > this.canvas.highestZIndex) {
+                                    this.canvas.highestZIndex = numericValue;
+                                }
+                            }
+                            else {
+                                simpleChanges = false;
+                                break;
+                            }
+                        }
+                        else if (key == "squareSize") {
+                            const gridFilter = this.canvas.grid.filters[0] as GridFilter;
+                            gridFilter.uniforms.uPitch = new PIXI.Point(value as number, value as number);
                         }
                         else {
                             simpleChanges = false;
                             break;
                         }
                     }
-                    else if (key == "squareSize") {
-                        const gridFilter = this.canvas.grid.filters[0] as GridFilter;
-                        gridFilter.uniforms.uPitch = new PIXI.Point(value as number, value as number);
-                    }
-                    else {
-                        simpleChanges = false;
-                        break;
+                    if (simpleChanges) {
+                        return;
                     }
                 }
-                if (simpleChanges) {
-                    return;
-                }
+                this.refresh();
             }
-
-            this.refresh();
+            else if (update.type == "ping") {
+                await this.canvas.Ping(update.x, update.y);
+            }
         });
     }
 }

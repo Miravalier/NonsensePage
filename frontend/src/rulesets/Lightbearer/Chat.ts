@@ -233,7 +233,6 @@ export function onRenderMessage(element: HTMLDivElement) {
     }
     for (const resultElement of textElement.querySelectorAll<HTMLDivElement>(".roll .result")) {
         const category = resultElement.dataset.category;
-        console.log("DEBUG", resultElement, category);
         if (category == RollType.Dice || category == RollType.Damage || category == RollType.Healing || category == RollType.Shield) {
             addDiceResultListeners(element, resultElement);
         }

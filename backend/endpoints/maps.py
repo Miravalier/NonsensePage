@@ -68,6 +68,21 @@ async def map_update(request: MapUpdateRequest):
     return {"status": "success"}
 
 
+class MapPingRequest(AuthRequest):
+    id: str
+    x: float
+    y: float
+
+
+@router.post("/ping")
+async def map_ping(request: MapPingRequest):
+    map = require(database.maps.find_one(request.id), "invalid map id")
+    if not request.requester.is_gm:
+        auth_require(map.has_permission(request.requester.id, "ping", Permissions.WRITE))
+    await map.pool.broadcast({"type": "ping", "x": request.x, "y": request.y})
+    return {"status": "success"}
+
+
 @router.post("/list")
 async def map_list(request: AuthRequest):
     maps = []

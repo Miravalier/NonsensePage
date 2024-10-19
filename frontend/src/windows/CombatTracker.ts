@@ -10,6 +10,7 @@ import { Roll } from "../lib/Dice.ts";
 import { Permissions } from "../lib/Enums.ts";
 import { Character, Combat, Combatant } from "../lib/Models.ts";
 import { GetSetting, ResolveCharacter } from "../lib/Database.ts";
+import { AddDragListener } from "../lib/Drag.ts";
 
 
 export class CombatTrackerWindow extends ContentWindow {
@@ -159,6 +160,11 @@ export class CombatTrackerWindow extends ContentWindow {
             combatantElement = this.combatantContainer.appendChild(Html(`
                 <div class="combatant" data-id="${combatant.id}"></div>
             `) as HTMLDivElement);
+
+            if (character) {
+                AddDragListener(combatantElement, { type: "character", character });
+            }
+
             if (GetSetting("combat-tracker.columns.image", true)) {
                 let image = combatant.image;
                 if (!image) {

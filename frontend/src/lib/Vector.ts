@@ -68,4 +68,8 @@ export class Vector2 {
         this.x = -this.x;
         this.y = -this.y;
     }
+
+    distance(vector: Vector2) {
+        return Math.sqrt(Math.pow(vector.x - this.x, 2) + Math.pow(vector.y - this.y, 2));
+    }
 }

@@ -250,6 +250,77 @@ export class MapCanvas extends Canvas {
         this.squareSize = 1;
     }
 
+    async init(options: any) {
+        await super.init(options);
+
+        let pingTimeoutHandle: number = null;
+        let pingLocation: Vector2 = null;
+        const startPingTimer = (x: number, y: number) => {
+            if (pingTimeoutHandle !== null) {
+                return;
+            }
+            pingLocation = new Vector2(x, y);
+            pingTimeoutHandle = setTimeout(async () => {
+                const worldCoords = this.ScreenToWorldCoords(pingLocation);
+                await ApiRequest("/map/ping", { id: this.id, x: worldCoords.x, y: worldCoords.y });
+            }, 750);
+        };
+
+        const stopPingTimer = () => {
+            if (pingTimeoutHandle !== null) {
+                clearTimeout(pingTimeoutHandle);
+                pingTimeoutHandle = null;
+            }
+        };
+
+        this.view.addEventListener("mousedown", (ev) => {
+            // Can't ping with right clicks
+            if (ev.button == 2) {
+                return;
+            }
+            startPingTimer(ev.clientX, ev.clientY);
+        });
+
+        this.view.addEventListener("mousemove", (ev) => {
+            const currentLocation = new Vector2(ev.clientX, ev.clientY);
+            if (currentLocation.distance(pingLocation) > 10) {
+                stopPingTimer();
+            }
+        });
+
+        this.view.addEventListener("touchstart", (ev) => {
+            // Can't ping with multitouch
+            if (ev.touches.length > 1) {
+                stopPingTimer();
+                return;
+            }
+            startPingTimer(ev.touches[0].clientX, ev.touches[0].clientY);
+        });
+
+        this.view.addEventListener("touchmove", (ev) => {
+            const currentLocation = new Vector2(ev.touches[0].clientX, ev.touches[0].clientY);
+            if (currentLocation.distance(pingLocation) > 10) {
+                stopPingTimer();
+            }
+        });
+
+        this.view.addEventListener("touchend", () => {
+            stopPingTimer();
+        });
+
+        this.view.addEventListener("touchcancel", () => {
+            stopPingTimer();
+        });
+
+        this.view.addEventListener("mouseup", () => {
+            stopPingTimer();
+        });
+
+        this.view.addEventListener("mouseleave", () => {
+            stopPingTimer();
+        });
+    }
+
     onResize(x: number, y: number) {
         super.onResize(x, y);
         this.grid.width = x;
@@ -299,6 +370,21 @@ export class MapCanvas extends Canvas {
             throw new Error(`invalid layer ID: ${layer}`);
         }
         return container;
+    }
+
+    async Ping(x: number, y: number) {
+        const sprite = await this.effectContainer.DrawSprite({
+            src: "/unknown.png",
+            position: new Vector2(x, y),
+            z: this.highestZIndex + 1,
+            width: 1,
+            height: 1,
+            scaleType: ScaleType.Relative,
+        });
+
+        setTimeout(() => {
+            sprite.removeFromParent();
+        }, 1000);
     }
 
     async AddToken(token): Promise<CanvasContainer> {
@@ -456,7 +542,7 @@ export class MapCanvas extends Canvas {
                 else {
                     // This sprite was clicked
                     if (token.character_id) {
-                        await launchWindow("CharacterSheetWindow", { characterId: token.character_id });
+                        await launchWindow("CharacterSheetWindow", { id: token.character_id });
                     }
                 }
             }
