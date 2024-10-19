@@ -82,6 +82,7 @@ export class MapWindow extends CanvasWindow {
             }
 
             const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
+            console.log("Right-Clicking On:", element);
             let elementDragged = false;
 
             let previousX = ev.clientX;
@@ -94,14 +95,21 @@ export class MapWindow extends CanvasWindow {
                 const deltaY = y - previousY;
                 previousX = x;
                 previousY = y;
-                this.translate(deltaX, deltaY);
+                // On right-click drag, translate the map
+                if (ev.button == 2) {
+                    this.translate(deltaX, deltaY);
+                }
                 elementDragged = true;
             }
 
             const onDragEnd = () => {
                 document.removeEventListener("mousemove", onDrag);
                 if (element && !elementDragged) {
-                    element.emit("contextmenu", ev);
+                    // On right-click, fire a context menu
+                    if (ev.button == 2) {
+                        console.log("AAAAA");
+                        element.emit("contextmenu", ev);
+                    }
                 }
             }
 
@@ -114,6 +122,7 @@ export class MapWindow extends CanvasWindow {
                 ev.preventDefault();
             }
             const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
+            console.log("Wheeling On:", element);
             if (element && (ev.ctrlKey || ev.shiftKey)) {
                 if (ev.ctrlKey) {
                     element.emit("scale", ev);
@@ -231,16 +240,16 @@ export class MapWindow extends CanvasWindow {
     }
 
     applyTranslation() {
-        this.canvas.tokenContainer.node.x = this.translation.x;
-        this.canvas.tokenContainer.node.y = this.translation.y;
+        this.canvas.layersContainer.node.x = this.translation.x;
+        this.canvas.layersContainer.node.y = this.translation.y;
         this.viewChangesMade = true;
         const gridFilter = this.canvas.grid.filters[0] as GridFilter;
         gridFilter.uniforms.uTranslation = new PIXI.Point(this.translation.x, this.translation.y);
     }
 
     applyScale() {
-        this.canvas.tokenContainer.node.scale.x = this.scale;
-        this.canvas.tokenContainer.node.scale.y = this.scale;
+        this.canvas.layersContainer.node.scale.x = this.scale;
+        this.canvas.layersContainer.node.scale.y = this.scale;
         this.viewChangesMade = true;
         const gridFilter = this.canvas.grid.filters[0] as GridFilter;
         gridFilter.uniforms.uScale = new PIXI.Point(this.scale, this.scale);
@@ -391,14 +400,16 @@ export class MapWindow extends CanvasWindow {
                                 simpleChanges = false;
                                 break;
                             }
-                            const sprite = this.canvas.tokenNodes[tokenId];
+                            const tokenElement = this.canvas.tokenNodes[tokenId];
+                            const container = tokenElement.container.node;
+                            const sprite = tokenElement.sprite;
                             const numericValue = value as number;
                             if (attribute == "x" || attribute == "y" || attribute == "rotation") {
-                                sprite.parent.addChild(sprite);
+                                container.parent.addChild(container);
                                 sprite[attribute] = numericValue;
                             }
                             else if (attribute == "width" || attribute == "height") {
-                                sprite.emit("resized", attribute, numericValue);
+                                tokenElement.boundingBox.emit("resized", attribute, numericValue);
                             }
                             else if (attribute == "z") {
                                 sprite.zIndex = numericValue;

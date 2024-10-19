@@ -15,6 +15,19 @@ export const WHITE_GRID = 1
 export const BLACK_GRID = 2
 
 
+export class TokenElement {
+    container: CanvasContainer;
+    boundingBox: PIXI.Graphics;
+    sprite: PIXI.Sprite;
+
+    constructor(container: CanvasContainer, boundingBox: PIXI.Graphics, sprite: PIXI.Sprite) {
+        this.container = container;
+        this.boundingBox = boundingBox;
+        this.sprite = sprite;
+    }
+}
+
+
 export class CanvasContainer {
     node: PIXI.Container;
 
@@ -234,9 +247,9 @@ export class Canvas {
 
 export class MapCanvas extends Canvas {
     id: string;
-    tokenNodes: { [id: string]: PIXI.Sprite };
+    tokenNodes: { [id: string]: TokenElement };
     grid: PIXI.Container;
-    tokenContainer: CanvasContainer;
+    layersContainer: CanvasContainer;
     backgroundContainer: CanvasContainer;
     detailContainer: CanvasContainer;
     characterContainer: CanvasContainer;
@@ -283,15 +296,12 @@ export class MapCanvas extends Canvas {
         };
 
         this.view.addEventListener("mousedown", (ev) => {
-            // Can't ping with right clicks
-            if (ev.button == 2) {
-                return;
-            }
+            const target = this.getElementAtScreenPos(ev.clientX, ev.clientY)
 
-            if (this.getElementAtScreenPos(ev.clientX, ev.clientY)) {
-                return;
+            // No target and left mouse, start a ping timer
+            if (!target && ev.button == 1) {
+                startPingTimer(ev.clientX, ev.clientY);
             }
-            startPingTimer(ev.clientX, ev.clientY);
         });
 
         this.view.addEventListener("mousemove", (ev) => {
@@ -364,7 +374,7 @@ export class MapCanvas extends Canvas {
      * @returns {Vector2}
      */
     ScreenToWorldCoords(position) {
-        const node = this.tokenContainer.node;
+        const node = this.layersContainer.node;
         return new Vector2(
             (position.x - (this.htmlContainer.parentElement.offsetLeft + this.htmlContainer.offsetLeft) - node.x) / node.scale.x,
             (position.y - (this.htmlContainer.parentElement.offsetTop + this.htmlContainer.offsetTop) - node.y) / node.scale.y
@@ -406,25 +416,35 @@ export class MapCanvas extends Canvas {
         }, 1000);
     }
 
-    async AddToken(token): Promise<CanvasContainer> {
+    async AddToken(token): Promise<TokenElement> {
         const container = this.containerFromLayerId(token.layer);
-        const spriteOptions = {
+
+        // Create TokenElement
+        const tokenContainer = container.AddContainer(new Vector2(token.x, token.y));
+        tokenContainer.node.zIndex = token.z;
+
+        const boundingBox = tokenContainer.DrawRectangle({
+            position: new Vector2(-token.hitbox_width / 2, -token.hitbox_height / 2),
+            size: new Vector2(token.hitbox_width, token.hitbox_height),
+            fillAlpha: 0.5,
+        });
+        boundingBox.eventMode = 'static';
+
+        const sprite = await tokenContainer.DrawSprite({
             src: token.src,
-            position: new Vector2(token.x, token.y),
-            z: token.z,
+            position: new Vector2(0, 0),
             width: token.width,
             height: token.height,
             scaleType: token.scale_type,
             rotation: token.rotation,
-        };
-        const sprite = await container.DrawSprite(spriteOptions);
+        });
+        const tokenElement = new TokenElement(tokenContainer, boundingBox, sprite);
+
         if (token.z > this.highestZIndex) {
             this.highestZIndex = token.z;
         }
-        const spriteContainer = new CanvasContainer(sprite);
-        sprite.eventMode = 'static';
 
-        this.tokenNodes[token.id] = sprite;
+        this.tokenNodes[token.id] = tokenElement;
 
         const applySize = () => {
             if (token.scale_type == ScaleType.Absolute) {
@@ -437,13 +457,13 @@ export class MapCanvas extends Canvas {
             }
         }
 
-        sprite.on("resized", (attribute: string, value: number) => {
+        boundingBox.on("resized", (attribute: string, value: number) => {
             token[attribute] = value;
             applySize();
         });
 
         let scaleTimeoutHandle: number;
-        sprite.on("scale", (ev) => {
+        boundingBox.on("scale", (ev) => {
             if (ev.deltaY < 0) {
                 token.width *= 1.05;
                 token.height *= 1.05;
@@ -469,7 +489,7 @@ export class MapCanvas extends Canvas {
         });
 
         let rotateTimeoutHandle: number;
-        sprite.on("rotate", (ev) => {
+        boundingBox.on("rotate", (ev) => {
             if (ev.deltaY > 0) {
                 sprite.rotation += 0.261799;
             }
@@ -503,14 +523,15 @@ export class MapCanvas extends Canvas {
             }
         }
         const DisplayLabel = () => {
-            label = this.tokenContainer.AddText({
-                position: new Vector2(sprite.x, sprite.y).add(new Vector2(0, token.hitbox_height / 2)),
+            label = this.layersContainer.AddText({
+                position: new Vector2(token.x, token.y).add(new Vector2(0, token.hitbox_height / 2)),
                 content: token.name,
                 center: true,
             });
         }
 
-        sprite.on("mouseenter", () => {
+        boundingBox.on("mouseenter", () => {
+            console.log("Bounding Box Enter");
             spriteState.hovered = true;
             ClearLabel();
             if (!spriteState.dragging && token.character_id) {
@@ -518,25 +539,27 @@ export class MapCanvas extends Canvas {
             }
         });
 
-        sprite.on("mouseleave", () => {
+        boundingBox.on("mouseleave", () => {
+            console.log("Bounding Box Leave");
             spriteState.hovered = false;
             ClearLabel();
         });
 
-        sprite.on("mousedown", (ev: MouseEvent) => {
+        boundingBox.on("mousedown", (ev: MouseEvent) => {
+            console.log("Bounding Box Click");
             spriteState.dragging = true;
             ClearLabel();
             let spriteMoved = false;
             const dragOffset = this.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
-            dragOffset.applySubtract(new Vector2(sprite.position.x, sprite.position.y));
-            sprite.zIndex = (++this.highestZIndex);
+            dragOffset.applySubtract(new Vector2(token.position.x, token.position.y));
+            tokenContainer.node.zIndex = (++this.highestZIndex);
 
             const onDrag = (ev: MouseEvent) => {
                 spriteMoved = true;
                 const worldCoords = this.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
                 worldCoords.applySubtract(dragOffset);
-                sprite.x = worldCoords.x;
-                sprite.y = worldCoords.y;
+                tokenContainer.node.x = worldCoords.x;
+                tokenContainer.node.y = worldCoords.y;
             }
 
             const onDragEnd = async () => {
@@ -551,9 +574,9 @@ export class MapCanvas extends Canvas {
                         id: this.id,
                         changes: {
                             "$set": {
-                                [`tokens.${token.id}.x`]: sprite.x,
-                                [`tokens.${token.id}.y`]: sprite.y,
-                                [`tokens.${token.id}.z`]: sprite.zIndex,
+                                [`tokens.${token.id}.x`]: tokenContainer.node.x,
+                                [`tokens.${token.id}.y`]: tokenContainer.node.y,
+                                [`tokens.${token.id}.z`]: tokenContainer.node.zIndex,
                             },
                         },
                     });
@@ -611,36 +634,37 @@ export class MapCanvas extends Canvas {
             };
         }
 
-        ContextMenu.set(sprite as any, contextOptions);
+        ContextMenu.set(tokenContainer.node as any, contextOptions);
 
-        return spriteContainer;
+        return tokenElement;
     }
 
     DeleteToken(id) {
-        this.tokenNodes[id].destroy();
+        const tokenElement = this.tokenNodes[id];
         delete this.tokenNodes[id];
+        tokenElement.container.node.destroy();
     }
 
     async render(map, translation, scale) {
         this.id = map.id;
         this.squareSize = map.squareSize;
 
-        if (this.tokenContainer) {
-            this.tokenContainer.node.destroy();
+        if (this.layersContainer) {
+            this.layersContainer.node.destroy();
         }
         if (this.grid) {
             this.grid.destroy();
         }
 
         const root = this.rootContainer;
-        this.tokenContainer = root.AddContainer(translation, scale);
-        this.backgroundContainer = this.tokenContainer.AddContainer();
+        this.layersContainer = root.AddContainer(translation, scale);
+        this.backgroundContainer = this.layersContainer.AddContainer();
         this.backgroundContainer.node.eventMode = "none";
-        this.detailContainer = this.tokenContainer.AddContainer();
+        this.detailContainer = this.layersContainer.AddContainer();
         this.detailContainer.node.eventMode = "none";
-        this.characterContainer = this.tokenContainer.AddContainer();
+        this.characterContainer = this.layersContainer.AddContainer();
         this.characterContainer.node.eventMode = "none";
-        this.effectContainer = this.tokenContainer.AddContainer();
+        this.effectContainer = this.layersContainer.AddContainer();
         this.effectContainer.node.eventMode = "none";
         this.grid = root.AddGrid({
             width: this.htmlContainer.offsetWidth,
