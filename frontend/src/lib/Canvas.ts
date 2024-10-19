@@ -282,6 +282,9 @@ export class MapCanvas extends Canvas {
         });
 
         this.view.addEventListener("mousemove", (ev) => {
+            if (pingTimeoutHandle === null) {
+                return;
+            }
             const currentLocation = new Vector2(ev.clientX, ev.clientY);
             if (currentLocation.distance(pingLocation) > 10) {
                 stopPingTimer();
@@ -298,6 +301,9 @@ export class MapCanvas extends Canvas {
         });
 
         this.view.addEventListener("touchmove", (ev) => {
+            if (pingTimeoutHandle === null) {
+                return;
+            }
             const currentLocation = new Vector2(ev.touches[0].clientX, ev.touches[0].clientY);
             if (currentLocation.distance(pingLocation) > 10) {
                 stopPingTimer();

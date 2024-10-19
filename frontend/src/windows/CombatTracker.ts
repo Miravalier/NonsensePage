@@ -110,6 +110,22 @@ export class CombatTrackerWindow extends ContentWindow {
                     name: selection.Name,
                 });
             });
+
+            const rollAllButton = buttonContainer.appendChild(Html(`
+                <button type="button" class="add"><i class="fa-solid fa-dice"></i></button>
+            `));
+            rollAllButton.addEventListener("click", async () => {
+                const changes = {};
+                for (const [_id, index] of Object.entries(this.combatantIndexes)) {
+                    changes[`combatants.${index}.initiative`] = Roll("2d6").total;
+                }
+                await ApiRequest("/combat/update", {
+                    id: this.combatId,
+                    changes: {
+                        "$set": changes,
+                    },
+                });
+            });
         }
 
         this.register("settings.combat-tracker", () => {
