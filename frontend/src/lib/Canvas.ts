@@ -191,6 +191,7 @@ export class CanvasContainer {
 
 export class Canvas {
     htmlContainer: HTMLDivElement;
+    windowElement: HTMLDivElement;
     app: PIXI.Application;
     stage: PIXI.Container;
     renderer: PIXI.Renderer;
@@ -218,6 +219,7 @@ export class Canvas {
         this.renderer = this.app.renderer;
         this.view = this.app.canvas;
         this.htmlContainer.appendChild(this.app.canvas);
+        this.windowElement = htmlContainer.closest(".window");
     }
 
     get rootContainer() {
@@ -250,6 +252,13 @@ export class MapCanvas extends Canvas {
         this.squareSize = 1;
     }
 
+    getElementAtScreenPos(x: number, y: number): PIXI.Container {
+        const boundary = new PIXI.EventBoundary(this.app.stage);
+        const xOffset = this.windowElement.offsetLeft + this.view.offsetLeft;
+        const yOffset = this.windowElement.offsetTop + this.view.offsetTop;
+        return boundary.hitTest(x - xOffset, y - yOffset);
+    }
+
     async init(options: any) {
         await super.init(options);
 
@@ -276,6 +285,10 @@ export class MapCanvas extends Canvas {
         this.view.addEventListener("mousedown", (ev) => {
             // Can't ping with right clicks
             if (ev.button == 2) {
+                return;
+            }
+
+            if (this.getElementAtScreenPos(ev.clientX, ev.clientY)) {
                 return;
             }
             startPingTimer(ev.clientX, ev.clientY);

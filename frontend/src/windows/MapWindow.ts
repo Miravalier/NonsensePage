@@ -81,18 +81,15 @@ export class MapWindow extends CanvasWindow {
                 return;
             }
 
-            const boundary = new PIXI.EventBoundary(this.canvas.app.stage);
-            const xOffset = this.container.offsetLeft + this.viewPort.offsetLeft;
-            const yOffset = this.container.offsetTop + this.viewPort.offsetTop;
-            const element = boundary.hitTest(ev.clientX - xOffset, ev.clientY - yOffset);
+            const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
             let elementDragged = false;
 
-            let previousX = ev.clientX - xOffset;
-            let previousY = ev.clientY - yOffset;
+            let previousX = ev.clientX;
+            let previousY = ev.clientY;
 
             const onDrag = (ev: MouseEvent) => {
-                const x = ev.clientX - xOffset;
-                const y = ev.clientY - yOffset;
+                const x = ev.clientX;
+                const y = ev.clientY;
                 const deltaX = x - previousX;
                 const deltaY = y - previousY;
                 previousX = x;
@@ -116,15 +113,12 @@ export class MapWindow extends CanvasWindow {
             if (ev.ctrlKey) {
                 ev.preventDefault();
             }
-            const boundary = new PIXI.EventBoundary(this.canvas.app.stage);
-            const xOffset = this.container.offsetLeft + this.viewPort.offsetLeft;
-            const yOffset = this.container.offsetTop + this.viewPort.offsetTop;
-            const element = boundary.hitTest(ev.clientX - xOffset, ev.clientY - yOffset);
-            if (element) {
+            const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
+            if (element && (ev.ctrlKey || ev.shiftKey)) {
                 if (ev.ctrlKey) {
                     element.emit("scale", ev);
                 }
-                else {
+                else if (ev.shiftKey) {
                     element.emit("rotate", ev);
                 }
             }
