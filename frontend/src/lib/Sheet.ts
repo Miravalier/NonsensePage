@@ -110,7 +110,12 @@ export class Sheet {
             }
             inputElement.value = ResolvePath(this.data, inputElement.dataset.attr);
             inputElement.addEventListener("change", async () => {
-                await this.set(inputElement.dataset.attr, inputElement.value);
+                if (inputElement.type == "number") {
+                    await this.set(inputElement.dataset.attr, parseFloat(inputElement.value));
+                }
+                else {
+                    await this.set(inputElement.dataset.attr, inputElement.value);
+                }
             });
             this.addTrigger("set", inputElement.dataset.attr, (value) => {
                 inputElement.value = value;

@@ -26,13 +26,13 @@ export function GetAbilityIcons(ability: Ability | CharacterAbility) {
 }
 
 
-export async function RenderRolls(rolls: Roll[], data = null): Promise<string> {
+export async function RenderRolls(rolls: Roll[], data = null): Promise<string | null> {
     let result = "";
     for (const roll of rolls) {
         let subresult = `<div class="${roll.type} roll">`;
         subresult += `<div class="label">${roll.label}</div>`;
         if (roll.type == RollType.Text) {
-            subresult += `<div class="result">${roll.formula}</div>`;
+            subresult += `<div class="result" data-category="${roll.type}">${roll.formula}</div>`;
         }
         else if (roll.type == RollType.Dice) {
             const rollResults = Dice.Roll(roll.formula, data);
@@ -40,7 +40,7 @@ export async function RenderRolls(rolls: Roll[], data = null): Promise<string> {
         }
         else if (roll.type == RollType.Table) {
             const choiceResult = PCG.choice(roll.formula.split(/ *, */));
-            subresult += `<div class="result">${choiceResult}</div>`;
+            subresult += `<div class="result" data-category="${roll.type}">${choiceResult}</div>`;
         }
         else if (roll.type == RollType.Damage || roll.type == RollType.Healing || roll.type == RollType.Shield) {
             const rollResults = Dice.Roll(roll.formula, data);
@@ -52,7 +52,10 @@ export async function RenderRolls(rolls: Roll[], data = null): Promise<string> {
             if (!selection) {
                 return null;
             }
-            subresult += `<div class="result">${selection[roll.label]}</div>`;
+            subresult += `<div class="result" data-category="${roll.type}">${selection[roll.label]}</div>`;
+        }
+        else if (roll.type == RollType.Action) {
+            subresult += `<div class="result" data-category="${roll.type}">Gain an Action</div>`;
         }
         subresult += '</div>';
         result += subresult;

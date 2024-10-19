@@ -29,7 +29,7 @@ export async function UseAbility(character: Character, ability: Ability | Charac
     }
 
     const rollResults = await RenderRolls(ability.rolls, character.data);
-    if (!rollResults) {
+    if (rollResults === null) {
         WarningToast(`Ability '${ability.name}' canceled`);
         return;
     }
