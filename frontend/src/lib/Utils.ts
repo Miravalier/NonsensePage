@@ -95,6 +95,9 @@ export function ApplyChanges(target: any, changes: any, callback = undefined) {
     if (changes["$push"]) {
         PushOperator(target, changes["$push"], callback);
     }
+    if (changes["$inc"]) {
+        IncOperator(target, changes["$inc"], callback);
+    }
 }
 
 
@@ -143,6 +146,21 @@ export function UnsetOperator(target: any, source: any, callback = undefined) {
 
 export function SetOperator(target: any, source: any, callback = undefined) {
     for (const [key, value] of Object.entries(source)) {
+        SetPath(target, key, value);
+        if (callback) {
+            callback("set", key, value);
+        }
+    }
+}
+
+
+export function IncOperator(target: any, source: any, callback = undefined) {
+    for (const [key, amount] of Object.entries(source)) {
+        let value = ResolvePath(target, key);
+        if (!IsDefined(value)) {
+            value = 0;
+        }
+        value += amount;
         SetPath(target, key, value);
         if (callback) {
             callback("set", key, value);

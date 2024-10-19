@@ -7,8 +7,9 @@ import { Sheet } from "../../lib/Sheet.ts";
 import { GenerateId, GetPermissions, ResolvePath } from "../../lib/Utils.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { Permissions } from "../../lib/Enums.ts";
-import { RenderRolls, GetAbilityIcons } from "./Utils.ts";
+import { GetAbilityIcons } from "./Utils.ts";
 import { AppendFragment } from "../../lib/Templates.ts";
+import { UseAbility } from "./Ability.ts";
 
 
 export class LightbearerCharacterSheet extends Sheet {
@@ -166,24 +167,7 @@ export class LightbearerCharacterSheet extends Sheet {
         if (permission >= Permissions.WRITE) {
             useButton.addEventListener("click", async (ev) => {
                 ev.stopPropagation();
-                await ApiRequest("/messages/speak", {
-                    speaker: this.data.name,
-                    character_id: this.data.id,
-                    content: `
-                            <div class="Lightbearer template">
-                                <div class="ability" data-character-id="${this.data.id}" data-id="${ability.id}">
-                                    <div class="bar">
-                                        <div class="row">
-                                            <div class="icons">${GetAbilityIcons(ability)}</div>
-                                            <div class="name">${ability.name}</div>
-                                        </div>
-                                    </div>
-                                    <div class="details hidden">${ability.description.replace("\n", "<br>")}</div>
-                                    <div class="chat-rolls">${RenderRolls(ability.rolls, this.data.data)}</div>
-                                </div>
-                            </div>
-                        `,
-                });
+                await UseAbility(this.data, ability);
             });
         }
     }
@@ -228,7 +212,6 @@ export class LightbearerCharacterSheet extends Sheet {
         }
 
         this.addTrigger("push", "ability_order", (abilityId) => {
-            console.log(this.data.ability_map[abilityId]);
             const abilityElement = AppendFragment(abilityContainer, "ability", this.data.ability_map[abilityId]) as HTMLDivElement;
             this.addAbilityTriggers(abilityElement, permission);
         });

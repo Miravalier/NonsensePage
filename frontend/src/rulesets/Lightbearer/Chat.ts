@@ -1,13 +1,14 @@
+import * as Hoverable from "../../lib/Hoverable.ts";
+import * as ContextMenu from "../../lib/ContextMenu.ts";
+import { Future } from "../../lib/Async.ts";
 import { ApplyDamage, ApplyHealing, ApplyShield } from "../../lib/Database.ts";
 import { RollType } from "../../lib/Models.ts";
 import { DieResult } from "../../lib/Dice.ts";
 import { NumberWithSign } from "../../lib/Utils.ts";
-import * as Hoverable from "../../lib/Hoverable.ts";
-import * as ContextMenu from "../../lib/ContextMenu.ts";
 import { ApiRequest, Session } from "../../lib/Requests.ts";
 import { Button } from "../../lib/Elements.ts";
-import { Future } from "../../lib/Async.ts";
 import { Dialog, InputDialog } from "../../windows/Window.ts";
+import { AbilityType, Character } from "../../lib/Models.ts";
 
 
 export async function ResultEditDialog(resultElement: HTMLDivElement) {
@@ -55,10 +56,41 @@ export async function ResultEditDialog(resultElement: HTMLDivElement) {
 
 export function onRenderMessage(element: HTMLDivElement) {
     const textElement = element.querySelector(".text") as HTMLDivElement;
-    element.querySelector(".bar")?.addEventListener("click", () => {
-        element.querySelector(".details")?.classList.toggle("hidden");
-    });
-    for (const resultElement of element.querySelectorAll<HTMLDivElement>(".roll .result")) {
+    const abilityBar = textElement.querySelector(".ability .bar") as HTMLDivElement;
+    if (abilityBar) {
+        const abilityElement = abilityBar.parentElement as HTMLDivElement;
+        const characterId = abilityElement.dataset.characterId;
+
+        abilityBar.addEventListener("click", () => {
+            textElement.querySelector(".details")?.classList.toggle("hidden");
+        });
+
+        if (Session.gm) {
+            ContextMenu.set(abilityBar, {
+                "Ability": {
+                    "Undo": async () => {
+                        await ApiRequest("/messages/delete", { id: element.dataset.id });
+                        if (characterId) {
+                            const characterChanges: Character = {} as Character;
+
+                            if (parseInt(abilityElement.dataset.type) == AbilityType.Action) {
+                                characterChanges.actions = 1;
+                            }
+                            else if (parseInt(abilityElement.dataset.type) == AbilityType.Reaction) {
+                                characterChanges.reactions = 1;
+                            }
+
+                            await ApiRequest("/character/update", {
+                                id: characterId,
+                                changes: { "$inc": characterChanges }
+                            });
+                        }
+                    }
+                }
+            });
+        }
+    }
+    for (const resultElement of textElement.querySelectorAll<HTMLDivElement>(".roll .result")) {
         const category = resultElement.dataset.category;
         if (category != RollType.Dice && category != RollType.Damage && category != RollType.Healing && category != RollType.Shield) {
             continue;

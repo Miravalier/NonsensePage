@@ -3,7 +3,7 @@ import * as Database from "../../lib/Database.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { AddDragListener } from "../../lib/Drag.ts";
 import { InputDialog } from "../../windows/Window.ts";
-import { AbilityType, Ability } from "../../lib/Models.ts";
+import { AbilityType, Ability, Character, CharacterAbility } from "../../lib/Models.ts";
 import { Sheet } from "../../lib/Sheet.ts";
 import { GetPermissions } from "../../lib/Utils.ts";
 import { Permissions } from "../../lib/Enums.ts";
@@ -15,6 +15,41 @@ import { Html } from "../../lib/Elements.ts";
 export async function onRenderAbilityEntry(element: HTMLDivElement, ability: Ability) {
     element.querySelector("img").remove();
     element.insertBefore(Html(`<div class="icons">${GetAbilityIcons(ability)}</div>`), element.firstChild);
+}
+
+
+export async function UseAbility(character: Character, ability: Ability | CharacterAbility) {
+    const characterChanges: Character = {} as Character;
+
+    if (ability.type == AbilityType.Action) {
+        characterChanges.actions = character.actions - 1;
+    }
+    else if (ability.type == AbilityType.Reaction) {
+        characterChanges.reactions = character.reactions - 1;
+    }
+
+    await ApiRequest("/character/update", {
+        id: character.id,
+        changes: { "$set": characterChanges }
+    });
+    await ApiRequest("/messages/speak", {
+        speaker: character.name,
+        character_id: character.id,
+        content: `
+                <div class="Lightbearer template">
+                    <div class="ability" data-character-id="${character.id}" data-id="${ability.id}" data-type="${ability.type}">
+                        <div class="bar">
+                            <div class="row">
+                                <div class="icons">${GetAbilityIcons(ability)}</div>
+                                <div class="name">${ability.name}</div>
+                            </div>
+                        </div>
+                        <div class="details hidden">${ability.description.replace("\n", "<br>")}</div>
+                        <div class="chat-rolls">${RenderRolls(ability.rolls, character.data)}</div>
+                    </div>
+                </div>
+            `,
+    });
 }
 
 
@@ -123,24 +158,7 @@ export class LightbearerAbilitySheet extends Sheet {
                 ErrorToast("No controlled character.");
                 return;
             }
-            await ApiRequest("/messages/speak", {
-                speaker: character.name,
-                character_id: character.id,
-                content: `
-                    <div class="Lightbearer template">
-                        <div class="ability" data-character-id="${character.id}" data-id="${this.data.id}">
-                            <div class="bar">
-                                <div class="row">
-                                    <div class="icons">${GetAbilityIcons(this.data)}</div>
-                                    <div class="name">${this.data.name}</div>
-                                </div>
-                            </div>
-                            <div class="details hidden">${this.data.description.replace("\n", "<br>")}</div>
-                            <div class="chat-rolls">${RenderRolls(this.data.rolls, character.data)}</div>
-                        </div>
-                    </div>
-                `,
-            });
+            await UseAbility(character, this.data);
         });
 
         abilityDetails.classList.remove("hidden");
