@@ -50,7 +50,7 @@ export function set(element: HTMLElement, options: { [category: string]: { [choi
             `);
         }
 
-        const flip_threshold = 0.7;
+        const flip_threshold = 0.65;
         let horizontal = "left";
         let vertical = "top";
         let xOffset = ev.clientX;

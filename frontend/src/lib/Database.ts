@@ -54,10 +54,11 @@ export function ChangeSetting(path: string, value: string | boolean | number) {
 }
 
 
-export async function ResolveCharacter(id: string, cache: boolean = undefined): Promise<Character> {
+export async function ResolveCharacter(id: string): Promise<Character> {
     if (id === null || typeof id === "undefined") {
         throw Error("null or undefined character id");
     }
+
     const cachedCharacter = characters[id];
     if (cachedCharacter) {
         return cachedCharacter;
@@ -72,23 +73,27 @@ export async function ResolveCharacter(id: string, cache: boolean = undefined): 
         throw Error(response.reason);
     }
 
-    if (cache) {
-        characters[id] = response.character;
-        await Subscribe(id, update => {
-            if (update.type == "update") {
-                ApplyChanges(characters[id], update.changes, (operator, key, value) => {
-                    if (operator == "set") {
-                        Events.dispatch(`${id}.${key}`, value);
-                    }
-                });
-            }
-            if (update.type == "delete") {
-                delete characters[id];
-            }
-        });
-    }
-
     return response.character;
+}
+
+
+export async function TrackCharacter(id: string): Promise<Character> {
+    characters[id] = await ResolveCharacter(id);
+
+    await Subscribe(id, update => {
+        if (update.type == "update") {
+            ApplyChanges(characters[id], update.changes, (operator, key, value) => {
+                if (operator == "set") {
+                    Events.dispatch(`${id}.${key}`, value);
+                }
+            });
+        }
+        if (update.type == "delete") {
+            delete characters[id];
+        }
+    });
+
+    return characters[id];
 }
 
 
@@ -96,7 +101,7 @@ export async function GetSpeaker() {
     const user = users[Session.id];
     if (user.character_id) {
         try {
-            return await ResolveCharacter(user.character_id, true);
+            return await TrackCharacter(user.character_id);
         } catch {
             return user;
         }
@@ -111,7 +116,7 @@ export async function GetCharacter() {
     const user = users[Session.id];
     if (user.character_id) {
         try {
-            return await ResolveCharacter(user.character_id, true);
+            return await TrackCharacter(user.character_id);
         } catch {
             return null;
         }
@@ -125,7 +130,7 @@ export async function GetCharacter() {
 export async function ApplyShield(amount: number) {
     let character: Character = null;
     try {
-        character = await ResolveCharacter(users[Session.id].character_id);
+        character = await TrackCharacter(users[Session.id].character_id);
     } catch {
         ErrorToast("You are not controlling a character.");
         return;
@@ -158,7 +163,7 @@ export async function ApplyHealing(amount: number) {
 export async function ApplyDamage(amount: number) {
     let character: Character = null;
     try {
-        character = await ResolveCharacter(users[Session.id].character_id);
+        character = await TrackCharacter(users[Session.id].character_id);
     } catch {
         ErrorToast("You are not controlling a character.");
         return;

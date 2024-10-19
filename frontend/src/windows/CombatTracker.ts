@@ -9,7 +9,7 @@ import { Html } from "../lib/Elements.ts";
 import { Roll } from "../lib/Dice.ts";
 import { Permissions } from "../lib/Enums.ts";
 import { Character, Combat, Combatant } from "../lib/Models.ts";
-import { GetSetting, ResolveCharacter } from "../lib/Database.ts";
+import { GetSetting, TrackCharacter } from "../lib/Database.ts";
 import { AddDragListener } from "../lib/Drag.ts";
 
 
@@ -146,7 +146,7 @@ export class CombatTrackerWindow extends ContentWindow {
         let character: Character = null;
         if (combatant.character_id) {
             try {
-                character = await ResolveCharacter(combatant.character_id, true);
+                character = await TrackCharacter(combatant.character_id);
             }
             catch { }
         }
