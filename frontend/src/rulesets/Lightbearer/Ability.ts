@@ -8,7 +8,7 @@ import { Sheet } from "../../lib/Sheet.ts";
 import { GetPermissions } from "../../lib/Utils.ts";
 import { Permissions } from "../../lib/Enums.ts";
 import { RenderRolls, GetAbilityIcons } from "./Utils.ts";
-import { ErrorToast } from "../../lib/Notifications.ts";
+import { ErrorToast, WarningToast } from "../../lib/Notifications.ts";
 import { Html } from "../../lib/Elements.ts";
 
 
@@ -28,6 +28,12 @@ export async function UseAbility(character: Character, ability: Ability | Charac
         characterChanges.reactions = character.reactions - 1;
     }
 
+    const rollResults = await RenderRolls(ability.rolls, character.data);
+    if (!rollResults) {
+        WarningToast(`Ability '${ability.name}' canceled`);
+        return;
+    }
+
     await ApiRequest("/character/update", {
         id: character.id,
         changes: { "$set": characterChanges }
@@ -45,7 +51,7 @@ export async function UseAbility(character: Character, ability: Ability | Charac
                             </div>
                         </div>
                         <div class="details hidden">${ability.description.replace("\n", "<br>")}</div>
-                        <div class="chat-rolls">${RenderRolls(ability.rolls, character.data)}</div>
+                        <div class="chat-rolls">${rollResults}</div>
                     </div>
                 </div>
             `,

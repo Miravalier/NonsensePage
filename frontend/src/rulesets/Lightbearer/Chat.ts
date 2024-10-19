@@ -85,6 +85,23 @@ export function onRenderMessage(element: HTMLDivElement) {
                                 changes: { "$inc": characterChanges }
                             });
                         }
+                    },
+                    "Refund": async () => {
+                        if (characterId) {
+                            const characterChanges: Character = {} as Character;
+
+                            if (parseInt(abilityElement.dataset.type) == AbilityType.Action) {
+                                characterChanges.actions = 1;
+                            }
+                            else if (parseInt(abilityElement.dataset.type) == AbilityType.Reaction) {
+                                characterChanges.reactions = 1;
+                            }
+
+                            await ApiRequest("/character/update", {
+                                id: characterId,
+                                changes: { "$inc": characterChanges }
+                            });
+                        }
                     }
                 }
             });

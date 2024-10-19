@@ -38,7 +38,7 @@ export class CombatTrackerWindow extends ContentWindow {
 
         if (Session.gm) {
             const announceButton = buttonContainer.appendChild(Html(`
-                <button type="button" class="announce">Announce</button>
+                <button type="button" class="announce"><i class="fa-solid fa-megaphone"></i></button>
             `) as HTMLButtonElement);
             announceButton.addEventListener("click", async () => {
                 await ApiRequest("/combat/announce-turn", {
@@ -67,7 +67,7 @@ export class CombatTrackerWindow extends ContentWindow {
 
         if (Session.gm) {
             const sortButton = buttonContainer.appendChild(Html(`
-                <button type="button" class="sort">Sort</button>
+                <button type="button" class="sort"><i class="fa-solid fa-arrow-up-1-9"></i></button>
             `));
             sortButton.addEventListener("click", async () => {
                 await ApiRequest("/combat/sort", {
@@ -76,7 +76,7 @@ export class CombatTrackerWindow extends ContentWindow {
             });
 
             const shuffleButton = buttonContainer.appendChild(Html(`
-                <button type="button" class="shuffle">Shuffle</button>
+                <button type="button" class="shuffle"><i class="fa-solid fa-shuffle"></i></button>
             `));
             shuffleButton.addEventListener("click", async () => {
                 await ApiRequest("/combat/shuffle", {
@@ -85,7 +85,7 @@ export class CombatTrackerWindow extends ContentWindow {
             });
 
             const clearButton = buttonContainer.appendChild(Html(`
-                <button type="button" class="clear">Clear</button>
+                <button type="button" class="clear"><i class="fa-solid fa-trash"></i></button>
             `));
             clearButton.addEventListener("click", async () => {
                 if (!await ConfirmDialog("Clear the combat tracker?")) {
@@ -97,7 +97,7 @@ export class CombatTrackerWindow extends ContentWindow {
             });
 
             const addCombatantButton = buttonContainer.appendChild(Html(`
-                <button type="button" class="add">+</button>
+                <button type="button" class="add"><i class="fa-solid fa-user-plus"></i></button>
             `));
             addCombatantButton.addEventListener("click", async () => {
                 const selection = await InputDialog("Add Combatant", { "Name": "text" }, "Add");

@@ -1,6 +1,7 @@
 import * as Dice from "../../lib/Dice.ts";
 import { PCG } from "../../lib/PcgRandom.ts";
 import { Ability, AbilityType, CharacterAbility, Roll, RollType } from "../../lib/Models.ts";
+import { InputDialog } from "../../windows/Window.ts";
 
 
 export function GetAbilityIcons(ability: Ability | CharacterAbility) {
@@ -25,7 +26,7 @@ export function GetAbilityIcons(ability: Ability | CharacterAbility) {
 }
 
 
-export function RenderRolls(rolls: Roll[], data = null): string {
+export async function RenderRolls(rolls: Roll[], data = null): Promise<string> {
     let result = "";
     for (const roll of rolls) {
         let subresult = `<div class="${roll.type} roll">`;
@@ -44,6 +45,14 @@ export function RenderRolls(rolls: Roll[], data = null): string {
         else if (roll.type == RollType.Damage || roll.type == RollType.Healing || roll.type == RollType.Shield) {
             const rollResults = Dice.Roll(roll.formula, data);
             subresult += `<div class="result" data-category="${roll.type}" data-formula="${roll.formula}" data-dice="${btoa(JSON.stringify(rollResults.rolls))}">${rollResults.total}</div>`;
+        }
+        else if (roll.type == RollType.Choice) {
+            const choices = roll.formula.split(/ *, */);
+            const selection = await InputDialog("Ability Choice", { [roll.label]: ["select", choices] }, "Use Ability");
+            if (!selection) {
+                return null;
+            }
+            subresult += `<div class="result">${selection[roll.label]}</div>`;
         }
         subresult += '</div>';
         result += subresult;

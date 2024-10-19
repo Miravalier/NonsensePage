@@ -31,6 +31,7 @@ export enum RollType {
     Damage = "damage",
     Healing = "healing",
     Shield = "shield",
+    Choice = "choice",
 }
 
 export enum ScaleType {

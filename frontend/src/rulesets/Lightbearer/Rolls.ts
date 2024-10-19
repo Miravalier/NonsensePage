@@ -15,6 +15,7 @@ export function RollsFragmentRender(element: HTMLDivElement, ability: CharacterA
             <option value="damage">Damage</option>
             <option value="healing">Healing</option>
             <option value="shield">Shield</option>
+            <option value="choice">Choice</option>
         `;
         const labelElement = rollElement.appendChild(document.createElement("input"));
         labelElement.type = "text";
