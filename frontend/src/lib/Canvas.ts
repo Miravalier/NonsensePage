@@ -100,6 +100,7 @@ export class CanvasContainer {
         const rotation: number = Parameter(options.rotation, 0);
         const position = Parameter(options.position, new Vector2(0, 0));
         const z = Parameter(options.z, 0);
+        const hitboxSize = Parameter(options.hitboxSize, 1);
 
         let texture;
         try {
@@ -111,12 +112,17 @@ export class CanvasContainer {
             console.error(`Failed to load texture: ${src}`);
             texture = await PIXI.Assets.load("/unknown.png");
         }
+
         const sprite = PIXI.Sprite.from(texture);
         sprite.anchor.set(0.5, 0.5);
         sprite.rotation = rotation;
         if (scaleType == ScaleType.Absolute) {
             sprite.width = width;
             sprite.height = height;
+
+            const spriteSize = Math.max(width, height);
+            const textureSize = Math.max(texture.width, texture.height);
+            sprite.hitArea = new PIXI.Circle(0, 0, (hitboxSize / spriteSize) * textureSize / 2);
         }
         else {
             sprite.scale.x = width;
@@ -406,7 +412,7 @@ export class MapCanvas extends Canvas {
         }, 1000);
     }
 
-    async AddToken(token): Promise<CanvasContainer> {
+    async AddToken(token): Promise<PIXI.Sprite> {
         const container = this.containerFromLayerId(token.layer);
         const spriteOptions = {
             src: token.src,
@@ -415,13 +421,13 @@ export class MapCanvas extends Canvas {
             width: token.width,
             height: token.height,
             scaleType: token.scale_type,
+            hitboxSize: Math.max(token.hitbox_width, token.hitbox_height),
             rotation: token.rotation,
         };
         const sprite = await container.DrawSprite(spriteOptions);
         if (token.z > this.highestZIndex) {
             this.highestZIndex = token.z;
         }
-        const spriteContainer = new CanvasContainer(sprite);
         sprite.eventMode = 'static';
 
         this.tokenNodes[token.id] = sprite;
@@ -613,7 +619,7 @@ export class MapCanvas extends Canvas {
 
         ContextMenu.set(sprite as any, contextOptions);
 
-        return spriteContainer;
+        return sprite;
     }
 
     DeleteToken(id) {
