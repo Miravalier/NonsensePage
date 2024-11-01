@@ -23,6 +23,7 @@ import {
 import { NoteListWindow } from "../windows/NoteList.ts";
 import { AbilityListWindow } from "../windows/AbilityList.ts";
 import { SettingsWindow } from "../windows/SettingsWindow.ts";
+import { PresenceWindow } from "../windows/Presence.ts";
 
 
 declare global {
@@ -167,6 +168,12 @@ async function Main() {
                     position: new Vector2(ev.clientX, ev.clientY),
                 });
                 await settingsWindow.load();
+            },
+            "Presence": async (ev: MouseEvent) => {
+                const presenceWindow = new PresenceWindow({
+                    position: new Vector2(ev.clientX, ev.clientY),
+                });
+                await presenceWindow.load();
             }
         },
         "Layout": {

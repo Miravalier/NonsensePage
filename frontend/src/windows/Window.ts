@@ -71,7 +71,12 @@ export class BaseWindow {
         resizable = true,
         refreshable = false,
         popOut = false,
+        noTitleBar = false,
     }) {
+        if (popOut) {
+            resizable = false;
+        }
+
         this.size = size;
         this.position = Parameter<Vector2>(position, PageCenter().subtract(this.size).divide(2));
         classList.push("window");
@@ -104,76 +109,99 @@ export class BaseWindow {
             }
         });
 
-        const titleBar = this.container.appendChild(document.createElement("div"));
-        this.titleBar = titleBar;
-        titleBar.className = "titleBar";
+        if (noTitleBar) {
+            this.titleBar = null;
+        }
+        else {
+            const titleBar = this.container.appendChild(document.createElement("div"));
+            this.titleBar = titleBar;
+            titleBar.className = "titleBar";
 
-        if (!popOut) {
-            Drag.AddPositionalListener(titleBar, {
-                onStart: (ctx, ev) => {
-                    ctx.xOffset = ev.clientX - this.container.offsetLeft;
-                    ctx.yOffset = ev.clientY - this.container.offsetTop;
-                    ctx.xMax = window.innerWidth - (Math.ceil(this.container.offsetWidth) + 1);
-                    ctx.yMax = window.innerHeight - (Math.ceil(this.container.offsetHeight) + 1);
-                },
-                onMove: (ctx, ev) => {
-                    this.position.x = Bound(0, ev.clientX - ctx.xOffset, ctx.xMax);
-                    this.container.style.left = `${this.position.x}px`;
-                    this.position.y = Bound(0, ev.clientY - ctx.yOffset, ctx.yMax);
-                    this.container.style.top = `${this.position.y}px`;
-                },
+            if (!popOut) {
+                Drag.AddPositionalListener(titleBar, {
+                    onStart: (ctx, ev) => {
+                        ctx.xOffset = ev.clientX - this.container.offsetLeft;
+                        ctx.yOffset = ev.clientY - this.container.offsetTop;
+                        ctx.xMax = window.innerWidth - (Math.ceil(this.container.offsetWidth) + 1);
+                        ctx.yMax = window.innerHeight - (Math.ceil(this.container.offsetHeight) + 1);
+                    },
+                    onMove: (ctx, ev) => {
+                        this.position.x = Bound(0, ev.clientX - ctx.xOffset, ctx.xMax);
+                        this.container.style.left = `${this.position.x}px`;
+                        this.position.y = Bound(0, ev.clientY - ctx.yOffset, ctx.yMax);
+                        this.container.style.top = `${this.position.y}px`;
+                    },
+                });
+
+                if (resizable) {
+                    titleBar.addEventListener("dblclick", () => {
+                        this.toggleMinimize();
+                    });
+                }
+            }
+
+            this.titleNode = titleBar.appendChild(document.createElement("div"));
+            this.titleNode.className = "group";
+            this.setTitle(title);
+
+            const rightGroup = titleBar.appendChild(document.createElement("div"));
+            rightGroup.className = "group";
+            rightGroup.addEventListener("dblclick", ev => {
+                ev.stopPropagation();
             });
 
-            if (resizable) {
-                titleBar.addEventListener("dblclick", () => {
-                    this.toggleMinimize();
+            if (refreshable) {
+                this.refreshButton = rightGroup.appendChild(Button("refresh"));
+                this.refreshButton.addEventListener("click", () => {
+                    this.refresh();
                 });
             }
-        }
 
-        this.titleNode = titleBar.appendChild(document.createElement("div"));
-        this.titleNode.className = "group";
-        this.setTitle(title);
+            if (resizable) {
+                this.minimizeButton = rightGroup.appendChild(Button("window-minimize"));
+                this.minimizeButton.addEventListener("click", () => {
+                    this.toggleMinimize();
+                })
 
-        const rightGroup = titleBar.appendChild(document.createElement("div"));
-        rightGroup.className = "group";
-        rightGroup.addEventListener("dblclick", ev => {
-            ev.stopPropagation();
-        });
+                this.fullscreenButton = rightGroup.appendChild(Button("expand-alt"));
+                this.fullscreenButton.addEventListener("click", () => {
+                    this.toggleFullscreen();
+                });
+            }
 
-        if (refreshable) {
-            this.refreshButton = rightGroup.appendChild(Button("refresh"));
-            this.refreshButton.addEventListener("click", () => {
-                this.refresh();
+            this.closeButton = rightGroup.appendChild(Button("window-close"));
+            this.closeButton.addEventListener("click", () => {
+                this.close();
             });
+
+            const contextOptions = {
+                "Window": {
+                    "Close": () => {
+                        this.close();
+                    },
+                    "Pop Out": () => {
+                        const windowData = btoa(JSON.stringify({ type: this.constructor.name, data: this.serialize() }));
+                        window.open(`/?window=${windowData}`).focus();
+                        this.close();
+                    },
+                }
+            }
+            if (Session.gm && register) {
+                contextOptions["Window"]["Show to Players"] = async () => {
+                    await this.onShare();
+                    await ApiRequest("/show/window", { type: this.constructor.name, data: this.serialize() });
+                };
+            }
+            ContextMenu.set(titleBar, contextOptions);
         }
-
-        if (resizable) {
-            this.minimizeButton = rightGroup.appendChild(Button("window-minimize"));
-            this.minimizeButton.addEventListener("click", () => {
-                this.toggleMinimize();
-            })
-
-            this.fullscreenButton = rightGroup.appendChild(Button("expand-alt"));
-            this.fullscreenButton.addEventListener("click", () => {
-                this.toggleFullscreen();
-            });
-        }
-
-        this.closeButton = rightGroup.appendChild(Button("window-close"));
-        this.closeButton.addEventListener("click", () => {
-            this.close();
-        });
 
         this.viewPort = this.container.appendChild(document.createElement("div"));
         this.viewPort.className = "viewPort";
-        if (resizable) {
-            this.viewPort.style.width = `${this.size.x}px`;
-            this.viewPort.style.height = `${this.size.y}px`;
-        }
         ContextMenu.set(this.viewPort, null);
 
         if (resizable) {
+            this.viewPort.style.width = `${this.size.x}px`;
+            this.viewPort.style.height = `${this.size.y}px`;
             const resizeHandle = this.container.appendChild(document.createElement("div"));
             this.resizeHandle = resizeHandle;
             resizeHandle.className = "resizeHandle";
@@ -187,8 +215,10 @@ export class BaseWindow {
                     const xOffset = ev.clientX - this.container.offsetLeft;
                     const yOffset = ev.clientY - this.container.offsetTop;
                     let minWidth = 10;
-                    for (const group of this.titleBar.children) {
-                        minWidth += group.clientWidth;
+                    if (this.titleBar) {
+                        for (const group of this.titleBar.children) {
+                            minWidth += group.clientWidth;
+                        }
                     }
                     this.size.x = Bound(minWidth, xOffset, ctx.xMax);
                     this.size.y = Bound(40, yOffset, ctx.yMax);
@@ -201,42 +231,28 @@ export class BaseWindow {
                 },
             });
         }
-
-        const contextOptions = {
-            "Window": {
-                "Close": () => {
-                    this.close();
-                },
-                "Pop Out": () => {
-                    const windowData = btoa(JSON.stringify({ type: this.constructor.name, data: this.serialize() }));
-                    window.open(`/?window=${windowData}`).focus();
-                    this.close();
-                },
-            }
+        else {
+            this.resizeHandle = null;
         }
-        if (Session.gm && register) {
-            contextOptions["Window"]["Show to Players"] = async () => {
-                await this.onShare();
-                await ApiRequest("/show/window", { type: this.constructor.name, data: this.serialize() });
-            };
-        }
-        ContextMenu.set(titleBar, contextOptions);
 
         const windowElements = document.querySelector("#windows");
         windowElements.appendChild(this.container);
 
         if (popOut) {
-            resizable = false;
-            this.titleBar.style.display = "none";
+            if (this.titleBar) {
+                this.titleBar.style.display = "none";
+            }
             this.container.style.position = "unset";
             this.container.style.width = "100%";
             this.container.style.height = "100%";
             this.viewPort.style.width = "100%";
             this.viewPort.style.height = "100%";
-            this.resizeHandle.style.display = "none";
             this.size.x = window.innerWidth;
             this.size.y = window.innerHeight;
             this.container.classList.add("popout");
+            if (this.resizeHandle) {
+                this.resizeHandle.style.display = "none";
+            }
         }
     }
 
@@ -258,7 +274,9 @@ export class BaseWindow {
     }
 
     setTitle(s: string) {
-        this.titleNode.innerText = StringBound(s, 40);
+        if (this.titleBar) {
+            this.titleNode.innerText = StringBound(s, 40);
+        }
     }
 
     serialize(): any {
@@ -314,9 +332,11 @@ export class BaseWindow {
             this.container.style.height = null;
             this.viewPort.style.width = `${this.storedWidth}px`;
             this.viewPort.style.height = `${this.storedHeight}px`;
-            this.resizeHandle.style.display = null;
             this.size.x = this.storedWidth;
             this.size.y = this.storedHeight;
+            if (this.resizeHandle) {
+                this.resizeHandle.style.display = null;
+            }
         }
         // Become fullscreen
         else {
@@ -328,9 +348,11 @@ export class BaseWindow {
             this.container.style.height = "100%";
             this.viewPort.style.width = "100%";
             this.viewPort.style.height = "100%";
-            this.resizeHandle.style.display = "none";
             this.size.x = window.innerWidth;
             this.size.y = window.innerHeight;
+            if (this.resizeHandle) {
+                this.resizeHandle.style.display = "none";
+            }
         }
         this.fullscreen = !this.fullscreen;
     }
@@ -343,13 +365,17 @@ export class BaseWindow {
         if (this.minimized) {
             this.viewPort.style.display = null;
             this.minimizeButton.innerHTML = `<i class="fa-solid fa-window-minimize button"></i>`;
-            this.resizeHandle.style.display = null;
+            if (this.resizeHandle) {
+                this.resizeHandle.style.display = null;
+            }
         }
         // Become minimized
         else {
             this.viewPort.style.display = "none";
             this.minimizeButton.innerHTML = `<i class="fa-solid fa-window-maximize button"></i>`;
-            this.resizeHandle.style.display = "none";
+            if (this.resizeHandle) {
+                this.resizeHandle.style.display = "none";
+            }
         }
         this.minimized = !this.minimized;
     }
@@ -438,6 +464,50 @@ export class ContentWindow extends BaseWindow {
     }
 }
 registerWindowType(ContentWindow);
+
+
+export class InvisibleWindow extends ContentWindow {
+    constructor(options = undefined) {
+        options = Parameter(options, {});
+        options.resizable = Parameter(options.resizable, false);
+        options.noTitleBar = Parameter(options.noTitleBar, true);
+        options.backgroundColor = Parameter(options.backgroundColor, "#00000000");
+        options.classList = Parameter(options.classList, []);
+        options.classList.push("invisible");
+        super(options);
+
+        Drag.AddPositionalListener(this.content, {
+            onStart: (ctx, ev) => {
+                ctx.xOffset = ev.clientX - this.container.offsetLeft;
+                ctx.yOffset = ev.clientY - this.container.offsetTop;
+                ctx.xMax = window.innerWidth - (Math.ceil(this.container.offsetWidth) + 1);
+                ctx.yMax = window.innerHeight - (Math.ceil(this.container.offsetHeight) + 1);
+            },
+            onMove: (ctx, ev) => {
+                this.position.x = Bound(0, ev.clientX - ctx.xOffset, ctx.xMax);
+                this.container.style.left = `${this.position.x}px`;
+                this.position.y = Bound(0, ev.clientY - ctx.yOffset, ctx.yMax);
+                this.container.style.top = `${this.position.y}px`;
+            },
+        });
+
+        ;
+        const contextOptions = {
+            "Window": {
+                "Close": () => {
+                    this.close();
+                },
+                "Pop Out": () => {
+                    const windowData = btoa(JSON.stringify({ type: this.constructor.name, data: this.serialize() }));
+                    window.open(`/?window=${windowData}`).focus();
+                    this.close();
+                },
+            },
+        }
+        ContextMenu.set(this.content, contextOptions);
+    }
+}
+registerWindowType(InvisibleWindow);
 
 
 function AddElement(container: HTMLDivElement, element: HTMLElement | HTMLElement[]): HTMLElement {

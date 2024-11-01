@@ -14,6 +14,10 @@
     box-shadow: 0 0 12px #00000080;
 }
 
+.window.invisible {
+    box-shadow: none;
+}
+
 .window .resizeHandle {
     position: absolute;
     bottom: 0;
@@ -575,6 +579,13 @@ button:hover i {
 
 .permissions.window .content .group .pair .scope {
     flex: 1;
+}
+
+.presence.window .content {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    align-items: center;
 }
 
 .settings.window .content {
