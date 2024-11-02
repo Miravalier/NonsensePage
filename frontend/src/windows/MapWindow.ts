@@ -4,7 +4,7 @@ import { CanvasWindow, registerWindowType } from "./Window.ts";
 import { Parameter, GenerateId, LocalPersist } from "../lib/Utils.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { ApiRequest, Session } from "../lib/Requests.ts";
-import { MapCanvas } from "../lib/Canvas.ts";
+import { ClearSelectedTokens, MapCanvas } from "../lib/Canvas.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { GridFilter } from "../filters/Grid.ts";
 import { Button } from "../lib/Elements.ts";
@@ -76,37 +76,42 @@ export class MapWindow extends CanvasWindow {
         });
 
         this.viewPort.addEventListener("mousedown", (ev: MouseEvent) => {
-            // If not right mouse, return
-            if (ev.button != 2) {
-                return;
-            }
-
-            const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
-            let elementDragged = false;
-
-            let previousX = ev.clientX;
-            let previousY = ev.clientY;
-
-            const onDrag = (ev: MouseEvent) => {
-                const x = ev.clientX;
-                const y = ev.clientY;
-                const deltaX = x - previousX;
-                const deltaY = y - previousY;
-                previousX = x;
-                previousY = y;
-                this.translate(deltaX, deltaY);
-                elementDragged = true;
-            }
-
-            const onDragEnd = () => {
-                document.removeEventListener("mousemove", onDrag);
-                if (element && !elementDragged) {
-                    element.emit("contextmenu", ev);
+            // If left mouse and not shift
+            if (ev.button == 0 && !ev.shiftKey) {
+                const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
+                if (!element) {
+                    ClearSelectedTokens();
                 }
             }
+            // If right mouse
+            if (ev.button == 2) {
+                const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
+                let elementDragged = false;
 
-            document.addEventListener("mousemove", onDrag);
-            document.addEventListener("mouseup", onDragEnd, { once: true });
+                let previousX = ev.clientX;
+                let previousY = ev.clientY;
+
+                const onDrag = (ev: MouseEvent) => {
+                    const x = ev.clientX;
+                    const y = ev.clientY;
+                    const deltaX = x - previousX;
+                    const deltaY = y - previousY;
+                    previousX = x;
+                    previousY = y;
+                    this.translate(deltaX, deltaY);
+                    elementDragged = true;
+                }
+
+                const onDragEnd = () => {
+                    document.removeEventListener("mousemove", onDrag);
+                    if (element && !elementDragged) {
+                        element.emit("contextmenu", ev);
+                    }
+                }
+
+                document.addEventListener("mousemove", onDrag);
+                document.addEventListener("mouseup", onDragEnd, { once: true });
+            }
         });
 
         this.viewPort.addEventListener("wheel", ev => {

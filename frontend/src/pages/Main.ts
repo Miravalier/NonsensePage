@@ -25,7 +25,6 @@ import { AbilityListWindow } from "../windows/AbilityList.ts";
 import { SettingsWindow } from "../windows/SettingsWindow.ts";
 import { PresenceWindow } from "../windows/Presence.ts";
 import { ClearSelectedTokens, GetSelectedTokens } from "../lib/Canvas.ts";
-import { FederatedEvent, spritesheetAsset } from "pixi.js";
 
 
 declare global {
