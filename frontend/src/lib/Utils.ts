@@ -13,8 +13,53 @@ export function LogOut() {
 }
 
 
+function titleCaseToken(token: string): string {
+    if (token.length == 0) {
+        return token;
+    }
+    return token[0].toUpperCase() + token.substring(1).toLowerCase();
+}
+
+
 export function TitleCase(s: string): string {
-    return s[0].toUpperCase() + s.substring(1).toLowerCase()
+    const tokens = s.split(" ");
+    let result = titleCaseToken(tokens.shift());
+    for (const token of tokens) {
+        result += " " + titleCaseToken(token);
+    }
+    return result;
+}
+
+
+function isUpperCase(s: string): boolean {
+    return s.toUpperCase() == s;
+}
+
+
+export function IdentifierToLabel(identifier: string): string {
+    let result = "";
+    for (let i = 0; i < identifier.length; i++) {
+        if (i == 0) {
+            result += identifier[i].toUpperCase();
+        }
+        else {
+            if (isUpperCase(identifier[i])) {
+                result += " ";
+            }
+            result += identifier[i];
+        }
+    }
+    return result;
+}
+
+
+export function LabelToIdentifier(label: string): string {
+    const tokens = label.split(" ");
+    let result = tokens.shift().toLowerCase();
+    for (const token of tokens) {
+        result += titleCaseToken(token);
+    }
+    return result;
 }
 
 

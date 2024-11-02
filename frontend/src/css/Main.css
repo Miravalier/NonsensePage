@@ -591,7 +591,7 @@ button:hover i {
 .presence.window .portrait {
     display: flex;
     flex-flow: column nowrap;
-    margin: 0 8px;
+    margin: 4px 8px;
     text-align: center;
     justify-content: center;
     align-items: center;
@@ -602,8 +602,20 @@ button:hover i {
     height: 48px;
 }
 
+.presence.window .content.hideImages .portrait img {
+    display: none;
+}
+
+.presence.window .content.hideOffline .portrait {
+    display: none;
+}
+
+.presence.window .content.hideOffline .portrait.online {
+    display: flex;
+}
+
 .presence.window .portrait {
-    opacity: 50%;
+    opacity: 25%;
 }
 
 .presence.window .portrait.online {

@@ -16,10 +16,30 @@ export class PresenceWindow extends InvisibleWindow {
         super(options);
     }
 
+    trackSetting(key: string, defaultValue: boolean) {
+        if (Database.GetSetting(`presence.${key}`, defaultValue)) {
+            this.content.classList.add(key);
+        }
+        else {
+            this.content.classList.remove(key);
+        }
+        this.register(`settings.presence.${key}`, (_path: string, value: boolean) => {
+            if (value) {
+                this.content.classList.add(key);
+            }
+            else {
+                this.content.classList.remove(key);
+            }
+        });
+    }
+
     async load(_data = undefined) {
         await super.load();
         this.content.innerHTML = "";
         this.portraits = {};
+
+        this.trackSetting("hideImages", true);
+        this.trackSetting("hideOffline", true);
 
         for (const user of Object.values(Database.users)) {
             let image = user.image;

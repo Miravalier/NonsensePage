@@ -2,7 +2,7 @@ import * as Database from "../lib/Database.ts";
 import * as Notifications from "../lib/Notifications.ts";
 import { ContentWindow, InputDialog, registerWindowType } from "./Window.ts";
 import { Vector2 } from "../lib/Vector.ts";
-import { LogOut, Parameter, TitleCase } from "../lib/Utils.ts";
+import { LogOut, Parameter, IdentifierToLabel } from "../lib/Utils.ts";
 import { Html } from "../lib/Elements.ts";
 import { ApiRequest, Session } from "../lib/Requests.ts";
 
@@ -62,7 +62,7 @@ export class SettingsWindow extends ContentWindow {
     addCheckbox(name: string, path: string, defaultValue: boolean) {
         const container = this.cursor.appendChild(Html(`<div class="container"></div>`) as HTMLDivElement);
         const checkbox = container.appendChild(Html(`<input type="checkbox" class="${name}" name="${name}">`)) as HTMLInputElement;
-        container.appendChild(Html(`<label for="${name}">${TitleCase(name)}</label>`)) as HTMLLabelElement;
+        container.appendChild(Html(`<label for="${name}">${IdentifierToLabel(name)}</label>`)) as HTMLLabelElement;
         if (Database.GetSetting(path, defaultValue)) {
             checkbox.checked = true;
         }
@@ -97,6 +97,13 @@ export class SettingsWindow extends ContentWindow {
             this.addCheckbox("actions", "combat-tracker.columns.actions", false);
             this.addCheckbox("reactions", "combat-tracker.columns.reactions", false);
             this.addCheckbox("initiative", "combat-tracker.columns.initiative", false);
+        });
+
+        this.addCategory("User Presence Window");
+
+        this.group(() => {
+            this.addCheckbox("hideImages", "presence.hideImages", true);
+            this.addCheckbox("hideOffline", "presence.hideOffline", true);
         });
 
         if (Session.gm) {
