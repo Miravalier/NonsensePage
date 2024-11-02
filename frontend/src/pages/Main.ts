@@ -24,6 +24,8 @@ import { NoteListWindow } from "../windows/NoteList.ts";
 import { AbilityListWindow } from "../windows/AbilityList.ts";
 import { SettingsWindow } from "../windows/SettingsWindow.ts";
 import { PresenceWindow } from "../windows/Presence.ts";
+import { ClearSelectedTokens, GetSelectedTokens } from "../lib/Canvas.ts";
+import { FederatedEvent, spritesheetAsset } from "pixi.js";
 
 
 declare global {
@@ -96,6 +98,7 @@ async function OnLoad() {
             const characterCreator = new CharacterCreatorWindow();
             await characterCreator.load();
         },
+        GetSelectedTokens,
     };
 
     await WsConnect();
@@ -272,6 +275,17 @@ async function Main() {
             title: "Character Sheet",
         });
         await characterSheetWindow.load(users[Session.id].character_id);
+    });
+
+    document.addEventListener("keydown", (ev) => {
+        if (ev.key == "Escape") {
+            ClearSelectedTokens();
+        }
+        if (ev.key == "Delete") {
+            for (const token of GetSelectedTokens()) {
+                token.emit("delete");
+            }
+        }
     });
 
     LoadStartingWindows();

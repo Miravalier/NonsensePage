@@ -1,4 +1,5 @@
 import * as PIXI from "pixi.js";
+import { GlowFilter } from "pixi-filters";
 
 import * as ContextMenu from "./ContextMenu.ts";
 import { Parameter, Require, IsDefined } from "./Utils.ts";
@@ -6,7 +7,7 @@ import { Vector2 } from "./Vector.ts";
 import { Layer } from "./Enums.ts";
 import { ApiRequest, Session } from "./Requests.ts";
 import { GridFilter } from "../filters/Grid.ts";
-import { launchWindow } from "../windows/Window.ts";
+import { launchWindow, windows } from "../windows/Window.ts";
 import { ScaleType } from "./Models.ts";
 
 
@@ -249,6 +250,7 @@ export class MapCanvas extends Canvas {
     effectContainer: CanvasContainer;
     highestZIndex: number;
     squareSize: number;
+    selectedTokens: Set<PIXI.Sprite>;
 
     constructor() {
         super();
@@ -256,6 +258,7 @@ export class MapCanvas extends Canvas {
         this.tokenNodes = {};
         this.highestZIndex = 0;
         this.squareSize = 1;
+        this.selectedTokens = new Set();
     }
 
     getElementAtScreenPos(x: number, y: number): PIXI.Container {
@@ -443,6 +446,17 @@ export class MapCanvas extends Canvas {
             }
         }
 
+        sprite.on("delete", async () => {
+            await ApiRequest("/map/update", {
+                id: this.id,
+                changes: {
+                    "$unset": {
+                        [`tokens.${token.id}`]: null,
+                    },
+                },
+            });
+        });
+
         sprite.on("resized", (attribute: string, value: number) => {
             token[attribute] = value;
             applySize();
@@ -564,11 +578,28 @@ export class MapCanvas extends Canvas {
                         },
                     });
                 }
-                else {
-                    // This sprite was clicked
+                else if (ev.ctrlKey) {
+                    // This sprite was CTRL+clicked
                     if (token.character_id) {
                         await launchWindow("CharacterSheetWindow", { id: token.character_id });
                     }
+                }
+                else if (ev.shiftKey) {
+                    // This sprite was SHIFT+clicked
+                    if (this.selectedTokens.has(sprite)) {
+                        this.selectedTokens.delete(sprite);
+                        this.onDeSelect(sprite);
+                    }
+                    else {
+                        this.selectedTokens.add(sprite);
+                        this.onSelect(sprite);
+                    }
+                }
+                else {
+                    // This sprite was regular clicked
+                    this.ClearSelected();
+                    this.selectedTokens.add(sprite);
+                    this.onSelect(sprite);
                 }
             }
 
@@ -622,6 +653,21 @@ export class MapCanvas extends Canvas {
         return sprite;
     }
 
+    ClearSelected() {
+        for (const sprite of this.selectedTokens) {
+            this.onDeSelect(sprite);
+        }
+        this.selectedTokens.clear();
+    }
+
+    onSelect(sprite: PIXI.Sprite) {
+        sprite.filters = [new GlowFilter()];
+    }
+
+    onDeSelect(sprite: PIXI.Sprite) {
+        sprite.filters = [];
+    }
+
     DeleteToken(id) {
         this.tokenNodes[id].destroy();
         delete this.tokenNodes[id];
@@ -661,4 +707,37 @@ export class MapCanvas extends Canvas {
             await this.AddToken(token);
         }
     }
+}
+
+
+export function GetMapCanvases(): MapCanvas[] {
+    const canvases: MapCanvas[] = [];
+
+    for (const openWindow of Object.values(windows)) {
+        if (openWindow.constructor.name != "MapWindow") {
+            continue;
+        }
+        const canvas = (openWindow as any).canvas as MapCanvas;
+        canvases.push(canvas);
+    }
+
+    return canvases;
+}
+
+
+export function ClearSelectedTokens() {
+    for (const canvas of GetMapCanvases()) {
+        canvas.ClearSelected();
+    }
+}
+
+
+export function GetSelectedTokens(): PIXI.Sprite[] {
+    const tokens: PIXI.Sprite[] = [];
+    for (const canvas of GetMapCanvases()) {
+        for (const token of canvas.selectedTokens) {
+            tokens.push(token);
+        }
+    }
+    return tokens;
 }

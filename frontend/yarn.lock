@@ -224,6 +224,11 @@
   resolved "https://registry.yarnpkg.com/@types/estree/-/estree-1.0.5.tgz#a6ce3e556e00fd9895dd872dd172ad0d4bd687f4"
   integrity sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==
 
+"@types/gradient-parser@^0.1.2":
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/@types/gradient-parser/-/gradient-parser-0.1.5.tgz#7b25d5f080f41f0d713207894c3f2f490155462a"
+  integrity sha512-r7K3NkJz3A95WkVVmjs0NcchhHstC2C/VIYNX4JC6tieviUNo774FFeOHjThr3Vw/WCeMP9kAT77MKbIRlO/4w==
+
 "@webgpu/types@^0.1.40":
   version "0.1.40"
   resolved "https://registry.yarnpkg.com/@webgpu/types/-/types-0.1.40.tgz#cf72d1df6f9f8adc5d39556041f20ff2e8a58885"
@@ -342,6 +347,13 @@ picocolors@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/picocolors/-/picocolors-1.0.0.tgz#cb5bdc74ff3f51892236eaf79d68bc44564ab81c"
   integrity sha512-1fygroTLlHu66zi26VoTDv8yRgm0Fccecssto+MhsZ0D/DGW2sm8E8AjW7NU5VVTRt5GxbeZ5qBuJr+HyLYkjQ==
+
+pixi-filters@^6.0.0:
+  version "6.0.5"
+  resolved "https://registry.yarnpkg.com/pixi-filters/-/pixi-filters-6.0.5.tgz#89d23091dc4e6341b8aa2112ebfcb5240bfb3223"
+  integrity sha512-M7F+Xu4Ysp2iy7bNZxt6U4hxO+X8c3msVKOQAq/tf3sLt99XOiY54iH2Ixj5VRIesmjdLWA5CaUQ+TUfyBVe2g==
+  dependencies:
+    "@types/gradient-parser" "^0.1.2"
 
 pixi.js@^8.0.4:
   version "8.0.5"
