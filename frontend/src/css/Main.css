@@ -588,6 +588,28 @@ button:hover i {
     align-items: center;
 }
 
+.presence.window .portrait {
+    display: flex;
+    flex-flow: column nowrap;
+    margin: 0 8px;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+}
+
+.presence.window .portrait img {
+    width: 48px;
+    height: 48px;
+}
+
+.presence.window .portrait {
+    opacity: 50%;
+}
+
+.presence.window .portrait.online {
+    opacity: 100%;
+}
+
 .settings.window .content {
     display: flex;
     flex-flow: column nowrap;

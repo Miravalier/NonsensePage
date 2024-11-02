@@ -14,6 +14,7 @@ from .lib import database
 from .lib.errors import AuthError, JsonError
 from .lib.security import check_password
 from .lib.utils import require
+from .lib.presence import connected_users
 from .models.database_models import User, Session, Connection, get_pool
 from .models.request_models import AuthRequest, GMRequest
 from .endpoints.admin import router as admin_router
@@ -147,13 +148,30 @@ async def live_connection(websocket: WebSocket):
     # Begin subscription loop
     connection = Connection(user, websocket)
     try:
+        if user.id not in connected_users:
+            connected_users[user.id] = 1
+            await get_pool("users").broadcast({
+                "type": "connect",
+                "id": user.id,
+            })
+        else:
+            connected_users[user.id] += 1
         while True:
             await handle_ws_request(connection, await websocket.receive_json())
     except starlette.websockets.WebSocketDisconnect:
         pass
     finally:
+        # Remove this connection from all pools
         for pool in connection.pools:
             pool.discard(connection)
+        # Send a presence notification
+        connected_users[user.id] -= 1
+        if connected_users[user.id] == 0:
+            del connected_users[user.id]
+            await get_pool("users").broadcast({
+                "type": "disconnect",
+                "id": user.id,
+            })
 
 
 @app.post("/api/status")

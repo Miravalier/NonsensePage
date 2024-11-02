@@ -94,6 +94,7 @@ export interface User extends Entry {
     character_id: string | null;
     languages: Language[];
     settings: any;
+    online: boolean;
 }
 
 export interface Message {

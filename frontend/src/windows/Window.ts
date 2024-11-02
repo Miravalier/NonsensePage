@@ -493,13 +493,8 @@ export class InvisibleWindow extends ContentWindow {
 
         ;
         const contextOptions = {
-            "Window": {
+            [options.title]: {
                 "Close": () => {
-                    this.close();
-                },
-                "Pop Out": () => {
-                    const windowData = btoa(JSON.stringify({ type: this.constructor.name, data: this.serialize() }));
-                    window.open(`/?window=${windowData}`).focus();
                     this.close();
                 },
             },

@@ -17,12 +17,23 @@ export async function init() {
     await Subscribe("users", update => {
         if (update.type == "create") {
             users[update.user.id] = update.user;
+            Events.dispatch("userCreate", update.user);
         }
         else if (update.type == "delete") {
             delete users[update.id];
+            Events.dispatch("userDelete", update.id);
         }
         else if (update.type == "update") {
             users[update.user.id] = update.user;
+            Events.dispatch("userUpdate", update.user);
+        }
+        else if (update.type == "connect") {
+            users[update.id].online = true;
+            Events.dispatch("userPresence", update.id, true);
+        }
+        else if (update.type == "disconnect") {
+            users[update.id].online = false;
+            Events.dispatch("userPresence", update.id, false);
         }
     });
 }

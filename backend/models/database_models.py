@@ -14,6 +14,7 @@ from ..lib.enums import (
     ScaleType
 )
 from ..lib.utils import current_timestamp
+from ..lib.presence import connected_users
 
 
 FILES_ROOT = Path("/files")
@@ -242,6 +243,11 @@ class User(Entry):
             return FILES_ROOT
         else:
             return FILES_ROOT / "users" / self.name
+
+    def model_dump(self, *args, **kwargs) -> Dict[str, Any]:
+        result = super().model_dump(*args, **kwargs)
+        result["online"] = self.id in connected_users
+        return result
 
 
 class Combatant(Entry):
