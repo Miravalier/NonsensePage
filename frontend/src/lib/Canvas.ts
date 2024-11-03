@@ -510,6 +510,19 @@ export class MapCanvas extends Canvas {
             }, 250);
         });
 
+        sprite.on("translate", async () => {
+            await ApiRequest("/map/update", {
+                id: this.id,
+                changes: {
+                    "$set": {
+                        [`tokens.${token.id}.x`]: sprite.x,
+                        [`tokens.${token.id}.y`]: sprite.y,
+                        [`tokens.${token.id}.z`]: sprite.zIndex,
+                    },
+                },
+            });
+        });
+
         const spriteState = {
             dragging: false,
             hovered: false,
@@ -572,16 +585,9 @@ export class MapCanvas extends Canvas {
                 }
                 document.removeEventListener("mousemove", onDrag);
                 if (spriteMoved) {
-                    await ApiRequest("/map/update", {
-                        id: this.id,
-                        changes: {
-                            "$set": {
-                                [`tokens.${token.id}.x`]: sprite.x,
-                                [`tokens.${token.id}.y`]: sprite.y,
-                                [`tokens.${token.id}.z`]: sprite.zIndex,
-                            },
-                        },
-                    });
+                    for (const selectedSprite of selectedSprites) {
+                        selectedSprite.emit("translate");
+                    }
                 }
                 else if (startEv.ctrlKey) {
                     // This sprite was CTRL+clicked
