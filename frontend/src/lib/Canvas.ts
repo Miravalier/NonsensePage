@@ -543,20 +543,27 @@ export class MapCanvas extends Canvas {
             ClearLabel();
         });
 
-        sprite.on("mousedown", (ev: MouseEvent) => {
+        sprite.on("mousedown", (startEv: MouseEvent) => {
             spriteState.dragging = true;
             ClearLabel();
             let spriteMoved = false;
-            const dragOffset = this.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
-            dragOffset.applySubtract(new Vector2(sprite.position.x, sprite.position.y));
+            let dragPrevious = this.ScreenToWorldCoords(new Vector2(startEv.clientX, startEv.clientY));
             sprite.zIndex = (++this.highestZIndex);
 
-            const onDrag = (ev: MouseEvent) => {
+            const selectedSprites = GetSelectedTokens();
+            if (selectedSprites.indexOf(sprite) == -1) {
+                selectedSprites.push(sprite);
+            }
+
+            const onDrag = (dragEv: MouseEvent) => {
                 spriteMoved = true;
-                const worldCoords = this.ScreenToWorldCoords(new Vector2(ev.clientX, ev.clientY));
-                worldCoords.applySubtract(dragOffset);
-                sprite.x = worldCoords.x;
-                sprite.y = worldCoords.y;
+                const dragPosition = this.ScreenToWorldCoords(new Vector2(dragEv.clientX, dragEv.clientY));
+                const dragDelta = dragPosition.subtract(dragPrevious);
+                dragPrevious = dragPosition;
+                for (const selectedSprite of selectedSprites) {
+                    selectedSprite.x += dragDelta.x;
+                    selectedSprite.y += dragDelta.y;
+                }
             }
 
             const onDragEnd = async () => {
@@ -578,13 +585,13 @@ export class MapCanvas extends Canvas {
                         },
                     });
                 }
-                else if (ev.ctrlKey) {
+                else if (startEv.ctrlKey) {
                     // This sprite was CTRL+clicked
                     if (token.character_id) {
                         await launchWindow("CharacterSheetWindow", { id: token.character_id });
                     }
                 }
-                else if (ev.shiftKey) {
+                else if (startEv.shiftKey) {
                     // This sprite was SHIFT+clicked
                     if (this.selectedTokens.has(sprite)) {
                         this.selectedTokens.delete(sprite);

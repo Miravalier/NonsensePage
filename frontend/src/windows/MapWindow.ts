@@ -75,43 +75,93 @@ export class MapWindow extends CanvasWindow {
             ev.stopPropagation();
         });
 
-        this.viewPort.addEventListener("mousedown", (ev: MouseEvent) => {
-            // If left mouse and not shift
-            if (ev.button == 0 && !ev.shiftKey) {
-                const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
-                if (!element) {
-                    ClearSelectedTokens();
+        this.viewPort.addEventListener("mousedown", (startEv: MouseEvent) => {
+            let selectArea: PIXI.Graphics = null;
+            const element = this.canvas.getElementAtScreenPos(startEv.clientX, startEv.clientY);
+            // Left-click on an element is already handed in Canvas.ts
+            if (startEv.button == 0) {
+                if (element) {
+                    return;
                 }
-            }
-            // If right mouse
-            if (ev.button == 2) {
-                const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
-                let elementDragged = false;
-
-                let previousX = ev.clientX;
-                let previousY = ev.clientY;
-
-                const onDrag = (ev: MouseEvent) => {
-                    const x = ev.clientX;
-                    const y = ev.clientY;
-                    const deltaX = x - previousX;
-                    const deltaY = y - previousY;
-                    previousX = x;
-                    previousY = y;
-                    this.translate(deltaX, deltaY);
-                    elementDragged = true;
-                }
-
-                const onDragEnd = () => {
-                    document.removeEventListener("mousemove", onDrag);
-                    if (element && !elementDragged) {
-                        element.emit("contextmenu", ev);
+                else {
+                    selectArea = new PIXI.Graphics();
+                    this.canvas.effectContainer.node.addChild(selectArea);
+                    if (!startEv.shiftKey) {
+                        ClearSelectedTokens();
                     }
                 }
-
-                document.addEventListener("mousemove", onDrag);
-                document.addEventListener("mouseup", onDragEnd, { once: true });
             }
+            let elementDragged = false;
+
+            let previousX = startEv.clientX;
+            let previousY = startEv.clientY;
+            const startPosition = this.canvas.ScreenToWorldCoords(new Vector2(startEv.clientX, startEv.clientY));
+
+            const onDrag = (dragEv: MouseEvent) => {
+                const x = dragEv.clientX;
+                const y = dragEv.clientY;
+                const deltaX = x - previousX;
+                const deltaY = y - previousY;
+                previousX = x;
+                previousY = y;
+                if (selectArea) {
+                    const rectStart = startPosition.copy();
+                    const rectSize = this.canvas.ScreenToWorldCoords(new Vector2(x, y)).subtract(startPosition);
+                    if (rectSize.x < 0) {
+                        rectStart.x += rectSize.x;
+                        rectSize.x = Math.abs(rectSize.x);
+                    }
+                    if (rectSize.y < 0) {
+                        rectStart.y += rectSize.y;
+                        rectSize.y = Math.abs(rectSize.y);
+                    }
+                    selectArea.clear();
+                    selectArea.rect(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
+                    selectArea.stroke({ width: 3 / this.scale, color: 'ffffff', alpha: 0.75 });
+                }
+                if (startEv.button == 2) {
+                    this.translate(deltaX, deltaY);
+                }
+                elementDragged = true;
+            }
+
+            const onDragEnd = (endEv: MouseEvent) => {
+                document.removeEventListener("mousemove", onDrag);
+                if (selectArea) {
+                    const rectStart = startPosition.copy();
+                    const rectSize = this.canvas.ScreenToWorldCoords(new Vector2(endEv.clientX, endEv.clientY)).subtract(startPosition);
+                    if (rectSize.x < 0) {
+                        rectStart.x += rectSize.x;
+                        rectSize.x = Math.abs(rectSize.x);
+                    }
+                    if (rectSize.y < 0) {
+                        rectStart.y += rectSize.y;
+                        rectSize.y = Math.abs(rectSize.y);
+                    }
+                    selectArea.destroy();
+                    const boundsRect = new PIXI.Rectangle(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
+                    const container = this.canvas.containerFromLayerId(this.activeLayer);
+                    for (const node of container.node.children) {
+                        if (node.label != "Sprite") {
+                            continue;
+                        }
+                        if (boundsRect.contains(node.x, node.y)) {
+                            this.canvas.selectedTokens.add(node as PIXI.Sprite);
+                            this.canvas.onSelect(node as PIXI.Sprite);
+                        }
+                    }
+                }
+                // In-place click
+                if (!elementDragged) {
+                    // Dispatch right-click on element to that element
+                    if (element && startEv.button == 2) {
+                        element.emit("contextmenu", endEv);
+                    }
+                }
+            }
+
+            document.addEventListener("mousemove", onDrag);
+            document.addEventListener("mouseup", onDragEnd, { once: true });
         });
 
         this.viewPort.addEventListener("wheel", ev => {
