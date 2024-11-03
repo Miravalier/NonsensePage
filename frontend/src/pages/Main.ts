@@ -260,22 +260,6 @@ async function Main() {
 
     ContextMenu.set(document.body, contextOptions);
 
-    const windowsContainer = document.querySelector("#windows") as HTMLDivElement;
-    windowsContainer.addEventListener("dblclick", async (ev) => {
-        if (windowsContainer != ev.target) {
-            return;
-        }
-
-        if (!users[Session.id].character_id) {
-            return;
-        }
-
-        const characterSheetWindow = new CharacterSheetWindow({
-            title: "Character Sheet",
-        });
-        await characterSheetWindow.load(users[Session.id].character_id);
-    });
-
     document.addEventListener("keydown", (ev) => {
         if (ev.key == "Escape") {
             ClearSelectedTokens();

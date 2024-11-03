@@ -556,7 +556,23 @@ export class MapCanvas extends Canvas {
             ClearLabel();
         });
 
+        sprite.on("dblclick", async () => {
+            if (token.character_id) {
+                setTimeout(async () => {
+                    await launchWindow("CharacterSheetWindow", { id: token.character_id });
+                }, 50);
+            }
+        });
+
+        let previousClickTime = 0;
         sprite.on("mousedown", (startEv: MouseEvent) => {
+            const currentTime = Date.now();
+            const timeElapsed = currentTime - previousClickTime;
+            previousClickTime = currentTime;
+            if (timeElapsed < 250) {
+                sprite.emit("dblclick", startEv);
+                return;
+            }
             spriteState.dragging = true;
             ClearLabel();
             let spriteMoved = false;
