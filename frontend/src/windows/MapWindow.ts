@@ -4,7 +4,7 @@ import { CanvasWindow, registerWindowType } from "./Window.ts";
 import { Parameter, GenerateId, LocalPersist } from "../lib/Utils.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { ApiRequest, Session } from "../lib/Requests.ts";
-import { ClearSelectedTokens, MapCanvas } from "../lib/Canvas.ts";
+import { ClearSelectedTokens, GetSelectedTokens, MapCanvas } from "../lib/Canvas.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
 import { GridFilter } from "../filters/Grid.ts";
 import { Button } from "../lib/Elements.ts";
@@ -170,11 +170,17 @@ export class MapWindow extends CanvasWindow {
             }
             const element = this.canvas.getElementAtScreenPos(ev.clientX, ev.clientY);
             if (element && (ev.ctrlKey || ev.shiftKey)) {
+                const selectedTokens = GetSelectedTokens();
+                selectedTokens.add(element as PIXI.Sprite);
                 if (ev.ctrlKey) {
-                    element.emit("scale", ev);
+                    for (const token of selectedTokens) {
+                        token.emit("scale", ev);
+                    }
                 }
                 else if (ev.shiftKey) {
-                    element.emit("rotate", ev);
+                    for (const token of selectedTokens) {
+                        token.emit("rotate", ev);
+                    }
                 }
             }
             else {

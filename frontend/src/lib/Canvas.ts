@@ -551,9 +551,7 @@ export class MapCanvas extends Canvas {
             sprite.zIndex = (++this.highestZIndex);
 
             const selectedSprites = GetSelectedTokens();
-            if (selectedSprites.indexOf(sprite) == -1) {
-                selectedSprites.push(sprite);
-            }
+            selectedSprites.add(sprite);
 
             const onDrag = (dragEv: MouseEvent) => {
                 spriteMoved = true;
@@ -739,11 +737,11 @@ export function ClearSelectedTokens() {
 }
 
 
-export function GetSelectedTokens(): PIXI.Sprite[] {
-    const tokens: PIXI.Sprite[] = [];
+export function GetSelectedTokens(): Set<PIXI.Sprite> {
+    const tokens: Set<PIXI.Sprite> = new Set();
     for (const canvas of GetMapCanvases()) {
         for (const token of canvas.selectedTokens) {
-            tokens.push(token);
+            tokens.add(token);
         }
     }
     return tokens;
