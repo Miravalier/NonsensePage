@@ -8,7 +8,7 @@ import { Layer } from "./Enums.ts";
 import { ApiRequest, Session } from "./Requests.ts";
 import { GridFilter } from "../filters/Grid.ts";
 import { launchWindow, windows } from "../windows/Window.ts";
-import { ScaleType } from "./Models.ts";
+import { Fog, ScaleType } from "./Models.ts";
 
 
 export const NO_GRID = 0
@@ -242,12 +242,14 @@ export class Canvas {
 export class MapCanvas extends Canvas {
     id: string;
     tokenNodes: { [id: string]: PIXI.Sprite };
+    fogNodes: { [id: string]: PIXI.Graphics };
     grid: PIXI.Container;
     tokenContainer: CanvasContainer;
     backgroundContainer: CanvasContainer;
     detailContainer: CanvasContainer;
     characterContainer: CanvasContainer;
     effectContainer: CanvasContainer;
+    fogContainer: CanvasContainer;
     highestZIndex: number;
     squareSize: number;
     selectedTokens: Set<PIXI.Sprite>;
@@ -256,6 +258,7 @@ export class MapCanvas extends Canvas {
         super();
         this.id = null;
         this.tokenNodes = {};
+        this.fogNodes = {};
         this.highestZIndex = 0;
         this.squareSize = 1;
         this.selectedTokens = new Set();
@@ -413,6 +416,23 @@ export class MapCanvas extends Canvas {
         setTimeout(() => {
             sprite.removeFromParent();
         }, 1000);
+    }
+
+    async AddFog(fog: Fog): Promise<PIXI.Graphics> {
+        // Create PIXI object
+        const rect = new PIXI.Graphics();
+        rect.roundRect(fog.x, fog.y, fog.width, fog.height, 8);
+        if (Session.gm) {
+            rect.fill({ color: '#000000', alpha: 0.25 });
+        }
+        else {
+            rect.fill({ color: '#000000', alpha: 1.0 });
+            rect.filters = [new GlowFilter({ color: '#000000' })];
+        }
+        // Display the object and return
+        this.fogContainer.node.addChild(rect);
+        this.fogNodes[fog.id] = rect;
+        return rect;
     }
 
     async AddToken(token): Promise<PIXI.Sprite> {
@@ -695,6 +715,11 @@ export class MapCanvas extends Canvas {
         sprite.filters = [];
     }
 
+    DeleteFog(id) {
+        this.fogNodes[id].destroy();
+        delete this.fogNodes[id];
+    }
+
     DeleteToken(id) {
         this.tokenNodes[id].destroy();
         delete this.tokenNodes[id];
@@ -704,6 +729,8 @@ export class MapCanvas extends Canvas {
         this.id = map.id;
         this.squareSize = map.squareSize;
 
+        this.tokenNodes = {};
+        this.fogNodes = {};
         if (this.tokenContainer) {
             this.tokenContainer.node.destroy();
         }
@@ -721,6 +748,8 @@ export class MapCanvas extends Canvas {
         this.characterContainer.node.eventMode = "none";
         this.effectContainer = this.tokenContainer.AddContainer();
         this.effectContainer.node.eventMode = "none";
+        this.fogContainer = this.tokenContainer.AddContainer();
+        this.fogContainer.node.eventMode = "none";
         this.grid = root.AddGrid({
             width: this.htmlContainer.offsetWidth,
             height: this.htmlContainer.offsetHeight,
@@ -729,6 +758,10 @@ export class MapCanvas extends Canvas {
             scale: scale,
             color: map.color,
         });
+
+        for (const fog of Object.values(map.fog as { [id: string]: Fog })) {
+            await this.AddFog(fog);
+        }
 
         for (const token of Object.values(map.tokens)) {
             await this.AddToken(token);

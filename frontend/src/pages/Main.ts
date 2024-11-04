@@ -15,7 +15,6 @@ import { ApiRequest, Session, Subscribe, WsConnect } from "../lib/Requests.ts";
 import { CharacterListWindow } from "../windows/CharacterList.ts";
 import { MapListWindow } from "../windows/MapList.ts";
 import { CharacterCreatorWindow } from "../windows/CharacterCreator.ts";
-import { CharacterSheetWindow } from "../windows/CharacterSheet.ts";
 import {
     launchWindow, windows, InputDialog,
     applyLayout, SerializedWindow,

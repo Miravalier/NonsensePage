@@ -24,6 +24,7 @@ export class MapWindow extends CanvasWindow {
     buttonTray: HTMLDivElement;
     activeLayer: number;
     layerButtons: { [layer: number]: HTMLButtonElement };
+    drawingFog: boolean;
     declare canvas: MapCanvas;
 
     constructor(options = undefined) {
@@ -38,6 +39,7 @@ export class MapWindow extends CanvasWindow {
         this.translation = new Vector2(0, 0);
         this.scale = 1;
         this.viewChangesMade = false;
+        this.drawingFog = false;
 
         this.buttonTray = this.container.appendChild(document.createElement("div"));
         this.buttonTray.className = "buttonTray";
@@ -69,6 +71,13 @@ export class MapWindow extends CanvasWindow {
                 this.setActiveLayer(layer);
             });
         }
+
+        const fogButton = Button("cloud");
+        this.buttonTray.appendChild(fogButton);
+        fogButton.addEventListener("click", () => {
+            fogButton.classList.toggle("active");
+            this.drawingFog = !this.drawingFog;
+        });
 
         this.viewPort.addEventListener("contextmenu", ev => {
             ev.preventDefault();
@@ -117,7 +126,12 @@ export class MapWindow extends CanvasWindow {
                     }
                     selectArea.clear();
                     selectArea.rect(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
-                    selectArea.stroke({ width: 3 / this.scale, color: 'ffffff', alpha: 0.75 });
+                    if (this.drawingFog) {
+                        selectArea.fill({ color: '000000', alpha: 0.3 });
+                    }
+                    else {
+                        selectArea.stroke({ width: 3 / this.scale, color: 'ffffff', alpha: 0.75 });
+                    }
                 }
                 if (startEv.button == 2) {
                     this.translate(deltaX, deltaY);
@@ -125,7 +139,7 @@ export class MapWindow extends CanvasWindow {
                 elementDragged = true;
             }
 
-            const onDragEnd = (endEv: MouseEvent) => {
+            const onDragEnd = async (endEv: MouseEvent) => {
                 document.removeEventListener("mousemove", onDrag);
                 if (selectArea) {
                     const rectStart = startPosition.copy();
@@ -139,23 +153,61 @@ export class MapWindow extends CanvasWindow {
                         rectSize.y = Math.abs(rectSize.y);
                     }
                     selectArea.destroy();
-                    const boundsRect = new PIXI.Rectangle(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
-                    const container = this.canvas.containerFromLayerId(this.activeLayer);
-                    for (const node of container.node.children) {
-                        if (node.label != "Sprite") {
-                            continue;
-                        }
-                        if (boundsRect.contains(node.x, node.y)) {
-                            this.canvas.selectedTokens.add(node as PIXI.Sprite);
-                            this.canvas.onSelect(node as PIXI.Sprite);
+                    if (this.drawingFog) {
+                        const newId = GenerateId();
+                        await ApiRequest("/map/update", {
+                            id: this.mapId,
+                            changes: {
+                                "$set": {
+                                    [`fog.${newId}`]: {
+                                        id: newId,
+                                        x: rectStart.x,
+                                        y: rectStart.y,
+                                        width: rectSize.x,
+                                        height: rectSize.y,
+                                    },
+                                }
+                            }
+                        })
+                    }
+                    else {
+                        const boundsRect = new PIXI.Rectangle(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
+                        const container = this.canvas.containerFromLayerId(this.activeLayer);
+                        for (const node of container.node.children) {
+                            if (node.label != "Sprite") {
+                                continue;
+                            }
+                            if (boundsRect.contains(node.x, node.y)) {
+                                this.canvas.selectedTokens.add(node as PIXI.Sprite);
+                                this.canvas.onSelect(node as PIXI.Sprite);
+                            }
                         }
                     }
                 }
                 // In-place click
                 if (!elementDragged) {
-                    // Dispatch right-click on element to that element
-                    if (element && startEv.button == 2) {
-                        element.emit("contextmenu", endEv);
+                    if (startEv.button == 2) {
+                        // In fog mode, delete fog on right-click
+                        if (this.drawingFog) {
+                            const unsets: { [path: string]: null } = {};
+                            for (const [fogId, fog] of Object.entries(this.canvas.fogNodes)) {
+                                if (fog.containsPoint({ x: startPosition.x, y: startPosition.y })) {
+                                    unsets[`fog.${fogId}`] = null;
+                                }
+                            }
+                            if (Object.keys(unsets).length > 0) {
+                                await ApiRequest("/map/update", {
+                                    id: this.mapId,
+                                    changes: {
+                                        "$unset": unsets,
+                                    },
+                                });
+                            }
+                        }
+                        // Dispatch right-click on element to that element
+                        else if (element) {
+                            element.emit("contextmenu", endEv);
+                        }
                     }
                 }
             }

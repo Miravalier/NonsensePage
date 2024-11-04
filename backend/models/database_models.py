@@ -277,9 +277,18 @@ class Token(Entry):
     character_id: str = None
 
 
+class Fog(BaseModel):
+    id: str = None
+    x: float = 0
+    y: float = 0
+    width: float = 0
+    height: float = 0
+
+
 class Map(Entry):
     entry_type: str = "map"
     tokens: Dict[str, Token] = Field(default_factory=dict)
+    fog: Dict[str, Fog] = Field(default_factory=dict)
     squareSize: int = 150
     color: GridColor = GridColor.WHITE
 
