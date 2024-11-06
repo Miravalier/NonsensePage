@@ -72,4 +72,13 @@ export class Vector2 {
     distance(vector: Vector2) {
         return Math.sqrt(Math.pow(vector.x - this.x, 2) + Math.pow(vector.y - this.y, 2));
     }
+
+    round(value: number = 1) {
+        return new Vector2(Math.round(this.x / value) * value, Math.round(this.y / value) * value);
+    }
+
+    applyRound(value: number = 1) {
+        this.x = Math.round(this.x / value) * value;
+        this.y = Math.round(this.y / value) * value;
+    }
 }

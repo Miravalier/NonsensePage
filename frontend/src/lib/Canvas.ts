@@ -203,7 +203,6 @@ export class Canvas {
     stage: PIXI.Container;
     renderer: PIXI.Renderer;
     view: HTMLCanvasElement;
-    snapping: boolean;
 
     constructor() {
         this.app = new PIXI.Application();
@@ -255,6 +254,8 @@ export class MapCanvas extends Canvas {
     highestZIndex: number;
     squareSize: number;
     selectedTokens: Set<PIXI.Sprite>;
+    snapping: boolean;
+    tool: string | null;
 
     constructor() {
         super();
@@ -264,6 +265,7 @@ export class MapCanvas extends Canvas {
         this.highestZIndex = 0;
         this.squareSize = 1;
         this.selectedTokens = new Set();
+        this.tool = null;
     }
 
     getElementAtScreenPos(x: number, y: number): PIXI.Container {

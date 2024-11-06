@@ -24,9 +24,8 @@ export class MapWindow extends CanvasWindow {
     buttonTray: HTMLDivElement;
     activeLayer: number;
     layerButtons: { [layer: number]: HTMLButtonElement };
-    fogButton: HTMLButtonElement;
+    toolButtons: { [tool: string]: HTMLButtonElement };
     snapButton: HTMLButtonElement;
-    drawingFog: boolean;
     declare canvas: MapCanvas;
 
     constructor(options = undefined) {
@@ -41,8 +40,8 @@ export class MapWindow extends CanvasWindow {
         this.translation = new Vector2(0, 0);
         this.scale = 1;
         this.viewChangesMade = false;
-        this.drawingFog = false;
         this.layerButtons = {};
+        this.toolButtons = {};
 
         this.buttonTray = this.container.appendChild(document.createElement("div"));
         this.buttonTray.className = "buttonTray";
@@ -72,19 +71,12 @@ export class MapWindow extends CanvasWindow {
                 });
             }
 
-            const fogButton = Button("cloud");
-            this.fogButton = fogButton;
-            this.buttonTray.appendChild(fogButton);
-            if (this.drawingFog) {
-                fogButton.classList.add("active");
-            }
-            fogButton.addEventListener("click", () => {
-                fogButton.classList.toggle("active");
-                this.drawingFog = !this.drawingFog;
-            });
+            this.addToolButton("fog", "cloud");
         }
 
-        const snapButton = Button("game-board");
+        this.addToolButton("ruler", "ruler");
+
+        const snapButton = Button("frame");
         this.snapButton = snapButton;
         this.buttonTray.appendChild(snapButton);
         if (this.canvas.snapping) {
@@ -102,6 +94,7 @@ export class MapWindow extends CanvasWindow {
 
         this.viewPort.addEventListener("mousedown", (startEv: MouseEvent) => {
             let selectArea: PIXI.Graphics = null;
+            let label: PIXI.Text = null;
             const element = this.canvas.getElementAtScreenPos(startEv.clientX, startEv.clientY);
             // Left-click on an element is already handed in Canvas.ts
             if (startEv.button == 0) {
@@ -110,8 +103,16 @@ export class MapWindow extends CanvasWindow {
                 }
                 else {
                     selectArea = new PIXI.Graphics();
+                    label = new PIXI.Text();
+                    label.style.align = "center";
+                    label.anchor.set(0.5, 0.5);
+                    label.style.fill = '#ffffff';
+                    label.style.stroke = '#000000';
+                    label.style.dropShadow = true;
+                    label.style.fontSize = Math.max(18, 18 / this.scale);
                     this.canvas.uiContainer.node.addChild(selectArea);
-                    if (!startEv.shiftKey) {
+                    this.canvas.uiContainer.node.addChild(label);
+                    if (this.canvas.tool == null && !startEv.shiftKey) {
                         ClearSelectedTokens();
                     }
                 }
@@ -121,6 +122,9 @@ export class MapWindow extends CanvasWindow {
             let previousX = startEv.clientX;
             let previousY = startEv.clientY;
             const startPosition = this.canvas.ScreenToWorldCoords(new Vector2(startEv.clientX, startEv.clientY));
+            if (this.canvas.snapping) {
+                startPosition.applyRound(this.canvas.squareSize / 2);
+            }
 
             const onDrag = (dragEv: MouseEvent) => {
                 const x = dragEv.clientX;
@@ -131,7 +135,11 @@ export class MapWindow extends CanvasWindow {
                 previousY = y;
                 if (selectArea) {
                     const rectStart = startPosition.copy();
-                    const rectSize = this.canvas.ScreenToWorldCoords(new Vector2(x, y)).subtract(startPosition);
+                    const currentPosition = this.canvas.ScreenToWorldCoords(new Vector2(x, y));
+                    if (this.canvas.snapping) {
+                        currentPosition.applyRound(this.canvas.squareSize / 2);
+                    }
+                    const rectSize = currentPosition.subtract(startPosition);
                     if (rectSize.x < 0) {
                         rectStart.x += rectSize.x;
                         rectSize.x = Math.abs(rectSize.x);
@@ -141,11 +149,22 @@ export class MapWindow extends CanvasWindow {
                         rectSize.y = Math.abs(rectSize.y);
                     }
                     selectArea.clear();
-                    selectArea.rect(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
-                    if (this.drawingFog) {
+                    if (this.canvas.tool == "fog") {
+                        selectArea.rect(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
                         selectArea.fill({ color: '000000', alpha: 0.3 });
                     }
+                    else if (this.canvas.tool == "ruler") {
+                        const distance = currentPosition.distance(startPosition) / this.canvas.squareSize;
+                        const labelPosition = startPosition.add(currentPosition).divide(2);
+                        label.x = labelPosition.x;
+                        label.y = labelPosition.y + 50;
+                        label.text = `${(Math.round(distance * 10) / 10).toFixed(1)} sq.`;
+                        selectArea.moveTo(startPosition.x, startPosition.y);
+                        selectArea.lineTo(currentPosition.x, currentPosition.y);
+                        selectArea.stroke({ width: 3 / this.scale, color: 'ffffff', alpha: 0.75 });
+                    }
                     else {
+                        selectArea.rect(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
                         selectArea.stroke({ width: 3 / this.scale, color: 'ffffff', alpha: 0.75 });
                     }
                 }
@@ -159,7 +178,11 @@ export class MapWindow extends CanvasWindow {
                 document.removeEventListener("mousemove", onDrag);
                 if (selectArea) {
                     const rectStart = startPosition.copy();
-                    const rectSize = this.canvas.ScreenToWorldCoords(new Vector2(endEv.clientX, endEv.clientY)).subtract(startPosition);
+                    const currentPosition = this.canvas.ScreenToWorldCoords(new Vector2(endEv.clientX, endEv.clientY));
+                    if (this.canvas.snapping) {
+                        currentPosition.applyRound(this.canvas.squareSize / 2);
+                    }
+                    const rectSize = currentPosition.subtract(startPosition);
                     if (rectSize.x < 0) {
                         rectStart.x += rectSize.x;
                         rectSize.x = Math.abs(rectSize.x);
@@ -169,24 +192,27 @@ export class MapWindow extends CanvasWindow {
                         rectSize.y = Math.abs(rectSize.y);
                     }
                     selectArea.destroy();
-                    if (this.drawingFog) {
-                        const newId = GenerateId();
-                        await ApiRequest("/map/update", {
-                            id: this.mapId,
-                            changes: {
-                                "$set": {
-                                    [`fog.${newId}`]: {
-                                        id: newId,
-                                        x: rectStart.x,
-                                        y: rectStart.y,
-                                        width: rectSize.x,
-                                        height: rectSize.y,
-                                    },
+                    label.destroy();
+                    if (this.canvas.tool == "fog") {
+                        if (rectSize.x > 5 && rectSize.y > 5) {
+                            const newId = GenerateId();
+                            await ApiRequest("/map/update", {
+                                id: this.mapId,
+                                changes: {
+                                    "$set": {
+                                        [`fog.${newId}`]: {
+                                            id: newId,
+                                            x: rectStart.x,
+                                            y: rectStart.y,
+                                            width: rectSize.x,
+                                            height: rectSize.y,
+                                        },
+                                    }
                                 }
-                            }
-                        })
+                            });
+                        }
                     }
-                    else {
+                    else if (this.canvas.tool === null) {
                         const boundsRect = new PIXI.Rectangle(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
                         const container = this.canvas.containerFromLayerId(this.activeLayer);
                         for (const node of container.node.children) {
@@ -203,11 +229,12 @@ export class MapWindow extends CanvasWindow {
                 // In-place click
                 if (!elementDragged) {
                     if (startEv.button == 2) {
+                        const endPosition = this.canvas.ScreenToWorldCoords(new Vector2(endEv.clientX, endEv.clientY));
                         // In fog mode, delete fog on right-click
-                        if (this.drawingFog) {
+                        if (this.canvas.tool == "fog") {
                             const unsets: { [path: string]: null } = {};
                             for (const [fogId, fog] of Object.entries(this.canvas.fogNodes)) {
-                                if (fog.containsPoint({ x: startPosition.x, y: startPosition.y })) {
+                                if (fog.containsPoint({ x: endPosition.x, y: endPosition.y })) {
                                     unsets[`fog.${fogId}`] = null;
                                 }
                             }
@@ -329,6 +356,46 @@ export class MapWindow extends CanvasWindow {
         });
     }
 
+    addToolButton(tool: string, icon: string): HTMLButtonElement {
+        const toolButton = Button(icon);
+        this.toolButtons[tool] = toolButton;
+        this.buttonTray.appendChild(toolButton);
+        if (this.canvas.tool == tool) {
+            toolButton.classList.add("active");
+        }
+        toolButton.addEventListener("click", () => {
+            this.setTool(tool);
+        });
+        return toolButton;
+    }
+
+    setTool(tool: string) {
+        // Set tool and move active class as necessary
+        const toolButton = this.toolButtons[tool];
+        if (this.canvas.tool == tool) {
+            toolButton.classList.remove("active");
+            this.canvas.tool = null;
+        }
+        else if (this.canvas.tool !== null) {
+            const oldButton = this.toolButtons[this.canvas.tool];
+            oldButton.classList.remove("active");
+            toolButton.classList.add("active");
+            this.canvas.tool = tool;
+        }
+        else {
+            toolButton.classList.add("active");
+            this.canvas.tool = tool;
+        }
+        // While a tool is active, disable the active token container
+        const container = this.canvas.containerFromLayerId(this.activeLayer);
+        if (this.canvas.tool !== null) {
+            container.node.eventMode = "none";
+        }
+        else {
+            container.node.eventMode = "static";
+        }
+    }
+
     setActiveLayer(layer: number) {
         if (this.activeLayer !== null) {
             const oldContainer = this.canvas.containerFromLayerId(this.activeLayer);
@@ -339,24 +406,14 @@ export class MapWindow extends CanvasWindow {
             }
         }
         const newContainer = this.canvas.containerFromLayerId(layer);
-        newContainer.node.eventMode = "static";
+        if (this.canvas.tool === null) {
+            newContainer.node.eventMode = "static";
+        }
         if (Session.gm) {
             const newActiveButton = this.layerButtons[layer];
             newActiveButton.classList.add("active");
         }
         this.activeLayer = layer;
-    }
-
-    setDrawingFog(value: boolean) {
-        this.drawingFog = value;
-        if (Session.gm) {
-            if (value) {
-                this.fogButton.classList.add("active");
-            }
-            else {
-                this.fogButton.classList.remove("active");
-            }
-        }
     }
 
     setSnap(value: boolean) {
@@ -402,24 +459,24 @@ export class MapWindow extends CanvasWindow {
     }
 
     serialize() {
-        return { mapId: this.mapId, activeLayer: this.activeLayer, drawingFog: this.drawingFog, snapping: this.canvas.snapping };
+        return { mapId: this.mapId, activeLayer: this.activeLayer, tool: this.canvas.tool, snapping: this.canvas.snapping };
     }
 
     async deserialize(data) {
-        await this.load(data.mapId, data.activeLayer, data.drawingFog, data.snapping);
+        await this.load(data.mapId, data.activeLayer, data.tool, data.snapping);
     }
 
-    async load(id: string = null, activeLayer: number = null, drawingFog: boolean = null, snapping: boolean = null) {
+    async load(id: string = null, activeLayer: number = null, tool: string = null, snapping: boolean = null) {
         await super.load();
 
         if (id !== null) {
             this.mapId = id;
         }
-        if (drawingFog !== null) {
-            this.setDrawingFog(drawingFog);
-        }
         if (snapping !== null) {
             this.setSnap(snapping);
+        }
+        if (tool !== null) {
+            this.setTool(tool);
         }
 
         const response = await ApiRequest("/map/get", { id: this.mapId });
