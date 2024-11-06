@@ -24,6 +24,8 @@ export class MapWindow extends CanvasWindow {
     buttonTray: HTMLDivElement;
     activeLayer: number;
     layerButtons: { [layer: number]: HTMLButtonElement };
+    fogButton: HTMLButtonElement;
+    snapButton: HTMLButtonElement;
     drawingFog: boolean;
     declare canvas: MapCanvas;
 
@@ -40,43 +42,57 @@ export class MapWindow extends CanvasWindow {
         this.scale = 1;
         this.viewChangesMade = false;
         this.drawingFog = false;
+        this.layerButtons = {};
 
         this.buttonTray = this.container.appendChild(document.createElement("div"));
         this.buttonTray.className = "buttonTray";
-        if (!Session.gm) {
-            this.buttonTray.style.display = "none";
-        }
 
-        const backgroundLayerButton = Button("map");
-        backgroundLayerButton.dataset.id = Layer.BACKGROUND.toString();
-        this.buttonTray.appendChild(backgroundLayerButton);
+        if (Session.gm) {
+            const backgroundLayerButton = Button("map");
+            backgroundLayerButton.dataset.id = Layer.BACKGROUND.toString();
+            this.buttonTray.appendChild(backgroundLayerButton);
 
-        const detailLayerButton = Button("flag");
-        detailLayerButton.dataset.id = Layer.DETAILS.toString();
-        this.buttonTray.appendChild(detailLayerButton);
+            const detailLayerButton = Button("flag");
+            detailLayerButton.dataset.id = Layer.DETAILS.toString();
+            this.buttonTray.appendChild(detailLayerButton);
 
-        const characterLayerButton = Button("person");
-        characterLayerButton.dataset.id = Layer.CHARACTERS.toString();
-        this.buttonTray.appendChild(characterLayerButton);
+            const characterLayerButton = Button("person");
+            characterLayerButton.dataset.id = Layer.CHARACTERS.toString();
+            this.buttonTray.appendChild(characterLayerButton);
 
-        const effectsLayerButton = Button("sparkles");
-        effectsLayerButton.dataset.id = Layer.EFFECTS.toString();
-        this.buttonTray.appendChild(effectsLayerButton);
+            const effectsLayerButton = Button("sparkles");
+            effectsLayerButton.dataset.id = Layer.EFFECTS.toString();
+            this.buttonTray.appendChild(effectsLayerButton);
 
-        this.layerButtons = {};
-        for (const button of this.buttonTray.children as HTMLCollectionOf<HTMLButtonElement>) {
-            const layer = parseInt(button.dataset.id);
-            this.layerButtons[layer] = button;
-            button.addEventListener("click", () => {
-                this.setActiveLayer(layer);
+            for (const button of this.buttonTray.children as HTMLCollectionOf<HTMLButtonElement>) {
+                const layer = parseInt(button.dataset.id);
+                this.layerButtons[layer] = button;
+                button.addEventListener("click", () => {
+                    this.setActiveLayer(layer);
+                });
+            }
+
+            const fogButton = Button("cloud");
+            this.fogButton = fogButton;
+            this.buttonTray.appendChild(fogButton);
+            if (this.drawingFog) {
+                fogButton.classList.add("active");
+            }
+            fogButton.addEventListener("click", () => {
+                fogButton.classList.toggle("active");
+                this.drawingFog = !this.drawingFog;
             });
         }
 
-        const fogButton = Button("cloud");
-        this.buttonTray.appendChild(fogButton);
-        fogButton.addEventListener("click", () => {
-            fogButton.classList.toggle("active");
-            this.drawingFog = !this.drawingFog;
+        const snapButton = Button("game-board");
+        this.snapButton = snapButton;
+        this.buttonTray.appendChild(snapButton);
+        if (this.canvas.snapping) {
+            snapButton.classList.add("active");
+        }
+        snapButton.addEventListener("click", () => {
+            snapButton.classList.toggle("active");
+            this.canvas.snapping = !this.canvas.snapping;
         });
 
         this.viewPort.addEventListener("contextmenu", ev => {
@@ -94,7 +110,7 @@ export class MapWindow extends CanvasWindow {
                 }
                 else {
                     selectArea = new PIXI.Graphics();
-                    this.canvas.effectContainer.node.addChild(selectArea);
+                    this.canvas.uiContainer.node.addChild(selectArea);
                     if (!startEv.shiftKey) {
                         ClearSelectedTokens();
                     }
@@ -317,14 +333,40 @@ export class MapWindow extends CanvasWindow {
         if (this.activeLayer !== null) {
             const oldContainer = this.canvas.containerFromLayerId(this.activeLayer);
             oldContainer.node.eventMode = "none";
-            const oldActiveButton = this.layerButtons[this.activeLayer];
-            oldActiveButton.classList.remove("active");
+            if (Session.gm) {
+                const oldActiveButton = this.layerButtons[this.activeLayer];
+                oldActiveButton.classList.remove("active");
+            }
         }
         const newContainer = this.canvas.containerFromLayerId(layer);
         newContainer.node.eventMode = "static";
-        const newActiveButton = this.layerButtons[layer];
-        newActiveButton.classList.add("active");
+        if (Session.gm) {
+            const newActiveButton = this.layerButtons[layer];
+            newActiveButton.classList.add("active");
+        }
         this.activeLayer = layer;
+    }
+
+    setDrawingFog(value: boolean) {
+        this.drawingFog = value;
+        if (Session.gm) {
+            if (value) {
+                this.fogButton.classList.add("active");
+            }
+            else {
+                this.fogButton.classList.remove("active");
+            }
+        }
+    }
+
+    setSnap(value: boolean) {
+        this.canvas.snapping = value;
+        if (value) {
+            this.snapButton.classList.add("active");
+        }
+        else {
+            this.snapButton.classList.remove("active");
+        }
     }
 
     toggleMinimize(): void {
@@ -360,18 +402,24 @@ export class MapWindow extends CanvasWindow {
     }
 
     serialize() {
-        return { mapId: this.mapId, activeLayer: this.activeLayer };
+        return { mapId: this.mapId, activeLayer: this.activeLayer, drawingFog: this.drawingFog, snapping: this.canvas.snapping };
     }
 
     async deserialize(data) {
-        await this.load(data.mapId, data.activeLayer);
+        await this.load(data.mapId, data.activeLayer, data.drawingFog, data.snapping);
     }
 
-    async load(id: string = null, activeLayer: number = null) {
+    async load(id: string = null, activeLayer: number = null, drawingFog: boolean = null, snapping: boolean = null) {
         await super.load();
 
         if (id !== null) {
             this.mapId = id;
+        }
+        if (drawingFog !== null) {
+            this.setDrawingFog(drawingFog);
+        }
+        if (snapping !== null) {
+            this.setSnap(snapping);
         }
 
         const response = await ApiRequest("/map/get", { id: this.mapId });

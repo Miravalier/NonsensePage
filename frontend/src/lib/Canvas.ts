@@ -203,6 +203,7 @@ export class Canvas {
     stage: PIXI.Container;
     renderer: PIXI.Renderer;
     view: HTMLCanvasElement;
+    snapping: boolean;
 
     constructor() {
         this.app = new PIXI.Application();
@@ -249,6 +250,7 @@ export class MapCanvas extends Canvas {
     detailContainer: CanvasContainer;
     characterContainer: CanvasContainer;
     effectContainer: CanvasContainer;
+    uiContainer: CanvasContainer;
     fogContainer: CanvasContainer;
     highestZIndex: number;
     squareSize: number;
@@ -556,7 +558,7 @@ export class MapCanvas extends Canvas {
             }
         }
         const DisplayLabel = () => {
-            label = this.tokenContainer.AddText({
+            label = this.uiContainer.AddText({
                 position: new Vector2(sprite.x, sprite.y).add(new Vector2(0, token.hitbox_height / 2)),
                 content: token.name,
                 center: true,
@@ -622,6 +624,11 @@ export class MapCanvas extends Canvas {
                 document.removeEventListener("mousemove", onDrag);
                 if (spriteMoved) {
                     for (const selectedSprite of selectedSprites) {
+                        if (this.snapping) {
+                            const snapSize = this.squareSize / 2;
+                            selectedSprite.x = Math.round(selectedSprite.x / snapSize) * snapSize;
+                            selectedSprite.y = Math.round(selectedSprite.y / snapSize) * snapSize;
+                        }
                         selectedSprite.emit("translate");
                     }
                 }
@@ -748,6 +755,8 @@ export class MapCanvas extends Canvas {
         this.characterContainer.node.eventMode = "none";
         this.effectContainer = this.tokenContainer.AddContainer();
         this.effectContainer.node.eventMode = "none";
+        this.uiContainer = this.tokenContainer.AddContainer();
+        this.uiContainer.node.eventMode = "none";
         this.fogContainer = this.tokenContainer.AddContainer();
         this.fogContainer.node.eventMode = "none";
         this.grid = root.AddGrid({
