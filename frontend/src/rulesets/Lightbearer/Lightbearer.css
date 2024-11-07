@@ -77,6 +77,31 @@
     border: solid 1px #5b6e7978;
 }
 
+.Lightbearer.sheet .inventory {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.Lightbearer.sheet .inventory .item {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    align-items: flex-end;
+    width: 100%;
+    border-bottom: 1px solid #ffffff60;
+    height: 26px;
+}
+
+.Lightbearer.sheet .inventory .item i {
+    margin: 2px;
+}
+
+.Lightbearer.sheet .inventory .item .name {
+    flex: 1;
+}
+
 .Lightbearer .ability .bar {
     display: flex;
     margin: 4px;

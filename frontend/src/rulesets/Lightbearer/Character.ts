@@ -15,6 +15,38 @@ import { UseAbility } from "./Ability.ts";
 export class LightbearerCharacterSheet extends TabbedSheet {
     declare data: Character;
 
+    addItemTriggers(itemElement: HTMLDivElement, _permission: Permission) {
+        const itemId = itemElement.dataset.id;
+        const itemName = itemElement.querySelector<HTMLDivElement>(".name");
+        const item = this.data.item_map[itemId];
+
+        this.addTrigger("unset", `item_map.${itemId}`, () => {
+            itemElement.remove();
+        });
+
+        itemElement.querySelector(".delete.button").addEventListener("click", () => {
+            this.update({
+                "$unset": { [`item_map.${itemId}`]: 1 },
+                "$pull": { "item_order": itemId },
+            });
+        });
+
+        this.addTrigger("set", `item_map.${itemId}`, (value) => {
+            for (const [key, subvalue] of Object.entries(value)) {
+                this.onTrigger("set", `item_map.${itemId}.${key}`, subvalue);
+            }
+        });
+
+        this.addTrigger("set", `item_map.${itemId}.name`, (value) => {
+            item.name = value;
+            itemName.textContent = value;
+        });
+
+        itemName.addEventListener("blur", async () => {
+            await this.set(`item_map.${itemId}.name`, itemName.textContent);
+        });
+    }
+
     addAbilityTriggers(abilityElement: HTMLDivElement, permission: Permission) {
         const abilityBar = abilityElement.querySelector(".bar");
         const abilityName = abilityBar.querySelector(".name");
@@ -177,8 +209,17 @@ export class LightbearerCharacterSheet extends TabbedSheet {
         this.container.classList.add("Lightbearer");
         const permission = GetPermissions(this.data);
         const abilityContainer = this.container.querySelector<HTMLDivElement>(".abilities");
+        const itemContainer = this.container.querySelector<HTMLDivElement>(".inventory");
+        const addItemButton = itemContainer.querySelector<HTMLButtonElement>("button.add-item");
 
         if (permission >= Permissions.WRITE) {
+            addItemButton.addEventListener("click", () => {
+                const itemId = GenerateId();
+                this.update({
+                    "$set": { [`item_map.${itemId}`]: { id: itemId, name: "" } },
+                    "$push": { "item_order": itemId },
+                });
+            });
             ContextMenu.set(abilityContainer, {
                 "Create": {
                     "New Ability": () => {
@@ -186,6 +227,17 @@ export class LightbearerCharacterSheet extends TabbedSheet {
                         this.update({
                             "$set": { [`ability_map.${abilityId}`]: { id: abilityId, name: "New Ability" } },
                             "$push": { "ability_order": abilityId },
+                        });
+                    },
+                },
+            });
+            ContextMenu.set(itemContainer, {
+                "Create": {
+                    "New Item": () => {
+                        const itemId = GenerateId();
+                        this.update({
+                            "$set": { [`item_map.${itemId}`]: { id: itemId, name: "" } },
+                            "$push": { "item_order": itemId },
                         });
                     },
                 },
@@ -209,6 +261,18 @@ export class LightbearerCharacterSheet extends TabbedSheet {
                     "$push": { "ability_order": droppedAbility.id },
                 });
             });
+        }
+        else {
+            addItemButton.style.display = "none";
+        }
+
+        this.addTrigger("push", "item_order", (itemId) => {
+            const itemElement = AppendFragment(itemContainer, "item", this.data.item_map[itemId]) as HTMLDivElement;
+            this.addItemTriggers(itemElement, permission);
+        });
+
+        for (const itemElement of this.container.querySelectorAll<HTMLDivElement>(".inventory .item")) {
+            this.addItemTriggers(itemElement, permission);
         }
 
         this.addTrigger("push", "ability_order", (abilityId) => {

@@ -13,6 +13,7 @@ import LightbearerCss from "./Lightbearer.css?raw";
 import CharacterHtml from "./Character.html?raw";
 import CreatorHtml from "./Creator.html?raw";
 import AbilityHtml from "./Ability.html?raw";
+import ItemFragmentHtml from "./ItemFragment.html?raw";
 import RollsFragment from "./Rolls.html?raw";
 
 
@@ -22,6 +23,7 @@ export async function init() {
     RegisterSheet("ability.default", LightbearerAbilitySheet, AbilityHtml);
     RegisterIntro(LightbearerCreatorRender, CreatorHtml);
     RegisterFragment("ability", AbilityHtml);
+    RegisterFragment("item", ItemFragmentHtml);
     RegisterFragment("rolls", RollsFragment, RollsFragmentRender);
     Events.register("renderMessage", onRenderMessage);
     Events.register("renderAbilityEntry", onRenderAbilityEntry);

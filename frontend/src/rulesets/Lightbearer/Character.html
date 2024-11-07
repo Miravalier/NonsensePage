@@ -73,3 +73,12 @@
         {{ /if }}
     </div>
 </div>
+
+<div class="tab" data-tab="inventory" data-id="A">
+    <div class="inventory">
+        <button class="add-item">Add Item</button>
+        {{ @each(data.item_order) => itemId, index }}
+        {{ @fragment("item", data.item_map[itemId]) /}}
+        {{ /each }}
+    </div>
+</div>
