@@ -15,7 +15,7 @@ import { UseAbility } from "./Ability.ts";
 export class LightbearerCharacterSheet extends TabbedSheet {
     declare data: Character;
 
-    addItemTriggers(itemElement: HTMLDivElement, _permission: Permission) {
+    addItemTriggers(itemElement: HTMLDivElement, permission: Permission) {
         const itemId = itemElement.dataset.id;
         const itemName = itemElement.querySelector<HTMLDivElement>(".name");
         const item = this.data.item_map[itemId];
@@ -41,6 +41,13 @@ export class LightbearerCharacterSheet extends TabbedSheet {
             item.name = value;
             itemName.textContent = value;
         });
+
+        if (permission >= Permission.Write) {
+            itemName.contentEditable = "true";
+        }
+        else {
+            itemName.contentEditable = "false";
+        }
 
         itemName.addEventListener("blur", async () => {
             await this.set(`item_map.${itemId}.name`, itemName.textContent);
