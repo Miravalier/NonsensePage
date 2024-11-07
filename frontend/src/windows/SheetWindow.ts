@@ -78,14 +78,17 @@ export class SheetWindow extends ContentWindow {
                 this.close();
             }
         });
+
+        this.sheet = sheet;
     }
 
     serialize() {
-        return { id: this.id };
+        return { id: this.id, sheetData: this.sheet.serialize() };
     }
 
     async deserialize(data) {
         await this.load(data.id);
+        await this.sheet.deserialize(data.sheetData);
     }
 }
 registerWindowType(SheetWindow);

@@ -3,7 +3,7 @@ import * as Dice from "../../lib/Dice.ts";
 import { AddDragListener } from "../../lib/Drag.ts";
 import { InputDialog } from "../../windows/Window.ts";
 import { CharacterAbility, AbilityType, Character, Ability, Permission } from "../../lib/Models.ts";
-import { Sheet } from "../../lib/Sheet.ts";
+import { TabbedSheet } from "../../lib/Sheet.ts";
 import { GenerateId, GetPermissions, ResolvePath } from "../../lib/Utils.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { Permissions } from "../../lib/Enums.ts";
@@ -12,7 +12,7 @@ import { AppendFragment } from "../../lib/Templates.ts";
 import { UseAbility } from "./Ability.ts";
 
 
-export class LightbearerCharacterSheet extends Sheet {
+export class LightbearerCharacterSheet extends TabbedSheet {
     declare data: Character;
 
     addAbilityTriggers(abilityElement: HTMLDivElement, permission: Permission) {

@@ -275,6 +275,44 @@
     background-color: #ffffff4f;
 }
 
+.content.sheet .tab-selector {
+    display: flex;
+    flex-flow: row nowrap;
+}
+
+.content.sheet .tab-selector .tab-button {
+    opacity: 75%;
+    cursor: pointer;
+    padding: 4px;
+    background-color: #55585e47;
+    border-radius: 4px;
+}
+
+.content.sheet .tab-selector .tab-button:hover {
+    opacity: 87%;
+    text-decoration: underline;
+}
+
+.content.sheet .tab-selector .tab-button.active {
+    opacity: 100%;
+    font-weight: bold;
+    text-decoration: underline;
+    background-color: #55585ec7;
+    box-shadow: inset 2px 2px 2px #00000063;
+}
+
+.content.sheet .tab {
+    display: none;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    padding: 4px;
+    box-shadow: inset 0px 0px 2px #00000063;
+}
+
+.content.sheet .tab.active {
+    display: flex;
+}
+
 .character.window .character.sheet {
     display: flex;
     flex-flow: column nowrap;

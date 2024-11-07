@@ -1,9 +1,10 @@
 import * as Templates from "./Templates.ts";
 import { Permission } from "./Models.ts";
-import { GetPermissions, ApplyChanges, ResolvePath } from './Utils.ts';
+import { GetPermissions, ApplyChanges, ResolvePath, IdentifierToLabel } from './Utils.ts';
 import { ApiRequest } from "./Requests.ts";
 import { AddDropListener } from "./Drag.ts";
 import { SheetWindow } from "../windows/SheetWindow.ts";
+import { Html } from "./Elements.ts";
 
 
 /**
@@ -56,6 +57,12 @@ export class Sheet {
             this.onTrigger(event, key, value);
         });
     }
+
+    serialize(): any {
+        return null;
+    }
+
+    async deserialize(_data: any) { }
 
     /**
      * Dispatches all callbacks registered with a particular event and key
@@ -161,6 +168,85 @@ export class Sheet {
         const { html } = SheetRegistry[this.constructor.name];
         this.template = Templates.LoadTemplate(this.constructor.name, html);
         await this.render();
+    }
+}
+
+
+export class TabbedSheet extends Sheet {
+    tabSelectors: { [selector: string]: HTMLDivElement };
+    tabButtons: { [selector: string]: { [tab: string]: HTMLDivElement } };
+    tabs: { [selector: string]: { [tab: string]: HTMLDivElement } };
+    selectedTabs: { [selector: string]: string };
+
+    constructor(entryType: string, id: string, parent: SheetWindow) {
+        super(entryType, id, parent);
+        this.selectedTabs = {};
+        this.tabSelectors = {};
+        this.tabButtons = {};
+        this.tabs = {};
+    }
+
+    setTab(selectorId: string, tabId: string) {
+        if (this.selectedTabs[selectorId] == tabId) {
+            return;
+        }
+        this.selectedTabs[selectorId] = tabId;
+
+        for (const tabButton of Object.values(this.tabButtons[selectorId])) {
+            if (tabButton.dataset.tab == tabId) {
+                tabButton.classList.add("active");
+            }
+            else {
+                tabButton.classList.remove("active");
+            }
+        }
+
+        for (const tab of Object.values(this.tabs[selectorId])) {
+            if (tab.dataset.tab == tabId) {
+                tab.classList.add("active");
+            }
+            else {
+                tab.classList.remove("active");
+            }
+        }
+    }
+
+    serialize() {
+        return { selectedTabs: this.selectedTabs };
+    }
+
+    async deserialize(data: { selectedTabs: { [id: string]: string } }) {
+        for (const [selectorId, tabId] of Object.entries(data.selectedTabs)) {
+            this.setTab(selectorId, tabId);
+        }
+    }
+
+    onRender() {
+        super.onRender();
+        for (const tabSelector of this.container.querySelectorAll<HTMLDivElement>("div.tab-selector")) {
+            const selectorId = tabSelector.dataset.id;
+            this.tabSelectors[selectorId] = tabSelector;
+            this.tabs[selectorId] = {};
+            this.tabButtons[selectorId] = {};
+            let firstTab: HTMLDivElement = null;
+            for (const tab of this.container.querySelectorAll<HTMLDivElement>(`div.tab[data-id="${selectorId}"]`)) {
+                if (firstTab === null) {
+                    firstTab = tab;
+                }
+                const tabId = tab.dataset.tab;
+                this.tabs[selectorId][tabId] = tab;
+                const tabButton = tabSelector.appendChild(Html(
+                    `<div class="tab-button" data-tab=${tabId}>${IdentifierToLabel(tabId)}</div>`
+                ) as HTMLDivElement);
+                this.tabButtons[selectorId][tabId] = tabButton;
+                tabButton.addEventListener("click", () => {
+                    this.setTab(selectorId, tabId);
+                });
+            }
+            if (firstTab) {
+                this.setTab(selectorId, firstTab.dataset.tab);
+            }
+        }
     }
 }
 

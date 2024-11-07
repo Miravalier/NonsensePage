@@ -21,48 +21,55 @@
     {{ @input("Scale", "number : 0.1 : 10.0 : 0.1", "scale") /}}
     {{ /gm }}
 </div>
-{{ @textarea("description") /}}
 
-<h1>Stats</h1>
-<div class="stats column">
-    <div class="row">
-        {{ @input("Agility", "number", "data.agility") /}}
-        {{ @input("Charisma", "number", "data.charisma") /}}
+<div class="tab-selector" data-id="A"></div>
+
+<div class="tab" data-tab="notes" data-id="A">
+    {{ @textarea("description") /}}
+</div>
+
+<div class="tab" data-tab="stats" data-id="A">
+    <h1>Stats</h1>
+    <div class="stats column">
+        <div class="row">
+            {{ @input("Agility", "number", "data.agility") /}}
+            {{ @input("Charisma", "number", "data.charisma") /}}
+        </div>
+        <div class="row">
+            {{ @input("Endurance", "number", "data.endurance") /}}
+            {{ @input("Memory", "number", "data.memory") /}}
+        </div>
+        <div class="row">
+            {{ @input("Strength", "number", "data.strength") /}}
+            {{ @input("Perception", "number", "data.perception") /}}
+        </div>
     </div>
-    <div class="row">
-        {{ @input("Endurance", "number", "data.endurance") /}}
-        {{ @input("Memory", "number", "data.memory") /}}
-    </div>
-    <div class="row">
-        {{ @input("Strength", "number", "data.strength") /}}
-        {{ @input("Perception", "number", "data.perception") /}}
+
+    <h1>Skills</h1>
+    <div class="stats column">
+        <div class="row">
+            {{ @input("Artifice", "number", "data.artifice") /}}
+            {{ @input("Spellwork", "number", "data.spellwork") /}}
+        </div>
+        <div class="row">
+            {{ @input("Tracking", "number", "data.tracking") /}}
+            {{ @input("Stealth", "number", "data.stealth") /}}
+        </div>
+        <div class="row">
+            {{ @input("Melee Combat", "number", "data.melee") /}}
+            {{ @input("Ranged Combat", "number", "data.ranged") /}}
+        </div>
     </div>
 </div>
 
-<h1>Skills</h1>
-<div class="stats column">
-    <div class="row">
-        {{ @input("Artifice", "number", "data.artifice") /}}
-        {{ @input("Spellwork", "number", "data.spellwork") /}}
+<div class="tab" data-tab="abilities" data-id="A">
+    <div class="abilities">
+        {{ @if(data.ability_order.length == 0) }}
+        <div class="watermark">No abilities</div>
+        {{ #else }}
+        {{ @each(data.ability_order) => abilityId, index }}
+        {{ @fragment("ability", data.ability_map[abilityId]) /}}
+        {{ /each }}
+        {{ /if }}
     </div>
-    <div class="row">
-        {{ @input("Tracking", "number", "data.tracking") /}}
-        {{ @input("Stealth", "number", "data.stealth") /}}
-    </div>
-    <div class="row">
-        {{ @input("Melee Combat", "number", "data.melee") /}}
-        {{ @input("Ranged Combat", "number", "data.ranged") /}}
-    </div>
-</div>
-
-
-<h1>Abilities</h1>
-<div class="abilities">
-    {{ @if(data.ability_order.length == 0) }}
-    <div class="watermark">No abilities</div>
-    {{ #else }}
-    {{ @each(data.ability_order) => abilityId, index }}
-    {{ @fragment("ability", data.ability_map[abilityId]) /}}
-    {{ /each }}
-    {{ /if }}
 </div>
