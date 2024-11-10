@@ -256,9 +256,9 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
         const weapon = weaponAbilities[weaponSelect.value];
         if (runeEtched) {
             weapon.name = `Rune-etched ${weapon.name}`;
-            weapon.description = weapon.description.replace("2", "3");
+            weapon.description = weapon.description.replaceAll("2", "3");
             for (const roll of weapon.rolls) {
-                roll.formula = roll.formula.replace("2", "3");
+                roll.formula = roll.formula.replaceAll("2", "3");
             }
         }
         selectedAbilities.push(weapon);

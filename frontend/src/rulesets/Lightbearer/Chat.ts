@@ -4,7 +4,7 @@ import { Future } from "../../lib/Async.ts";
 import { ApplyDamage, ApplyHealing, ApplyShield, GetCharacter } from "../../lib/Database.ts";
 import { RollType } from "../../lib/Models.ts";
 import { DieResult } from "../../lib/Dice.ts";
-import { NumberWithSign } from "../../lib/Utils.ts";
+import { AddDescriptionListeners, NumberWithSign } from "../../lib/Utils.ts";
 import { ApiRequest, Session } from "../../lib/Requests.ts";
 import { Button } from "../../lib/Elements.ts";
 import { Dialog, InputDialog } from "../../windows/Window.ts";
@@ -181,6 +181,9 @@ function addDiceResultListeners(messageElement: HTMLDivElement, resultElement: H
 export function onRenderMessage(element: HTMLDivElement) {
     const textElement = element.querySelector(".text") as HTMLDivElement;
     const abilityBar = textElement.querySelector(".ability .bar") as HTMLDivElement;
+
+    AddDescriptionListeners(textElement);
+
     if (abilityBar) {
         const abilityElement = abilityBar.parentElement as HTMLDivElement;
         const characterId = abilityElement.dataset.characterId;

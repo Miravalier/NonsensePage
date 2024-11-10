@@ -50,7 +50,7 @@ export const COMMANDS = {
 
 function spongebobCase(s) {
     let capital = true;
-    return s.replace(/[a-z]/gi, letter => {
+    return s.replaceAll(/[a-z]/gi, letter => {
         capital = !capital;
         if (capital) return letter.toUpperCase();
         else return letter.toLowerCase();

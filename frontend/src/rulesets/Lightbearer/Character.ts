@@ -4,7 +4,7 @@ import { AddDragListener } from "../../lib/Drag.ts";
 import { InputDialog } from "../../windows/Window.ts";
 import { CharacterAbility, AbilityType, Character, Ability, Permission } from "../../lib/Models.ts";
 import { TabbedSheet } from "../../lib/Sheet.ts";
-import { GenerateId, GetPermissions, ResolvePath } from "../../lib/Utils.ts";
+import { AddDescriptionListeners, GenerateId, GetPermissions, RenderDescription, ResolvePath } from "../../lib/Utils.ts";
 import { ApiRequest } from "../../lib/Requests.ts";
 import { Permissions } from "../../lib/Enums.ts";
 import { GetAbilityIcons } from "./Utils.ts";
@@ -24,13 +24,6 @@ export class LightbearerCharacterSheet extends TabbedSheet {
             itemElement.remove();
         });
 
-        itemElement.querySelector(".delete.button").addEventListener("click", () => {
-            this.update({
-                "$unset": { [`item_map.${itemId}`]: 1 },
-                "$pull": { "item_order": itemId },
-            });
-        });
-
         this.addTrigger("set", `item_map.${itemId}`, (value) => {
             for (const [key, subvalue] of Object.entries(value)) {
                 this.onTrigger("set", `item_map.${itemId}.${key}`, subvalue);
@@ -44,14 +37,18 @@ export class LightbearerCharacterSheet extends TabbedSheet {
 
         if (permission >= Permission.Write) {
             itemName.contentEditable = "true";
-        }
-        else {
-            itemName.contentEditable = "false";
-        }
 
-        itemName.addEventListener("blur", async () => {
-            await this.set(`item_map.${itemId}.name`, itemName.textContent);
-        });
+            itemName.addEventListener("blur", async () => {
+                await this.set(`item_map.${itemId}.name`, itemName.textContent);
+            });
+
+            itemElement.querySelector(".delete.button").addEventListener("click", () => {
+                this.update({
+                    "$unset": { [`item_map.${itemId}`]: 1 },
+                    "$pull": { "item_order": itemId },
+                });
+            });
+        }
     }
 
     addAbilityTriggers(abilityElement: HTMLDivElement, permission: Permission) {
@@ -64,6 +61,7 @@ export class LightbearerCharacterSheet extends TabbedSheet {
         const abilityId = abilityElement.dataset.id;
         const ability = this.data.ability_map[abilityId];
 
+        AddDescriptionListeners(abilityDescription);
         AddDragListener(abilityElement, { type: "ability", characterId: this.data.id, ability });
 
         // If the ability is unset, remove it
@@ -83,9 +81,10 @@ export class LightbearerCharacterSheet extends TabbedSheet {
             ability.name = value;
             abilityName.textContent = value;
         });
-        this.addTrigger("set", `ability_map.${abilityId}.description`, (value) => {
+        this.addTrigger("set", `ability_map.${abilityId}.description`, (value: string) => {
             ability.description = value;
-            abilityDescription.innerHTML = value.replace("\n", "<br>");
+            abilityDescription.innerHTML = RenderDescription(value);
+            AddDescriptionListeners(abilityDescription);
         });
         this.addTrigger("set", `ability_map.${abilityId}.rolls`, (value) => {
             ability.rolls = value;

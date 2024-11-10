@@ -155,6 +155,7 @@ export class Sheet {
         for (const callback of this.data.helperData.fragmentCallbacks) {
             callback(this.container, this.data);
         }
+        delete this.data.helperData;
         this.onRender();
     }
 

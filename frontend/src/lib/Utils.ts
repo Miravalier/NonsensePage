@@ -3,6 +3,8 @@ import { PcgEngine } from "./PcgRandom.ts";
 import { Vector2 } from "./Vector.ts";
 import { Permissions } from "./Enums.ts";
 import { Entry } from "./Models.ts";
+import { ResolveCharacter } from "./Database.ts";
+import { CharacterSheetWindow } from "../windows/CharacterSheet.ts";
 
 
 export function LogOut() {
@@ -10,6 +12,41 @@ export function LogOut() {
     Session.token = null as any;
     console.log("Logged out, redirecting to /login");
     window.location.href = "/login";
+}
+
+
+export function RenderDescription(description: string): string {
+    // Replace newlines with line breaks
+    description = description.replaceAll(/[\r\n]/g, "&nbsp;<br/>");
+
+    // Replace reference tags with links to sub character sheets
+    description = description.replaceAll(/\[([^:\]]+):([^\]]+)\]/g, (_match, entryType, entryId, ..._args) => {
+        return `<span class="object-reference" data-type="${entryType}" data-id="${entryId}"></span>`;
+    });
+
+    return description;
+}
+
+
+export async function AddDescriptionListeners(element: Element) {
+    for (const reference of element.querySelectorAll<HTMLSpanElement>("span.object-reference")) {
+        if (reference.dataset.active) {
+            continue;
+        }
+        reference.dataset.active = "true";
+        const entryType = reference.dataset["type"];
+        const entryId = reference.dataset["id"];
+
+        let name = `Unknown ${IdentifierToLabel(entryType)}`;
+        if (entryType == "character") {
+            name = (await ResolveCharacter(entryId)).name;
+        }
+        reference.textContent = name;
+        reference.addEventListener("click", () => {
+            (new CharacterSheetWindow()).load(entryId);
+        });
+        console.log("Object Ref!");
+    }
 }
 
 

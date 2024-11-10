@@ -485,6 +485,11 @@ button:hover i {
     filter: drop-shadow(0 0 4px #c6def8);
 }
 
+.object-reference {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .dialog .label {
     margin-right: 6px;
 }

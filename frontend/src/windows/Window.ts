@@ -557,6 +557,7 @@ registerWindowType(Dialog);
 
 
 export async function InputDialog(title: string, inputs: { [label: string]: any }, acceptText: string): Promise<{ [label: string]: any }> {
+    const abortControllers: AbortController[] = [];
     const inputElements = [];
     for (const [labelText, inputData] of Object.entries(inputs)) {
         let inputType;
@@ -587,6 +588,11 @@ export async function InputDialog(title: string, inputs: { [label: string]: any 
             inputElement = document.createElement("textarea");
             inputElement.maxLength = 10000;
             inputElement.value = inputValue;
+            abortControllers.push(AddDropListener(inputElement, async (dropData) => {
+                if (dropData.type == "characterEntry") {
+                    inputElement.value = inputElement.value + `\n[character:${dropData.id}]`;
+                }
+            }));
         }
         else if (inputType == "fragment") {
             inputElement = document.createElement("div");
@@ -650,6 +656,10 @@ export async function InputDialog(title: string, inputs: { [label: string]: any 
             [acceptButton, cancelButton]
         ]
     });
+
+    for (const abortController of abortControllers) {
+        dialog.abortControllers.push(abortController);
+    }
 
     const future = new Future<{ [label: string]: any }>();
 

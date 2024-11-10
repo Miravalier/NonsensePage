@@ -2,7 +2,7 @@ import * as Sqrl from 'squirrelly';
 import { Fragments } from './Fragments.ts';
 import { Html } from './Elements.ts';
 import { Session } from './Requests.ts';
-import { IsDefined } from './Utils.ts';
+import { IsDefined, RenderDescription } from './Utils.ts';
 
 
 const fetchCache: { [url: string]: any } = {};
@@ -42,6 +42,15 @@ export async function init() {
             data.helperData.fragmentCallbacks.push(fragmentCallback);
         }
         return template(data);
+    });
+
+    Sqrl.helpers.define("description", function (content, _blocks, _config): string {
+        // Sort out parameters
+        if (content.params.length != 1) {
+            throw Error("@description helper requires 1 parameter");
+        }
+        const description: string = content.params[0];
+        return RenderDescription(description);
     });
 
     Sqrl.helpers.define("textarea", function (content, _blocks, _config): string {

@@ -5,7 +5,7 @@ import { AddDragListener } from "../../lib/Drag.ts";
 import { InputDialog } from "../../windows/Window.ts";
 import { AbilityType, Ability, Character, CharacterAbility } from "../../lib/Models.ts";
 import { Sheet } from "../../lib/Sheet.ts";
-import { GetPermissions } from "../../lib/Utils.ts";
+import { AddDescriptionListeners, GetPermissions, RenderDescription } from "../../lib/Utils.ts";
 import { Permissions } from "../../lib/Enums.ts";
 import { RenderRolls, GetAbilityIcons } from "./Utils.ts";
 import { ErrorToast, WarningToast } from "../../lib/Notifications.ts";
@@ -50,7 +50,7 @@ export async function UseAbility(character: Character, ability: Ability | Charac
                                 <div class="name">${ability.name}</div>
                             </div>
                         </div>
-                        <div class="details hidden">${ability.description.replace("\n", "<br>")}</div>
+                        <div class="details hidden">${RenderDescription(ability.description)}</div>
                         <div class="chat-rolls">${rollResults}</div>
                     </div>
                 </div>
@@ -75,6 +75,8 @@ export class LightbearerAbilitySheet extends Sheet {
         const abilityIcons = abilityBar.querySelector(".icons");
         const useButton = abilityBar.querySelector("i.button");
 
+        AddDescriptionListeners(abilityDescription);
+
         AddDragListener(abilityElement, { type: "ability", ability: this.data });
 
         // Handle changes on this ability
@@ -82,7 +84,8 @@ export class LightbearerAbilitySheet extends Sheet {
             abilityName.textContent = value;
         });
         this.addTrigger("set", `description`, (value) => {
-            abilityDescription.innerHTML = value.replace("\n", "<br>");
+            abilityDescription.innerHTML = RenderDescription(value);
+            AddDescriptionListeners(abilityDescription);
         });
         this.addTrigger("set", `rolls`, (value) => {
             this.data.rolls = value;
