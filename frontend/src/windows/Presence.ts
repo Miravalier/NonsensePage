@@ -1,9 +1,12 @@
-import * as Events from "../lib/Events.ts";
+import * as ContextMenu from "../lib/ContextMenu.ts";
 import * as Database from "../lib/Database.ts";
+import * as Events from "../lib/Events.ts";
 import { InvisibleWindow, registerWindowType } from "./Window.ts";
 import { Parameter } from "../lib/Utils.ts";
 import { User } from "../lib/Models.ts";
 import { Html } from "../lib/Elements.ts";
+import { ApiRequest, Session } from "../lib/Requests.ts";
+import { ErrorToast } from "../lib/Notifications.ts";
 
 
 export class PresenceWindow extends InvisibleWindow {
@@ -54,6 +57,20 @@ export class PresenceWindow extends InvisibleWindow {
             `)) as HTMLDivElement;
             portrait.dataset.id = user.id;
             this.portraits[user.id] = portrait;
+            if (Session.gm) {
+                ContextMenu.set(portrait, {
+                    [`User ${user.name}`]: {
+                        "Delete": async () => {
+                            if (user.is_gm) {
+                                ErrorToast("Cannot delete GM - edit the database");
+                            }
+                            else {
+                                await ApiRequest("/user/delete", { id: user.id });
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         Events.register("userPresence", (userId: string, online: boolean) => {
