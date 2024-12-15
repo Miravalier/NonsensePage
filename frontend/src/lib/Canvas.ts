@@ -7,7 +7,7 @@ import { Vector2 } from "./Vector.ts";
 import { Layer } from "./Enums.ts";
 import { ApiRequest, Session } from "./Requests.ts";
 import { GridFilter } from "../filters/Grid.ts";
-import { launchWindow, windows } from "../windows/Window.ts";
+import { launchWindow, windows, InputDialog } from "../windows/Window.ts";
 import { Fog, ScaleType } from "./Models.ts";
 
 
@@ -676,13 +676,6 @@ export class MapCanvas extends Canvas {
 
         const contextOptions = {
             "Edit Token": {
-                "Combat Tracker": async () => {
-                    if (token.character_id) {
-                        await ApiRequest("/combat/add-combatant", {
-                            character_id: token.character_id,
-                        });
-                    }
-                },
                 "Delete Token": async () => {
                     await ApiRequest("/map/update", {
                         id: this.id,
@@ -692,10 +685,62 @@ export class MapCanvas extends Canvas {
                             },
                         },
                     });
+                },
+                "Edit Properties": async () => {
+                    let width;
+                    let height;
+                    if (token.scale_type == ScaleType.Absolute) {
+                        width = sprite.width;
+                        height = sprite.height;
+                    }
+                    else {
+                        width = sprite.scale.x;
+                        height = sprite.scale.y;
+                    }
+                    const selection = await InputDialog("Token Properties", {
+                        "X": ["number", sprite.x],
+                        "Y": ["number", sprite.y],
+                        "Z": ["number", sprite.zIndex],
+                        "Width": ["number", width],
+                        "Height": ["number", height],
+                    }, "Save");
+                    if (!selection) {
+                        return;
+                    }
+                    sprite.x = selection.X;
+                    sprite.y = selection.Y;
+                    sprite.zIndex = selection.Z;
+                    if (token.scale_type == ScaleType.Absolute) {
+                        sprite.width = selection.Width;
+                        sprite.height = selection.Height;
+                    }
+                    else {
+                        sprite.scale.x = selection.Width;
+                        sprite.scale.y = selection.Height;
+                    }
+                    await ApiRequest("/map/update", {
+                        id: this.id,
+                        changes: {
+                            "$set": {
+                                [`tokens.${token.id}.x`]: sprite.x,
+                                [`tokens.${token.id}.y`]: sprite.y,
+                                [`tokens.${token.id}.z`]: sprite.zIndex,
+                                [`tokens.${token.id}.width`]: selection.Width,
+                                [`tokens.${token.id}.height`]: selection.Height,
+                            },
+                        },
+                    });
                 }
             },
         };
         if (Session.gm) {
+            contextOptions["Edit Token"]["Combat Tracker"] = async () => {
+                if (token.character_id) {
+                    await ApiRequest("/combat/add-combatant", {
+                        character_id: token.character_id,
+                    });
+                }
+            };
             contextOptions["Change Layer"] = {
                 "Background": () => { setTokenLayer(Layer.BACKGROUND); },
                 "Details": () => { setTokenLayer(Layer.DETAILS); },
@@ -767,7 +812,7 @@ export class MapCanvas extends Canvas {
             squareSize: map.squareSize,
             translation: translation,
             scale: scale,
-            color: map.color,
+            color: map.gridColor,
         });
 
         for (const fog of Object.values(map.fog as { [id: string]: Fog })) {

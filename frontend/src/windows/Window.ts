@@ -671,7 +671,7 @@ export async function InputDialog(title: string, inputs: { [label: string]: any 
                 continue;
             }
             if (inputElement.type == "number") {
-                value = parseInt(inputElement.value);
+                value = parseFloat(inputElement.value);
             }
             else if (inputElement.type == "checkbox") {
                 value = inputElement.checked;

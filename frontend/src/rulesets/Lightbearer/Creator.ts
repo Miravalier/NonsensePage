@@ -4,6 +4,7 @@ import { ApiRequest } from "../../lib/Requests.ts";
 import { BaseWindow } from "../../windows/Window.ts";
 import { GetAbilityIcons } from "./Utils.ts";
 import { Html } from "../../lib/Elements.ts";
+import { AddDescriptionListeners, RenderDescription } from "../../lib/Utils.ts";
 
 // const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
 
@@ -188,9 +189,10 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
                     </div>
                 </div>
                 <div class="details">
-                    <div class="description">${ability.description}</div>
+                    <div class="description">${RenderDescription(ability.description)}</div>
                 </div>
             `;
+            AddDescriptionListeners(abilityElement);
             if (ability.type == AbilityType.Passive) {
                 abilityElement.querySelector(".name").classList.add("passive");
             }
@@ -241,7 +243,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
 
     finishButton.addEventListener("click", async () => {
         if (selectedAbilities.length < abilityCount) {
-            ErrorToast("You must select 4 abilities");
+            ErrorToast(`You must select ${abilityCount} abilities`);
             return;
         }
 

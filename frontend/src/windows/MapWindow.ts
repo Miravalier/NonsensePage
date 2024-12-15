@@ -467,6 +467,8 @@ export class MapWindow extends CanvasWindow {
     }
 
     async load(id: string = null, activeLayer: number = null, tool: string = null, snapping: boolean = null) {
+        this.options.backgroundColor = 0;
+
         await super.load();
 
         if (id !== null) {
@@ -560,6 +562,7 @@ export class MapWindow extends CanvasWindow {
 
                 if (character.alignment != Alignment.PLAYER) {
                     character.name = `${character.name} - ${PCG.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ" as any)}${PCG.choice("0123456789" as any)}`;
+                    character.folder_id = null;
                     const createResponse: {
                         status: string;
                         id: string;

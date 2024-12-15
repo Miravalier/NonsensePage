@@ -290,7 +290,8 @@ class Map(Entry):
     tokens: Dict[str, Token] = Field(default_factory=dict)
     fog: Dict[str, Fog] = Field(default_factory=dict)
     squareSize: int = 150
-    color: GridColor = GridColor.WHITE
+    gridColor: GridColor = GridColor.WHITE
+    backgroundColor: int = "000000"
 
 
 class Message(BaseModel):

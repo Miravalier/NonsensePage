@@ -2,7 +2,7 @@ import * as Templates from "./Templates.ts";
 import { Permission } from "./Models.ts";
 import { GetPermissions, ApplyChanges, ResolvePath, IdentifierToLabel } from './Utils.ts';
 import { ApiRequest } from "./Requests.ts";
-import { AddDropListener } from "./Drag.ts";
+import { AddDragListener, AddDropListener } from "./Drag.ts";
 import { SheetWindow } from "../windows/SheetWindow.ts";
 import { Html } from "./Elements.ts";
 
@@ -142,6 +142,7 @@ export class Sheet {
             this.addTrigger("set", imageElement.dataset.attr, (value) => {
                 imageElement.src = value;
             });
+            AddDragListener(imageElement, { type: `${this.entryType}Entry`, id: this.id });
         }
     }
 

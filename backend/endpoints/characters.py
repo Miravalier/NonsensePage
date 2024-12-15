@@ -24,6 +24,7 @@ async def character_create(request: CharacterCreateRequest):
     if not request.requester.is_gm:
         character.add_permission("*", "*", Permissions.READ)
         character.add_permission(request.requester.id, "*", Permissions.OWNER)
+        character.alignment = Alignment.PLAYER
 
     if character.folder_id is not None:
         folder = require(database.character_folders.find_one(character.folder_id), "invalid folder id")
@@ -32,7 +33,7 @@ async def character_create(request: CharacterCreateRequest):
 
     character = database.characters.create(character.model_dump(exclude_defaults=True))
 
-    if request.requester.character_id is None and character.alignment == Alignment.PLAYER:
+    if request.requester.character_id is None:
         user = database.users.find_one_and_update(request.requester.id, {"$set": {"character_id": character.id}})
         await get_pool("users").broadcast({
             "type": "update",

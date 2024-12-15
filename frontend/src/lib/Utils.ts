@@ -45,7 +45,6 @@ export async function AddDescriptionListeners(element: Element) {
         reference.addEventListener("click", () => {
             (new CharacterSheetWindow()).load(entryId);
         });
-        console.log("Object Ref!");
     }
 }
 

@@ -24,6 +24,8 @@ import { AbilityListWindow } from "../windows/AbilityList.ts";
 import { SettingsWindow } from "../windows/SettingsWindow.ts";
 import { PresenceWindow } from "../windows/Presence.ts";
 import { ClearSelectedTokens, GetSelectedTokens } from "../lib/Canvas.ts";
+import { Sleep } from "../lib/Async.ts";
+import { CharacterSheetWindow } from "../windows/CharacterSheet.ts";
 
 
 declare global {
@@ -274,6 +276,8 @@ async function Main() {
 }
 
 async function LoadStartingWindows() {
+    await Sleep(50);
+
     if (!Session.gm && !users[Session.id].character_id && IntroRegistry.html !== null) {
         const characterCreator = new CharacterCreatorWindow({
             size: new Vector2(window.innerWidth - 40, window.innerHeight - 80),
@@ -294,6 +298,11 @@ async function LoadStartingWindows() {
                 position: new Vector2(window.innerWidth - 400, 0),
             });
             await chatWindow.load();
+
+            if (users[Session.id].character_id) {
+                const characterSheet = new CharacterSheetWindow();
+                characterSheet.load(users[Session.id].character_id);
+            }
         }
     }
 }
