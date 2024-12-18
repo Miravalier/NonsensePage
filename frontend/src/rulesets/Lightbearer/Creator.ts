@@ -112,7 +112,16 @@ const classDescriptions = {
     "Warforged": "Automaton created by war mages",
 };
 
-
+const raceDescriptions = {
+    "Elf": {
+        "height": "Asdf",
+        "whatever": "Whatver, stuff.",
+    },
+    "Dwarf": {
+        "height": "Asdf",
+        "whatever": "Whatver, stuff.",
+    },
+}
 
 export async function LightbearerCreatorRender(container: HTMLDivElement, data: { window: BaseWindow }) {
     const classSelect = container.querySelector<HTMLSelectElement>(".class");
