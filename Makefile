@@ -1,4 +1,4 @@
-.PHONY: help frontend-deps frontend backend release
+.PHONY: help frontend-deps frontend backend release down
 
 
 help:
@@ -16,6 +16,9 @@ help:
 	@echo
 	@echo "make release"
 	@echo "  Run the frontend and backend in release configuration"
+	@echo
+	@echo "make down"
+	@echo "  Remove all created containers"
 
 
 frontend-deps:
@@ -54,3 +57,10 @@ release: frontend
 	docker compose -f docker-compose.release.yml down
 	docker compose -f docker-compose.release.yml build
 	docker compose -f docker-compose.release.yml up -d
+
+down:
+	@if [ ! -f .env ]; then \
+		echo "No .env found in $$PWD; copy example.env to .env and edit it"; \
+		exit 1; \
+	fi
+	docker compose down
