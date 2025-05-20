@@ -160,11 +160,3 @@ export interface Combat extends Entry {
     entry_type: "combat";
     combatants: Combatant[];
 }
-
-export interface Fog {
-    id: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}

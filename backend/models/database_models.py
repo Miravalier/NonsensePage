@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import shapely
 from dataclasses import dataclass, field
 from datetime import datetime
 from fastapi import WebSocket
 from fastapi.encoders import jsonable_encoder
 from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import Any, Dict, Iterator, List, Optional, Union, Set
+from pydantic import BaseModel, Field, GetCoreSchemaHandler, GetJsonSchemaHandler
+from pydantic_core import core_schema
+from pydantic.functional_serializers import PlainSerializer
+from pydantic.functional_validators import BeforeValidator
+from pydantic.json_schema import JsonSchemaValue
+from typing import Annotated, Any, Iterator, Optional, Union, Sequence
 
 from ..lib.enums import (
     Alignment, Language, Permissions,
@@ -20,11 +25,87 @@ from ..lib.presence import connected_users
 FILES_ROOT = Path("/files")
 
 
+def polygon_to_coordinates(shape: shapely.Polygon) -> Sequence[tuple[int, int]]:
+    return shapely.geometry.mapping(shape)["coordinates"][0]
+
+
+def coordinates_to_polygon(coordinates: Sequence[tuple[int, int]]) -> shapely.Polygon:
+    return shapely.Polygon(coordinates)
+
+
+class _PolygonAnnotation:
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source_type: Any, _handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
+        from_list_schema = core_schema.chain_schema([
+            core_schema.list_schema(core_schema.tuple_schema([
+                core_schema.float_schema(),
+                core_schema.float_schema(),
+            ])),
+            core_schema.no_info_plain_validator_function(coordinates_to_polygon),
+        ])
+
+        return core_schema.json_or_python_schema(
+            json_schema=from_list_schema,
+            python_schema=core_schema.union_schema([
+                core_schema.is_instance_schema(shapely.Polygon),
+                from_list_schema,
+            ]),
+            serialization=core_schema.plain_serializer_function_ser_schema(polygon_to_coordinates),
+        )
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler) -> JsonSchemaValue:
+        return handler(core_schema.list_schema(core_schema.tuple_schema([
+            core_schema.float_schema(),
+            core_schema.float_schema(),
+        ])))
+
+
+Polygon = Annotated[
+    shapely.Polygon,
+    _PolygonAnnotation,
+]
+
+
+class _GeometryAnnotation:
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source_type: Any, _handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
+        from_dict_schema = core_schema.chain_schema([
+            core_schema.dict_schema(
+                keys_schema=core_schema.str_schema(),
+                values_schema=core_schema.any_schema(),
+            ),
+            core_schema.no_info_plain_validator_function(shapely.geometry.shape),
+        ])
+
+        return core_schema.json_or_python_schema(
+            json_schema=from_dict_schema,
+            python_schema=core_schema.union_schema([
+                core_schema.is_instance_schema(shapely.geometry.base.BaseGeometry),
+                from_dict_schema,
+            ]),
+            serialization=core_schema.plain_serializer_function_ser_schema(shapely.geometry.mapping),
+        )
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler) -> JsonSchemaValue:
+        return handler(core_schema.dict_schema(
+            keys_schema=core_schema.str_schema(),
+            values_schema=core_schema.any_schema(),
+        ))
+
+
+Geometry = Annotated[
+    shapely.geometry.base.BaseGeometry,
+    _GeometryAnnotation,
+]
+
+
 @dataclass
 class Connection:
     user: User
     websocket: WebSocket
-    pools: Set[Pool] = field(default_factory=set)
+    pools: set[Pool] = field(default_factory=set)
 
     async def send(self, jsonable):
         await self.websocket.send_json(jsonable)
@@ -35,7 +116,7 @@ class Connection:
 
 class Pool:
     def __init__(self, name: str):
-        self.connections: Set[Connection] = set()
+        self.connections: set[Connection] = set()
         self.name = name
 
     def add(self, connection: Connection):
@@ -44,7 +125,7 @@ class Pool:
     def discard(self, connection: Connection):
         self.connections.discard(connection)
 
-    async def broadcast(self, obj: Dict[str, Any]):
+    async def broadcast(self, obj: dict[str, Any]):
         obj["pool"] = self.name
         for connection in self.connections:
             await connection.send(obj)
@@ -57,10 +138,10 @@ class Pool:
 
 
 MESSAGE_POOL = Pool("messages")
-EVENT_POOLS: Dict[str, Pool] = {}
+EVENT_POOLS: dict[str, Pool] = {}
 
 
-def get_pool(request: Union[str, Dict[str, Any]]):
+def get_pool(request: Union[str, dict[str, Any]]):
     # Get the pool to operate on
     if isinstance(request, str):
         pool_name = request
@@ -111,8 +192,8 @@ class Session(BaseModel):
 class Entry(BaseModel):
     id: str = None
     name: Optional[str] = None
-    permissions: Dict[str, Dict[str, Permissions]] = Field(default_factory=new_permissions)
-    data: Dict = Field(default_factory=dict)
+    permissions: dict[str, dict[str, Permissions]] = Field(default_factory=new_permissions)
+    data: dict = Field(default_factory=dict)
     image: str = ""
 
     def __hash__(self):
@@ -122,7 +203,7 @@ class Entry(BaseModel):
     def pool(self):
         return get_pool(self.id)
 
-    async def broadcast_changes(self, changes: Dict):
+    async def broadcast_changes(self, changes: dict):
         await self.pool.broadcast(jsonable_encoder({
             "type": "update",
             "changes": changes,
@@ -164,8 +245,8 @@ class Entry(BaseModel):
 
 
 class Entity(Entry):
-    stat_map: Dict[str, Stat] = Field(default_factory=dict)
-    stat_order: List[str] = Field(default_factory=list)
+    stat_map: dict[str, Stat] = Field(default_factory=dict)
+    stat_order: list[str] = Field(default_factory=list)
 
     @property
     def stats(self):
@@ -174,8 +255,8 @@ class Entity(Entry):
 
 
 class Container(Entry):
-    item_map: Dict[str, Item] = Field(default_factory=dict)
-    item_order: List[str] = Field(default_factory=list)
+    item_map: dict[str, Item] = Field(default_factory=dict)
+    item_order: list[str] = Field(default_factory=list)
 
     @property
     def items(self):
@@ -209,8 +290,8 @@ class Character(Entity, Container):
     reactions: int = 0
     max_reactions: int = 2
     sheet_type: str = "default"
-    ability_map: Dict[str, CharacterAbility] = Field(default_factory=dict)
-    ability_order: List[str] = Field(default_factory=list)
+    ability_map: dict[str, CharacterAbility] = Field(default_factory=dict)
+    ability_order: list[str] = Field(default_factory=list)
 
 
 class Ability(Entry):
@@ -234,8 +315,8 @@ class User(Entry):
     hashed_password: bytes = Field(exclude=True, default=b"")
     is_gm: bool = False
     character_id: Optional[str] = None
-    languages: List[Language] = Field(default_factory=list)
-    settings: Dict = Field(default_factory=dict)
+    languages: list[Language] = Field(default_factory=list)
+    settings: dict = Field(default_factory=dict)
 
     @property
     def file_root(self) -> Path:
@@ -244,7 +325,7 @@ class User(Entry):
         else:
             return FILES_ROOT / "users" / self.name
 
-    def model_dump(self, *args, **kwargs) -> Dict[str, Any]:
+    def model_dump(self, *args, **kwargs) -> dict[str, Any]:
         result = super().model_dump(*args, **kwargs)
         result["online"] = self.id in connected_users
         return result
@@ -258,7 +339,7 @@ class Combatant(Entry):
 
 class Combat(Entry):
     entry_type: str = "combat"
-    combatants: List[Combatant] = Field(default_factory=list)
+    combatants: list[Combatant] = Field(default_factory=list)
 
 
 class Token(Entry):
@@ -277,18 +358,10 @@ class Token(Entry):
     character_id: str = None
 
 
-class Fog(BaseModel):
-    id: str = None
-    x: float = 0
-    y: float = 0
-    width: float = 0
-    height: float = 0
-
-
 class Map(Entry):
     entry_type: str = "map"
-    tokens: Dict[str, Token] = Field(default_factory=dict)
-    fog: Dict[str, Fog] = Field(default_factory=dict)
+    tokens: dict[str, Token] = Field(default_factory=dict)
+    revealed_areas: Optional[Geometry] = None
     squareSize: int = 150
     gridColor: GridColor = GridColor.WHITE
     backgroundColor: int = "000000"
@@ -307,7 +380,7 @@ class Message(BaseModel):
     def __hash__(self):
         return hash(self.id)
 
-    def foreign_dict(self) -> Dict[str, Any]:
+    def foreign_dict(self) -> dict[str, Any]:
         result = self.model_dump(exclude={"content": True})
         result["length"] = len(self.content)
         return result

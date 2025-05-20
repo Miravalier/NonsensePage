@@ -6,6 +6,7 @@ RUN apt update && apt install -y \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN pip install fastapi[all] uvicorn aiohttp lxml aiofiles pydantic pymongo Wand
+RUN pip install shapely
 
 COPY ./backend /app
 WORKDIR /

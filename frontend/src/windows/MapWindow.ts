@@ -71,7 +71,8 @@ export class MapWindow extends CanvasWindow {
                 });
             }
 
-            this.addToolButton("fog", "cloud");
+            this.addToolButton("reveal", "eye");
+            this.addToolButton("hide", "cloud");
         }
 
         this.addToolButton("ruler", "ruler");
@@ -149,9 +150,13 @@ export class MapWindow extends CanvasWindow {
                         rectSize.y = Math.abs(rectSize.y);
                     }
                     selectArea.clear();
-                    if (this.canvas.tool == "fog") {
+                    if (this.canvas.tool == "reveal") {
                         selectArea.rect(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
-                        selectArea.fill({ color: '000000', alpha: 0.3 });
+                        selectArea.fill({ color: '#ffffff', alpha: 0.3 });
+                    }
+                    else if (this.canvas.tool == "hide") {
+                        selectArea.rect(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
+                        selectArea.fill({ color: '#ffffff', alpha: 0.3 });
                     }
                     else if (this.canvas.tool == "ruler") {
                         const distance = currentPosition.distance(startPosition) / this.canvas.squareSize;
@@ -161,11 +166,11 @@ export class MapWindow extends CanvasWindow {
                         label.text = `${(Math.round(distance * 10) / 10).toFixed(1)} sq.`;
                         selectArea.moveTo(startPosition.x, startPosition.y);
                         selectArea.lineTo(currentPosition.x, currentPosition.y);
-                        selectArea.stroke({ width: 3 / this.scale, color: 'ffffff', alpha: 0.75 });
+                        selectArea.stroke({ width: 3 / this.scale, color: '#ffffff', alpha: 0.75 });
                     }
                     else {
                         selectArea.rect(rectStart.x, rectStart.y, rectSize.x, rectSize.y);
-                        selectArea.stroke({ width: 3 / this.scale, color: 'ffffff', alpha: 0.75 });
+                        selectArea.stroke({ width: 3 / this.scale, color: '#ffffff', alpha: 0.75 });
                     }
                 }
                 if (startEv.button == 2) {
@@ -193,22 +198,33 @@ export class MapWindow extends CanvasWindow {
                     }
                     selectArea.destroy();
                     label.destroy();
-                    if (this.canvas.tool == "fog") {
+                    if (this.canvas.tool == "reveal") {
                         if (rectSize.x > 5 && rectSize.y > 5) {
-                            const newId = GenerateId();
-                            await ApiRequest("/map/update", {
+                            const polygon = [
+                                [rectStart.x, rectStart.y],
+                                [rectStart.x+rectSize.x, rectStart.y],
+                                [rectStart.x+rectSize.x, rectStart.y+rectSize.y],
+                                [rectStart.x, rectStart.y+rectSize.y],
+                                [rectStart.x, rectStart.y],
+                            ];
+                            await ApiRequest("/map/reveal", {
                                 id: this.mapId,
-                                changes: {
-                                    "$set": {
-                                        [`fog.${newId}`]: {
-                                            id: newId,
-                                            x: rectStart.x,
-                                            y: rectStart.y,
-                                            width: rectSize.x,
-                                            height: rectSize.y,
-                                        },
-                                    }
-                                }
+                                area: polygon,
+                            });
+                        }
+                    }
+                    else if (this.canvas.tool == "hide") {
+                        if (rectSize.x > 5 && rectSize.y > 5) {
+                            const polygon = [
+                                [rectStart.x, rectStart.y],
+                                [rectStart.x+rectSize.x, rectStart.y],
+                                [rectStart.x+rectSize.x, rectStart.y+rectSize.y],
+                                [rectStart.x, rectStart.y+rectSize.y],
+                                [rectStart.x, rectStart.y],
+                            ];
+                            await ApiRequest("/map/hide", {
+                                id: this.mapId,
+                                area: polygon,
                             });
                         }
                     }
@@ -228,27 +244,13 @@ export class MapWindow extends CanvasWindow {
                 }
                 // In-place click
                 if (!elementDragged) {
+                    // Right-click
                     if (startEv.button == 2) {
-                        const endPosition = this.canvas.ScreenToWorldCoords(new Vector2(endEv.clientX, endEv.clientY));
-                        // In fog mode, delete fog on right-click
-                        if (this.canvas.tool == "fog") {
-                            const unsets: { [path: string]: null } = {};
-                            for (const [fogId, fog] of Object.entries(this.canvas.fogNodes)) {
-                                if (fog.containsPoint({ x: endPosition.x, y: endPosition.y })) {
-                                    unsets[`fog.${fogId}`] = null;
-                                }
-                            }
-                            if (Object.keys(unsets).length > 0) {
-                                await ApiRequest("/map/update", {
-                                    id: this.mapId,
-                                    changes: {
-                                        "$unset": unsets,
-                                    },
-                                });
-                            }
-                        }
+                        // World position that we right-clicked on
+                        // const endPosition = this.canvas.ScreenToWorldCoords(new Vector2(endEv.clientX, endEv.clientY));
+
                         // Dispatch right-click on element to that element
-                        else if (element) {
+                        if (element) {
                             element.emit("contextmenu", endEv);
                         }
                     }
@@ -394,6 +396,8 @@ export class MapWindow extends CanvasWindow {
         else {
             container.node.eventMode = "static";
         }
+        // Dispatch onToolSelect callback
+        this.canvas.onToolSelect();
     }
 
     setActiveLayer(layer: number) {
@@ -445,14 +449,16 @@ export class MapWindow extends CanvasWindow {
     applyTranslation() {
         this.canvas.tokenContainer.node.x = this.translation.x;
         this.canvas.tokenContainer.node.y = this.translation.y;
+        this.canvas.fogMask.x = this.translation.x;
+        this.canvas.fogMask.y = this.translation.y;
         this.viewChangesMade = true;
         const gridFilter = this.canvas.grid.filters[0] as GridFilter;
         gridFilter.uniforms.uTranslation = new PIXI.Point(this.translation.x, this.translation.y);
     }
 
     applyScale() {
-        this.canvas.tokenContainer.node.scale.x = this.scale;
-        this.canvas.tokenContainer.node.scale.y = this.scale;
+        this.canvas.tokenContainer.node.scale = this.scale;
+        this.canvas.fogMask.scale = this.scale;
         this.viewChangesMade = true;
         const gridFilter = this.canvas.grid.filters[0] as GridFilter;
         gridFilter.uniforms.uScale = new PIXI.Point(this.scale, this.scale);

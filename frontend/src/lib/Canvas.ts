@@ -8,12 +8,49 @@ import { Layer } from "./Enums.ts";
 import { ApiRequest, Session } from "./Requests.ts";
 import { GridFilter } from "../filters/Grid.ts";
 import { launchWindow, windows, InputDialog } from "../windows/Window.ts";
-import { Fog, ScaleType } from "./Models.ts";
+import { ScaleType } from "./Models.ts";
 
 
 export const NO_GRID = 0
 export const WHITE_GRID = 1
 export const BLACK_GRID = 2
+
+
+function coordinatesToPoints(coordinates: [number, number][]): PIXI.PointData[] {
+    const points: PIXI.PointData[] = [];
+    for (const coordinate of coordinates) {
+        points.push({x: coordinate[0], y: coordinate[1]});
+    }
+    return points;
+}
+
+
+function drawPolygon(graphics: PIXI.Graphics, polygon: [number, number][][]) {
+    graphics.poly(coordinatesToPoints(polygon[0]));
+    graphics.fill({color: "#ffffff"});
+    for (let i=1; i < polygon.length; i++) {
+        graphics.poly(coordinatesToPoints(polygon[i]));
+    }
+    graphics.cut();
+}
+
+
+function drawGeometry(graphics: PIXI.Graphics, geometry: any) {
+    console.log(`Drawing ${geometry.type}`, geometry);
+    graphics.clear();
+
+    if (geometry.coordinates.length == 0) {
+        return;
+    }
+
+    if (geometry.type == "Polygon") {
+        drawPolygon(graphics, geometry.coordinates);
+    } else if (geometry.type == "MultiPolygon") {
+        for (const coordinates of geometry.coordinates) {
+            drawPolygon(graphics, coordinates);
+        }
+    }
+}
 
 
 export class CanvasContainer {
@@ -242,7 +279,6 @@ export class Canvas {
 export class MapCanvas extends Canvas {
     id: string;
     tokenNodes: { [id: string]: PIXI.Sprite };
-    fogNodes: { [id: string]: PIXI.Graphics };
     grid: PIXI.Container;
     tokenContainer: CanvasContainer;
     backgroundContainer: CanvasContainer;
@@ -251,6 +287,7 @@ export class MapCanvas extends Canvas {
     effectContainer: CanvasContainer;
     uiContainer: CanvasContainer;
     fogContainer: CanvasContainer;
+    fogMask: PIXI.Graphics;
     highestZIndex: number;
     squareSize: number;
     selectedTokens: Set<PIXI.Sprite>;
@@ -261,7 +298,6 @@ export class MapCanvas extends Canvas {
         super();
         this.id = null;
         this.tokenNodes = {};
-        this.fogNodes = {};
         this.highestZIndex = 0;
         this.squareSize = 1;
         this.selectedTokens = new Set();
@@ -356,6 +392,17 @@ export class MapCanvas extends Canvas {
         });
     }
 
+    onToolSelect() {
+        if (this.tokenContainer) {
+            if (this.tool == "reveal" || this.tool == "hide") {
+                this.tokenContainer.node.mask = null;
+                this.fogMask.alpha = 0.35;
+            } else {
+                this.tokenContainer.node.mask = this.fogMask;
+            }
+        }
+    }
+
     onResize(x: number, y: number) {
         super.onResize(x, y);
         this.grid.width = x;
@@ -420,23 +467,6 @@ export class MapCanvas extends Canvas {
         setTimeout(() => {
             sprite.removeFromParent();
         }, 1000);
-    }
-
-    async AddFog(fog: Fog): Promise<PIXI.Graphics> {
-        // Create PIXI object
-        const rect = new PIXI.Graphics();
-        rect.roundRect(fog.x, fog.y, fog.width, fog.height, 8);
-        if (Session.gm) {
-            rect.fill({ color: '#000000', alpha: 0.25 });
-        }
-        else {
-            rect.fill({ color: '#000000', alpha: 1.0 });
-            rect.filters = [new GlowFilter({ color: '#000000' })];
-        }
-        // Display the object and return
-        this.fogContainer.node.addChild(rect);
-        this.fogNodes[fog.id] = rect;
-        return rect;
     }
 
     async AddToken(token): Promise<PIXI.Sprite> {
@@ -769,11 +799,6 @@ export class MapCanvas extends Canvas {
         sprite.filters = [];
     }
 
-    DeleteFog(id) {
-        this.fogNodes[id].destroy();
-        delete this.fogNodes[id];
-    }
-
     DeleteToken(id) {
         this.tokenNodes[id].destroy();
         delete this.tokenNodes[id];
@@ -784,7 +809,9 @@ export class MapCanvas extends Canvas {
         this.squareSize = map.squareSize;
 
         this.tokenNodes = {};
-        this.fogNodes = {};
+        if (this.fogMask) {
+            this.fogMask.destroy();
+        }
         if (this.tokenContainer) {
             this.tokenContainer.node.destroy();
         }
@@ -806,6 +833,13 @@ export class MapCanvas extends Canvas {
         this.uiContainer.node.eventMode = "none";
         this.fogContainer = this.tokenContainer.AddContainer();
         this.fogContainer.node.eventMode = "none";
+
+        this.fogMask = root.node.addChild(new PIXI.Graphics());
+        this.fogMask.x = translation.x;
+        this.fogMask.y = translation.y;
+        this.fogMask.scale = scale;
+        drawGeometry(this.fogMask, map.revealed_areas);
+
         this.grid = root.AddGrid({
             width: this.htmlContainer.offsetWidth,
             height: this.htmlContainer.offsetHeight,
@@ -815,8 +849,11 @@ export class MapCanvas extends Canvas {
             color: map.gridColor,
         });
 
-        for (const fog of Object.values(map.fog as { [id: string]: Fog })) {
-            await this.AddFog(fog);
+        if (this.tool == "reveal" || this.tool == "hide") {
+            this.tokenContainer.node.mask = null;
+            this.fogMask.alpha = 0.35;
+        } else {
+            this.tokenContainer.node.mask = this.fogMask;
         }
 
         for (const token of Object.values(map.tokens)) {

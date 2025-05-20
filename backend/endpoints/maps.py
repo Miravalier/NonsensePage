@@ -1,8 +1,9 @@
+import shapely
 from fastapi import APIRouter
 
 from ..lib import database
 from ..lib.utils import require, auth_require
-from ..models.database_models import Permissions, get_pool
+from ..models.database_models import Permissions, Polygon, get_pool
 from ..models.request_models import AuthRequest, GMRequest
 
 
@@ -94,3 +95,40 @@ async def map_list(request: AuthRequest):
             if map.has_permission(request.requester.id, level=Permissions.READ):
                 maps.append((map.id, map.name))
     return {"status": "success", "maps": maps}
+
+
+class MapPolygonRequest(AuthRequest):
+    id: str
+    area: Polygon
+
+
+@router.post("/reveal")
+async def map_reveal(request: MapPolygonRequest):
+    map = require(database.maps.find_one(request.id), "invalid map id")
+    if not request.requester.is_gm:
+        auth_require(map.has_permission(request.requester.id, "reveal", Permissions.WRITE))
+
+    if map.revealed_areas is None:
+        map.revealed_areas = request.area
+    else:
+        map.revealed_areas = map.revealed_areas.union(request.area)
+
+    changes = {"$set": {"revealed_areas": shapely.geometry.mapping(map.revealed_areas)}}
+    database.maps.find_one_and_update(request.id, changes)
+    await map.broadcast_changes(changes)
+
+
+@router.post("/hide")
+async def map_hide(request: MapPolygonRequest):
+    map = require(database.maps.find_one(request.id), "invalid map id")
+    if not request.requester.is_gm:
+        auth_require(map.has_permission(request.requester.id, "reveal", Permissions.WRITE))
+
+    if map.revealed_areas is None:
+        return
+
+    map.revealed_areas = map.revealed_areas.difference(request.area)
+
+    changes = {"$set": {"revealed_areas": shapely.geometry.mapping(map.revealed_areas)}}
+    database.maps.find_one_and_update(request.id, changes)
+    await map.broadcast_changes(changes)
