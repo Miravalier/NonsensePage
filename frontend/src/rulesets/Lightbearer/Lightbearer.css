@@ -68,7 +68,8 @@
     text-shadow: 0 0 10px #c6def8;
 }
 
-.Lightbearer.sheet .abilities {
+.Lightbearer.sheet .class-abilities,
+.Lightbearer.sheet .race-abilities {
     display: flex;
     flex-flow: column nowrap;
     background-color: #42484d64;

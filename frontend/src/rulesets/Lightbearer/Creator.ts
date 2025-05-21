@@ -5,6 +5,7 @@ import { BaseWindow } from "../../windows/Window.ts";
 import { GetAbilityIcons } from "./Utils.ts";
 import { Html } from "../../lib/Elements.ts";
 import { AddDescriptionListeners, RenderDescription } from "../../lib/Utils.ts";
+import { onRenderAbilityEntry } from "./Ability.ts";
 
 // const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
 
@@ -114,99 +115,128 @@ const classDescriptions = {
 
 const raceDescriptions = {
     "Aarakocra": {
-        "height": "4'10\" - 5'5\""
-        "weight": "80 - 100 lbs"
-        "lifespan": "40 yrs"
+        "Height": "4'10\" - 5'5\"",
+        "Weight": "80 - 100 lbs",
+        "Lifespan": "40 yrs",
     },
     "Centaur": {
-        "height": "6' - 7'\""
-        "weight": "400 - 800 lbs"
-        "lifespan": "80 yrs"
+        "Height": "6' - 7'\"",
+        "Weight": "400 - 800 lbs",
+        "Lifespan": "80 yrs",
     },
     "Dragonborn": {
-        "height": "5'10\" - 6'6\""
-        "weight": "200-300 lbs"
-        "lifespan": "300 yrs"
+        "Height": "5'10\" - 6'6\"",
+        "Weight": "200-300 lbs",
+        "Lifespan": "300 yrs",
     },
     "Dwarf": {
-        "height": "4' - 5'2\""
-        "weight": "150 - 250 lbs"
-        "lifespan": "500 yrs"
+        "Height": "4' - 5'2\"",
+        "Weight": "150 - 250 lbs",
+        "Lifespan": "500 yrs",
     },
     "Elf": {
-        "height": "5' - 6'3\""
-        "weight": "90 - 150 lbs"
-        "lifespan": "immortal"
+        "Height": "5' - 6'3\"",
+        "Weight": "90 - 150 lbs",
+        "Lifespan": "Immortal",
     },
     "Gnome": {
-        "height": "3'6\" - 4'4\""
-        "weight": "50 - 75 lbs"
-        "lifespan": "300 yrs"
+        "Height": "3'6\" - 4'4\"",
+        "Weight": "50 - 75 lbs",
+        "Lifespan": "300 yrs",
     },
     "Goliath": {
-        "height": "7' - 9'"
-        "weight": "400 - 700 lbs"
-        "lifespan": "150 yrs"
+        "Height": "7' - 9'",
+        "Weight": "400 - 700 lbs",
+        "Lifespan": "150 yrs",
     },
     "Halfling": {
-        "height": "3'10\" - 4'11\""
-        "weight": "80 - 120 lbs"
-        "lifespan": "60 yrs"
+        "Height": "3'10\" - 4'11\"",
+        "Weight": "80 - 120 lbs",
+        "Lifespan": "60 yrs",
     },
     "Human": {
-        "height": "5'2\" - 6'4\""
-        "weight": "100 - 220 lbs"
-        "lifespan": "80 yrs"
+        "Height": "5'2\" - 6'4\"",
+        "Weight": "100 - 220 lbs",
+        "Lifespan": "80 yrs",
     },
     "Orc": {
-        "height": "6' - 7'"
-        "weight": "280 - 400 lbs"
-        "lifespan": "80 yrs"
+        "Height": "6' - 7'",
+        "Weight": "280 - 400 lbs",
+        "Lifespan": "80 yrs",
     },
     "Satyr": {
-        "height": "4'8\" - 5'10\""
-        "weight": "90 - 175 lbs"
-        "lifespan": "60 yrs"
+        "Height": "4'8\" - 5'10\"",
+        "Weight": "90 - 175 lbs",
+        "Lifespan": "60 yrs",
     },
     "Tabaxi": {
-        "height": "5'2\" - 5'10\""
-        "weight": "100 - 150 lbs"
-        "lifespan": "70 yrs"
+        "Height": "5'2\" - 5'10\"",
+        "Weight": "100 - 150 lbs",
+        "Lifespan": "70 yrs",
     },
     "Tiefling": {
-        "height": "5'2\" - 6'4\""
-        "weight": "120 - 250 lbs"
-        "lifespan": "250 yrs"
+        "Height": "5'2\" - 6'4\"",
+        "Weight": "120 - 250 lbs",
+        "Lifespan": "250 yrs",
     },
     "Triton": {
-        "height": "5'2\" - 5'10\""
-        "weight": "110 - 175 lbs"
-        "lifespan": "1000 yrs"
+        "Height": "5'2\" - 5'10\"",
+        "Weight": "110 - 175 lbs",
+        "Lifespan": "1000 yrs",
     },
     "Warforged": {
-        "height": "6'"
-        "weight": "500 lbs"
-        "lifespan": "immortal"
+        "Height": "6'",
+        "Weight": "500 lbs",
+        "Lifespan": "Immortal",
     },
 }
+
+
+function RenderAbility(ability: Ability): HTMLDivElement {
+    const abilityElement = document.createElement("div");
+    abilityElement.className = "ability";
+    abilityElement.innerHTML = `
+        <div class="bar">
+            <div class="row">
+                <div class="icons">
+                    <!-- Rendered by script -->
+                </div>
+                <div class="name">${ability.name}</div>
+            </div>
+        </div>
+        <div class="details">
+            <div class="description">${RenderDescription(ability.description)}</div>
+        </div>
+    `;
+    AddDescriptionListeners(abilityElement);
+    if (ability.type == AbilityType.Passive) {
+        abilityElement.querySelector(".name").classList.add("passive");
+    }
+    abilityElement.querySelector(".icons").innerHTML = GetAbilityIcons(ability);
+    return abilityElement;
+}
+
 
 export async function LightbearerCreatorRender(container: HTMLDivElement, data: { window: BaseWindow }) {
     const classSelect = container.querySelector<HTMLSelectElement>(".class");
     const raceSelect = container.querySelector<HTMLSelectElement>(".race");
-    const weaponSelect = container.querySelector<HTMLSelectElement>(".weapon");
     const classDescription = container.querySelector<HTMLDivElement>(".class-description");
     const raceDescription = container.querySelector<HTMLDivElement>(".race-description");
-    const abilityContainer = container.querySelector<HTMLDivElement>(".abilities");
+    const classAbilityContainer = container.querySelector<HTMLDivElement>(".class-abilities");
+    const raceAbilityContainer = container.querySelector<HTMLDivElement>(".race-abilities");
+    const weaponAbilityContainer = container.querySelector<HTMLDivElement>(".weapon-ability");
     const nameInput = container.querySelector<HTMLInputElement>(".characterName");
     const finishButton = container.querySelector<HTMLButtonElement>(".finish");
+    const weaponSelect = document.createElement("select");
+    weaponSelect.classList.add("weapon");
 
     const abilityCount = 3;
-    let runeEtched = false;
 
-    let selectedAbilities: CharacterAbility[] = [];
-    let racialAbilities: CharacterAbility[] = [];
-    let basicAbilities: CharacterAbility[] = [];
-    let weaponAbilities: { [name: string]: CharacterAbility } = {};
+    let selectedAbilities: Ability[] = [];
+    let racialAbilities: Ability[] = [];
+    let basicAbilities: Ability[] = [];
+    let weaponAbilities: Ability[] = [];
+    let weaponData: { [name: string]: Ability } = {};
 
     const basicResponse: {
         status: string,
@@ -227,12 +257,28 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
     } = await ApiRequest("/folder/ability/list", { folder_id: "Lightbearer.Weapons" });
 
     for (const ability of weaponResponse.entries) {
-        weaponAbilities[ability.name] = ability;
+        weaponData[ability.name] = ability;
         weaponSelect.appendChild(Html(`<option value="${ability.name}">${ability.name}</option>`));
     }
 
+    const SelectWeapon = async (weaponName: string) => {
+        const ability = weaponData[weaponName];
+        weaponAbilities = [];
+        weaponAbilityContainer.innerHTML = "";
+
+        const abilityElement = RenderAbility(ability);
+        abilityElement.classList.add("selected");
+
+        const weaponNameElement = abilityElement.querySelector(".name");
+        weaponNameElement.innerHTML = "";
+        weaponNameElement.appendChild(weaponSelect);
+
+        weaponAbilityContainer.appendChild(abilityElement);
+        weaponAbilities.push(ability);
+    }
+
     const SelectClass = async (className: string) => {
-        abilityContainer.innerHTML = "";
+        classAbilityContainer.innerHTML = "";
         selectedAbilities = [];
         classDescription.innerText = classDescriptions[className];
 
@@ -253,26 +299,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             if (ability.name.endsWith("+")) {
                 continue;
             }
-            const abilityElement = abilityContainer.appendChild(document.createElement("div"));
-            abilityElement.className = "ability";
-            abilityElement.innerHTML = `
-                <div class="bar">
-                    <div class="row">
-                        <div class="icons">
-                            <!-- Rendered by script -->
-                        </div>
-                        <div class="name">${ability.name}</div>
-                    </div>
-                </div>
-                <div class="details">
-                    <div class="description">${RenderDescription(ability.description)}</div>
-                </div>
-            `;
-            AddDescriptionListeners(abilityElement);
-            if (ability.type == AbilityType.Passive) {
-                abilityElement.querySelector(".name").classList.add("passive");
-            }
-            abilityElement.querySelector(".icons").innerHTML = GetAbilityIcons(ability);
+            const abilityElement = RenderAbility(ability);
             abilityElement.addEventListener("click", () => {
                 if (abilityElement.classList.contains("selected")) {
                     selectedAbilities.splice(selectedAbilities.indexOf(ability), 1);
@@ -285,11 +312,18 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
                 }
                 abilityElement.classList.toggle("selected");
             });
+            classAbilityContainer.appendChild(abilityElement);
         }
     };
 
     const SelectRace = async (race: string) => {
-        raceDescription.innerText = classDescriptions[race];
+        raceAbilityContainer.innerHTML = "";
+        raceDescription.innerHTML = "";
+
+        raceDescription.appendChild(document.createElement("p")).innerHTML = `<i>${classDescriptions[race]}</i>`;
+        for (const [key, value] of Object.entries(raceDescriptions[race])) {
+            raceDescription.appendChild(document.createElement("p")).innerHTML = `<b>${key}</b>: ${value}`;
+        }
 
         const response: {
             status: string,
@@ -304,7 +338,13 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             return;
         }
 
-        racialAbilities = response.entries;
+        racialAbilities = [];
+        for (const ability of response.entries) {
+            const abilityElement = RenderAbility(ability);
+            abilityElement.classList.add("selected");
+            raceAbilityContainer.appendChild(abilityElement);
+            racialAbilities.push(ability);
+        }
     };
 
     SelectClass(classSelect.value);
@@ -315,6 +355,11 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
     SelectRace(raceSelect.value);
     raceSelect?.addEventListener("change", () => {
         SelectRace(raceSelect.value);
+    });
+
+    SelectWeapon(weaponSelect.value);
+    weaponSelect?.addEventListener("change", () => {
+        SelectWeapon(weaponSelect.value);
     });
 
     finishButton.addEventListener("click", async () => {
@@ -330,16 +375,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
 
         selectedAbilities.push(...basicAbilities);
         selectedAbilities.push(...racialAbilities);
-
-        const weapon = weaponAbilities[weaponSelect.value];
-        if (runeEtched) {
-            weapon.name = `Rune-etched ${weapon.name}`;
-            weapon.description = weapon.description.replaceAll("2", "3");
-            for (const roll of weapon.rolls) {
-                roll.formula = roll.formula.replaceAll("2", "3");
-            }
-        }
-        selectedAbilities.push(weapon);
+        selectedAbilities.push(...weaponAbilities);
 
         const abilityMap: { [id: string]: CharacterAbility } = {};
         for (const ability of selectedAbilities) {
