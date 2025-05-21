@@ -106,20 +106,87 @@ const classDescriptions = {
     "Human": "Adaptable",
     "Orc": "Athletic and resilient",
     "Satyr": "Intelligent and energetic",
-    "Tabaxi": "Nimble feline humanoid",
+    "Tabaxi": "Nimble and cat-like",
     "Tiefling": "Cunning half-demon",
     "Triton": "Amphibious with natural electricity",
     "Warforged": "Automaton created by war mages",
 };
 
 const raceDescriptions = {
-    "Elf": {
-        "height": "Asdf",
-        "whatever": "Whatver, stuff.",
+    "Aarakocra": {
+        "height": "4'10\" - 5'5\""
+        "weight": "80 - 100 lbs"
+        "lifespan": "40 yrs"
+    },
+    "Centaur": {
+        "height": "6' - 7'\""
+        "weight": "400 - 800 lbs"
+        "lifespan": "80 yrs"
+    },
+    "Dragonborn": {
+        "height": "5'10\" - 6'6\""
+        "weight": "200-300 lbs"
+        "lifespan": "300 yrs"
     },
     "Dwarf": {
-        "height": "Asdf",
-        "whatever": "Whatver, stuff.",
+        "height": "4' - 5'2\""
+        "weight": "150 - 250 lbs"
+        "lifespan": "500 yrs"
+    },
+    "Elf": {
+        "height": "5' - 6'3\""
+        "weight": "90 - 150 lbs"
+        "lifespan": "immortal"
+    },
+    "Gnome": {
+        "height": "3'6\" - 4'4\""
+        "weight": "50 - 75 lbs"
+        "lifespan": "300 yrs"
+    },
+    "Goliath": {
+        "height": "7' - 9'"
+        "weight": "400 - 700 lbs"
+        "lifespan": "150 yrs"
+    },
+    "Halfling": {
+        "height": "3'10\" - 4'11\""
+        "weight": "80 - 120 lbs"
+        "lifespan": "60 yrs"
+    },
+    "Human": {
+        "height": "5'2\" - 6'4\""
+        "weight": "100 - 220 lbs"
+        "lifespan": "80 yrs"
+    },
+    "Orc": {
+        "height": "6' - 7'"
+        "weight": "280 - 400 lbs"
+        "lifespan": "80 yrs"
+    },
+    "Satyr": {
+        "height": "4'8\" - 5'10\""
+        "weight": "90 - 175 lbs"
+        "lifespan": "60 yrs"
+    },
+    "Tabaxi": {
+        "height": "5'2\" - 5'10\""
+        "weight": "100 - 150 lbs"
+        "lifespan": "70 yrs"
+    },
+    "Tiefling": {
+        "height": "5'2\" - 6'4\""
+        "weight": "120 - 250 lbs"
+        "lifespan": "250 yrs"
+    },
+    "Triton": {
+        "height": "5'2\" - 5'10\""
+        "weight": "110 - 175 lbs"
+        "lifespan": "1000 yrs"
+    },
+    "Warforged": {
+        "height": "6'"
+        "weight": "500 lbs"
+        "lifespan": "immortal"
     },
 }
 
