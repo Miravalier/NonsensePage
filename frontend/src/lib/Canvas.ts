@@ -36,10 +36,9 @@ function drawPolygon(graphics: PIXI.Graphics, polygon: [number, number][][]) {
 
 
 function drawGeometry(graphics: PIXI.Graphics, geometry: any) {
-    console.log(`Drawing ${geometry.type}`, geometry);
     graphics.clear();
 
-    if (geometry.coordinates.length == 0) {
+    if (!geometry || !geometry.coordinates || geometry.coordinates.length == 0) {
         return;
     }
 
