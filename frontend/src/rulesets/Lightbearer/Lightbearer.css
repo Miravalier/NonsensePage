@@ -160,6 +160,13 @@
     margin: 4px;
 }
 
+.Lightbearer.creator .race-image {
+    height: 512px;
+    margin: 8px;
+    padding: 0;
+    border-radius: 24px;
+}
+
 .Lightbearer.creator .ability {
     opacity: 60%;
     background: #00000036;

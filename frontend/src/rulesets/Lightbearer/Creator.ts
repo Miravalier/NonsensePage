@@ -5,16 +5,25 @@ import { BaseWindow } from "../../windows/Window.ts";
 import { GetAbilityIcons } from "./Utils.ts";
 import { Html } from "../../lib/Elements.ts";
 import { AddDescriptionListeners, RenderDescription } from "../../lib/Utils.ts";
-import { onRenderAbilityEntry } from "./Ability.ts";
-
-// const playableClasses = ["Assassin", "Bard", "Berserker", "Cleric", "Druid", "Elementalist", "Guardian", "Necromancer"];
 
 
-// const playableRaces = [
-//     "Aarakocra", "Centaur", "Dragonborn", "Dwarf", "Elf",
-//     "Gnome", "Goliath", "Halfling", "Human", "Orc", "Satyr",
-//     "Tabaxi", "Tiefling", "Triton", "Warforged"
-// ];
+const raceImageAuthors = {
+    "Aarakocra": "@jaesmart",
+    "Centaur": "@krimspyke",
+    "Dragonborn": "@sygdom",
+    "Dwarf": "@nightsadesnk",
+    "Elf": "@sylvkey",
+    "Gnome": "@moonyeah",
+    "Goliath": "@stadnikds",
+    "Halfling": "@ditsyashley",
+    "Human": "@alesart",
+    "Orc": "@amrglt",
+    "Satyr": "@natbat626",
+    "Tabaxi": "@meraven",
+    "Tiefling": "@rosietheillustrator",
+    "Triton": "@lionysart",
+    "Warforged": "@creaperbox",
+}
 
 
 const classMaxHp = {
@@ -222,6 +231,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
     const raceSelect = container.querySelector<HTMLSelectElement>(".race");
     const classDescription = container.querySelector<HTMLDivElement>(".class-description");
     const raceDescription = container.querySelector<HTMLDivElement>(".race-description");
+    const raceImage = container.querySelector<HTMLImageElement>(".race-image");
     const classAbilityContainer = container.querySelector<HTMLDivElement>(".class-abilities");
     const raceAbilityContainer = container.querySelector<HTMLDivElement>(".race-abilities");
     const weaponAbilityContainer = container.querySelector<HTMLDivElement>(".weapon-ability");
@@ -317,6 +327,8 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
     };
 
     const SelectRace = async (race: string) => {
+        raceImage.src = `/RaceImages/${race}.jpg`;
+
         raceAbilityContainer.innerHTML = "";
         raceDescription.innerHTML = "";
 
@@ -324,6 +336,8 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
         for (const [key, value] of Object.entries(raceDescriptions[race])) {
             raceDescription.appendChild(document.createElement("p")).innerHTML = `<b>${key}</b>: ${value}`;
         }
+
+        raceDescription.appendChild(document.createElement("p")).innerHTML = `<i>Art by: ${raceImageAuthors[race]}</i>`;
 
         const response: {
             status: string,
