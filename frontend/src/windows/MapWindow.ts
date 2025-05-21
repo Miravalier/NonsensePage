@@ -642,6 +642,9 @@ export class MapWindow extends CanvasWindow {
                             const gridFilter = this.canvas.grid.filters[0] as GridFilter;
                             gridFilter.uniforms.uPitch = new PIXI.Point(value as number, value as number);
                         }
+                        else if (key == "revealed_areas") {
+                            this.canvas.onRevealChange(value);
+                        }
                         else {
                             simpleChanges = false;
                             break;

@@ -491,14 +491,13 @@ export class InvisibleWindow extends ContentWindow {
             },
         });
 
-        ;
         const contextOptions = {
             [options.title]: {
                 "Close": () => {
                     this.close();
                 },
             },
-        }
+        };
         ContextMenu.set(this.content, contextOptions);
     }
 }

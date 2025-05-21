@@ -285,7 +285,6 @@ export class MapCanvas extends Canvas {
     characterContainer: CanvasContainer;
     effectContainer: CanvasContainer;
     uiContainer: CanvasContainer;
-    fogContainer: CanvasContainer;
     fogMask: PIXI.Graphics;
     highestZIndex: number;
     squareSize: number;
@@ -830,14 +829,13 @@ export class MapCanvas extends Canvas {
         this.effectContainer.node.eventMode = "none";
         this.uiContainer = this.tokenContainer.AddContainer();
         this.uiContainer.node.eventMode = "none";
-        this.fogContainer = this.tokenContainer.AddContainer();
-        this.fogContainer.node.eventMode = "none";
 
         this.fogMask = root.node.addChild(new PIXI.Graphics());
         this.fogMask.x = translation.x;
         this.fogMask.y = translation.y;
         this.fogMask.scale = scale;
-        drawGeometry(this.fogMask, map.revealed_areas);
+
+        this.onRevealChange(map.revealed_areas);
 
         this.grid = root.AddGrid({
             width: this.htmlContainer.offsetWidth,
@@ -858,6 +856,10 @@ export class MapCanvas extends Canvas {
         for (const token of Object.values(map.tokens)) {
             await this.AddToken(token);
         }
+    }
+
+    onRevealChange(revealed_areas) {
+        drawGeometry(this.fogMask, revealed_areas);
     }
 }
 
