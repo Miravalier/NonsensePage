@@ -126,6 +126,18 @@
     border-radius: 4px;
 }
 
+.chat.window .jump-to-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 8px 0;
+    text-align: center;
+    background: #0c121a;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
 .chat.window .content {
     display: flex;
     flex-flow: column nowrap;
@@ -443,10 +455,6 @@
 .file-viewer .content iframe {
     flex: 1;
     border: none;
-}
-
-.disabled {
-    pointer-events: none;
 }
 
 input,

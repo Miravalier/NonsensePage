@@ -116,6 +116,14 @@ textarea {
     align-items: center;
 }
 
+.disabled {
+    pointer-events: none;
+}
+
+.invisible {
+    display: none;
+}
+
 @font-face {
     font-family: "Noto Sans";
     src: url(/NotoSans-Regular.ttf);

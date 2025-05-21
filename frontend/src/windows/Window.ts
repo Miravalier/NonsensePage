@@ -287,6 +287,12 @@ export class BaseWindow {
         await this.load();
     }
 
+    addEventListener(element: HTMLElement, event: keyof HTMLElementEventMap, fn: (ev: Event) => void ) {
+        const abortController = new AbortController();
+        element.addEventListener(event, fn, { signal: abortController.signal });
+        this.abortControllers.push(abortController);
+    }
+
     addDropListener(element: HTMLElement, fn: CallableFunction) {
         this.abortControllers.push(AddDropListener(element, fn));
     }

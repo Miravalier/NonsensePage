@@ -129,6 +129,7 @@
 }
 
 .Lightbearer .ability .details {
+    user-select: text;
     padding: 4px 16px;
 }
 

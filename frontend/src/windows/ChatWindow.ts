@@ -186,6 +186,7 @@ export class ChatWindow extends ContentWindow {
     messages: { [id: string]: HTMLDivElement };
     messageContainer: HTMLDivElement;
     inputSection: HTMLDivElement;
+    jumpToBottom: HTMLDivElement;
     textarea: HTMLTextAreaElement;
 
     constructor(options = undefined) {
@@ -201,6 +202,28 @@ export class ChatWindow extends ContentWindow {
         this.inputSection.className = "input-section";
         this.textarea = this.inputSection.appendChild(document.createElement("textarea"));
         this.textarea.maxLength = 10000;
+
+        this.jumpToBottom = this.container.appendChild(document.createElement("div"));
+        this.jumpToBottom.innerHTML = `
+            <i class="fa-solid fa-caret-down"></i>
+            Scroll to Bottom
+            <i class="fa-solid fa-caret-down"></i>
+        `;
+        this.jumpToBottom.classList.add("jump-to-bottom");
+        this.jumpToBottom.classList.add("invisible");
+        this.jumpToBottom.addEventListener("click", () => {
+            this.jumpToBottom.classList.add("invisible");
+            this.viewPort.scrollTop = this.viewPort.scrollHeight;
+        });
+
+        this.viewPort.addEventListener("scroll", () => {
+            const scrollBottom = this.viewPort.scrollHeight - (this.viewPort.scrollTop + this.viewPort.clientHeight);
+            if (scrollBottom >= 2000) {
+                this.jumpToBottom.classList.remove("invisible");
+            } else {
+                this.jumpToBottom.classList.add("invisible");
+            }
+        });
 
         this.textarea.addEventListener("keypress", async ev => {
             if (ev.key == "Enter" && !ev.shiftKey) {
