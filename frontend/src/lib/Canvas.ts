@@ -9,6 +9,7 @@ import { ApiRequest, Session } from "./Requests.ts";
 import { GridFilter } from "../filters/Grid.ts";
 import { launchWindow, windows, InputDialog } from "../windows/Window.ts";
 import { ScaleType } from "./Models.ts";
+import { Sleep } from "./Async.ts";
 
 
 export const NO_GRID = 0
@@ -52,10 +53,222 @@ function drawGeometry(graphics: PIXI.Graphics, geometry: any) {
 }
 
 
+function lerp(a: number, b: number, t: number): number {
+    return a + (b - a) * t;
+}
+
+
+class AnimationEffect {
+    parent: Animation;
+    durationMS: number;
+
+    constructor(parent: Animation, durationMS: number) {
+        this.parent = parent;
+        this.durationMS = durationMS;
+    }
+
+    /**
+     * Fired just before this effect is added to the queue
+     */
+    onRegister() {}
+
+    /**
+     * Fired when the effect reaches a certain time elapsed
+     */
+    onTick(elapsedMS: number) {}
+}
+
+
+class WaitEffect extends AnimationEffect {}
+
+
+class LerpEffect extends AnimationEffect {
+    startValue: number;
+    endValue: number;
+
+    constructor(parent: Animation, durationMS: number, startValue: number, endValue: number) {
+        super(parent, durationMS);
+        this.startValue = startValue;
+        this.endValue = endValue;
+    }
+
+    applyValue(value: number) {}
+
+    onTick(elapsedMS: number) {
+        super.onTick(elapsedMS);
+        this.applyValue(lerp(this.startValue, this.endValue, elapsedMS / this.durationMS));
+    }
+}
+
+
+class ResizeEffect extends LerpEffect {
+    applyValue(value: number) {
+        super.applyValue(value);
+        this.parent.node.scale = value;
+    }
+}
+
+
+class AlphaEffect extends LerpEffect {
+    applyValue(value: number) {
+        super.applyValue(value);
+        this.parent.node.alpha = value;
+    }
+}
+
+
+class ParentEffect extends AnimationEffect {
+    childCount: number;
+    children: AnimationEffect[];
+
+    constructor(parent: Animation, childCount: number) {
+        super(parent, 0);
+        this.childCount = childCount;
+        this.children = [];
+    }
+
+    onRegister(): void {
+        super.onRegister();
+
+        if (this.parent.queue.length < this.childCount) {
+            throw new Error("invalid concurrent effect child count");
+        }
+
+        for (let i=0; i < this.childCount; i++) {
+            this.children.push(this.parent.queue.pop());
+        }
+
+        let greatestDuration = 0;
+        for (const effect of this.children) {
+            if (effect.durationMS > greatestDuration) {
+                greatestDuration = effect.durationMS;
+            }
+        }
+        this.durationMS = greatestDuration;
+    }
+}
+
+
+class ConcurrentEffect extends ParentEffect {
+    onTick(elapsedMS: number) {
+        super.onTick(elapsedMS);
+        for (const effect of this.children) {
+            if (elapsedMS < effect.durationMS) {
+                effect.onTick(elapsedMS);
+            } else {
+                effect.onTick(effect.durationMS);
+            }
+        }
+    }
+}
+
+
+class ReverseEffect extends ParentEffect {
+    constructor(parent: Animation) {
+        super(parent, 1);
+    }
+
+    onTick(elapsedMS: number) {
+        super.onTick(elapsedMS);
+        for (const effect of this.children) {
+            const reverseElapsedMS = this.durationMS - elapsedMS;
+            if (reverseElapsedMS > 0) {
+                effect.onTick(reverseElapsedMS);
+            } else {
+                effect.onTick(0);
+            }
+        }
+    }
+}
+
+
+class DestroyEffect extends AnimationEffect {
+    constructor(parent: Animation) {
+        super(parent, 0);
+    }
+
+    onTick(elapsedMS: number) {
+        super.onTick(elapsedMS);
+        this.parent.node.removeFromParent();
+        this.parent.node.destroy({context: true});
+        this.parent.node = null;
+    }
+}
+
+
+export class Animation {
+    app: PIXI.Application;
+    node: PIXI.Graphics;
+    history: AnimationEffect[];
+    queue: AnimationEffect[];
+
+    constructor(app: PIXI.Application, node: PIXI.Graphics) {
+        this.app = app;
+        this.node = node;
+        this.history = [];
+        this.queue = [];
+    }
+
+    register(effect: AnimationEffect): Animation {
+        effect.onRegister();
+        this.queue.push(effect);
+        return this;
+    }
+
+    wait(durationMS: number): Animation {
+        return this.register(new WaitEffect(this, durationMS))
+    }
+
+    resize(startSize: number, endSize: number, durationMS: number) {
+        return this.register(new ResizeEffect(this, durationMS, startSize, endSize));
+    }
+
+    alpha(startAlpha: number, endAlpha: number, durationMS: number) {
+        return this.register(new AlphaEffect(this, durationMS, startAlpha, endAlpha));
+    }
+
+    reverse() {
+        return this.register(new ReverseEffect(this));
+    }
+
+    concurrent(childCount: number) {
+        return this.register(new ConcurrentEffect(this, childCount));
+    }
+
+    destroy() {
+        return this.register(new DestroyEffect(this));
+    }
+
+    run() {
+        let elapsedMS = 0;
+        const tickCallback = (ticker: PIXI.Ticker) => {
+            // If no effects remain, deregister the callback
+            if (this.queue.length == 0) {
+                this.app.ticker.remove(tickCallback);
+                return;
+            }
+
+            const currentAnimation = this.queue[0];
+            if (elapsedMS < currentAnimation.durationMS) {
+                currentAnimation.onTick(elapsedMS);
+                elapsedMS += ticker.deltaMS;
+            } else {
+                currentAnimation.onTick(currentAnimation.durationMS);
+                this.history.push(this.queue.shift());
+                elapsedMS = 0;
+            }
+        }
+        this.app.ticker.add(tickCallback);
+    }
+}
+
+
 export class CanvasContainer {
+    app: PIXI.Application;
     node: PIXI.Container;
 
-    constructor(node: PIXI.Container) {
+    constructor(app: PIXI.Application, node: PIXI.Container) {
+        this.app = app;
         this.node = node;
     }
 
@@ -65,7 +278,7 @@ export class CanvasContainer {
         center?: boolean,
         color?: string,
         shadow?: boolean,
-    }) {
+    }): PIXI.Text {
         const position = Parameter(options.position, new Vector2(0, 0));
         const content = Parameter(options.content, "");
         const center = Parameter(options.center, false);
@@ -125,7 +338,19 @@ export class CanvasContainer {
         container.scale.x = scale;
         container.scale.y = scale;
         this.node.addChild(container);
-        return new CanvasContainer(container);
+        return new CanvasContainer(this.app, container);
+    }
+
+    AddGraphics(position: Vector2 = new Vector2(0, 0)): PIXI.Graphics {
+        const graphics = new PIXI.Graphics();
+        graphics.x = position.x;
+        graphics.y = position.y;
+        this.node.addChild(graphics);
+        return graphics;
+    }
+
+    AddAnimation(node: PIXI.Graphics): Animation {
+        return new Animation(this.app, node);
     }
 
     async DrawSprite(options) {
@@ -266,7 +491,7 @@ export class Canvas {
     }
 
     get rootContainer() {
-        return new CanvasContainer(this.app.stage)
+        return new CanvasContainer(this.app, this.app.stage)
     }
 
     onResize(x: number, y: number) {
@@ -453,18 +678,20 @@ export class MapCanvas extends Canvas {
     }
 
     async Ping(x: number, y: number) {
-        const sprite = await this.effectContainer.DrawSprite({
-            src: "/unknown.png",
-            position: new Vector2(x, y),
-            z: this.highestZIndex + 1,
-            width: 1,
-            height: 1,
-            scaleType: ScaleType.Relative,
-        });
+        for (let i=0; i < 3; i++) {
+            const ping = this.uiContainer.AddGraphics(new Vector2(x, y))
+                .circle(0, 0, 100)
+                .stroke({color: "#ff0000", width: 32});
 
-        setTimeout(() => {
-            sprite.removeFromParent();
-        }, 1000);
+            this.uiContainer.AddAnimation(ping)
+                .resize(3.0, 0.01, 2000)
+                .alpha(0.0, 0.9, 2000)
+                .concurrent(2)
+                .destroy()
+                .run();
+
+            await Sleep(1000);
+        }
     }
 
     async AddToken(token): Promise<PIXI.Sprite> {
