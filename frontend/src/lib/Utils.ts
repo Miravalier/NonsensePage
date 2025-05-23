@@ -5,6 +5,42 @@ import { Permissions } from "./Enums.ts";
 import { Entry } from "./Models.ts";
 import { ResolveCharacter } from "./Database.ts";
 import { CharacterSheetWindow } from "../windows/CharacterSheet.ts";
+import { Color } from "pixi.js";
+
+
+export function lerp(a: number, b: number, t: number): number {
+    return a + (b - a) * t;
+}
+
+
+function channelToXYZ(value: number): number {
+    if (value <= 0.04045) {
+        return value / 12.92;
+    } else {
+        return Math.pow((value + 0.055) / 1.055, 2.4);
+    }
+}
+
+
+function channelToRGB(value: number): number {
+    if (value <= 0.0031308) {
+        value = value * 12.92;
+    } else {
+        value = 1.055 * Math.pow(value, 1.0/2.4) - 0.055;
+    }
+    return value;
+}
+
+
+export function colorInterpolate(a: Color, b: Color, t: number): Color {
+    const start = a.toRgbArray();
+    const stop = b.toRgbArray();
+    const result = [];
+    for (let i=0; i < 3; i++) {
+        result.push(channelToRGB(lerp(channelToXYZ(start[i]), channelToXYZ(stop[i]), t)));
+    }
+    return new Color(result);
+}
 
 
 export function LogOut() {

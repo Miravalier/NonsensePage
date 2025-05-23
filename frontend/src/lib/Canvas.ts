@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 import { GlowFilter } from "pixi-filters";
 
 import * as ContextMenu from "./ContextMenu.ts";
-import { Parameter, Require, IsDefined } from "./Utils.ts";
+import { lerp, Parameter, Require, IsDefined, colorInterpolate } from "./Utils.ts";
 import { Vector2 } from "./Vector.ts";
 import { Layer } from "./Enums.ts";
 import { ApiRequest, Session } from "./Requests.ts";
@@ -53,18 +53,20 @@ function drawGeometry(graphics: PIXI.Graphics, geometry: any) {
 }
 
 
-function lerp(a: number, b: number, t: number): number {
-    return a + (b - a) * t;
-}
-
-
 class AnimationEffect {
     parent: Animation;
     durationMS: number;
 
-    constructor(parent: Animation, durationMS: number) {
+    constructor(parent: Animation, durationMS: number = 0) {
         this.parent = parent;
         this.durationMS = durationMS;
+    }
+
+    copy(): this {
+        const thisConstructor = this.constructor as (
+            new (parent: Animation, durationMS: number) => this
+        );
+        return new thisConstructor(this.parent, this.durationMS);
     }
 
     /**
@@ -92,11 +94,42 @@ class LerpEffect extends AnimationEffect {
         this.endValue = endValue;
     }
 
+    copy(): this {
+        const thisConstructor = this.constructor as (
+            new (parent: Animation, durationMS: number, startValue: number, endValue: number) => this
+        );
+        return new thisConstructor(this.parent, this.durationMS, this.startValue, this.endValue);
+    }
+
     applyValue(value: number) {}
 
     onTick(elapsedMS: number) {
         super.onTick(elapsedMS);
         this.applyValue(lerp(this.startValue, this.endValue, elapsedMS / this.durationMS));
+    }
+}
+
+
+class TintEffect extends AnimationEffect {
+    startColor: PIXI.Color;
+    endColor: PIXI.Color;
+
+    constructor(parent: Animation, durationMS: number, startColor: PIXI.Color, endColor: PIXI.Color) {
+        super(parent, durationMS);
+        this.startColor = startColor;
+        this.endColor = endColor;
+    }
+
+    copy(): this {
+        const thisConstructor = this.constructor as (
+            new (parent: Animation, durationMS: number, startColor: PIXI.Color, endColor: PIXI.Color) => this
+        );
+        return new thisConstructor(this.parent, this.durationMS, this.startColor, this.endColor);
+    }
+
+    onTick(elapsedMS: number) {
+        super.onTick(elapsedMS);
+        this.parent.node.tint = colorInterpolate(this.startColor, this.endColor, elapsedMS / this.durationMS).toNumber();
     }
 }
 
@@ -117,14 +150,34 @@ class AlphaEffect extends LerpEffect {
 }
 
 
+class RotateEffect extends LerpEffect {
+    applyValue(value: number) {
+        super.applyValue(value);
+        this.parent.node.rotation = value;
+    }
+}
+
+
 class ParentEffect extends AnimationEffect {
     childCount: number;
     children: AnimationEffect[];
 
-    constructor(parent: Animation, childCount: number) {
+    constructor(parent: Animation, childCount: number = 1) {
         super(parent, 0);
         this.childCount = childCount;
         this.children = [];
+    }
+
+    copy(): this {
+        const thisConstructor = this.constructor as (
+            new (parent: Animation, childCount: number) => this
+        );
+        const newInstance = new thisConstructor(this.parent, this.childCount);
+        for (const child of this.children) {
+            newInstance.children.push(child);
+        }
+        newInstance.durationMS = this.durationMS;
+        return newInstance;
     }
 
     onRegister(): void {
@@ -149,6 +202,34 @@ class ParentEffect extends AnimationEffect {
 }
 
 
+class GroupEffect extends ParentEffect {
+    onRegister(): void {
+        super.onRegister();
+
+        let totalDuration = 0;
+        for (const effect of this.children) {
+            totalDuration += effect.durationMS;
+        }
+        this.durationMS = totalDuration;
+    }
+
+    onTick(elapsedMS: number) {
+        super.onTick(elapsedMS);
+
+        let runningTotal = 0;
+        for (const effect of this.children) {
+            const effectStart = runningTotal;
+            runningTotal += effect.durationMS;
+            const effectStop = runningTotal;
+
+            if (elapsedMS >= effectStart && elapsedMS <= effectStop) {
+                effect.onTick(elapsedMS - effectStart);
+            }
+        }
+    }
+}
+
+
 class ConcurrentEffect extends ParentEffect {
     onTick(elapsedMS: number) {
         super.onTick(elapsedMS);
@@ -164,10 +245,6 @@ class ConcurrentEffect extends ParentEffect {
 
 
 class ReverseEffect extends ParentEffect {
-    constructor(parent: Animation) {
-        super(parent, 1);
-    }
-
     onTick(elapsedMS: number) {
         super.onTick(elapsedMS);
         for (const effect of this.children) {
@@ -183,15 +260,13 @@ class ReverseEffect extends ParentEffect {
 
 
 class DestroyEffect extends AnimationEffect {
-    constructor(parent: Animation) {
-        super(parent, 0);
-    }
-
     onTick(elapsedMS: number) {
         super.onTick(elapsedMS);
-        this.parent.node.removeFromParent();
-        this.parent.node.destroy({context: true});
-        this.parent.node = null;
+        if (this.parent.node !== null) {
+            this.parent.node.removeFromParent();
+            this.parent.node.destroy({context: true});
+            this.parent.node = null;
+        }
     }
 }
 
@@ -227,12 +302,32 @@ export class Animation {
         return this.register(new AlphaEffect(this, durationMS, startAlpha, endAlpha));
     }
 
+    tint(startColor: string, endColor: string, durationMS: number) {
+        return this.register(new TintEffect(this, durationMS, new PIXI.Color(startColor), new PIXI.Color(endColor)));
+    }
+
     reverse() {
         return this.register(new ReverseEffect(this));
     }
 
+    rotate(startAngle: number, endAngle: number, durationMS: number) {
+        return this.register(new RotateEffect(this, durationMS, startAngle, endAngle));
+    }
+
     concurrent(childCount: number) {
         return this.register(new ConcurrentEffect(this, childCount));
+    }
+
+    group(childCount: number) {
+        return this.register(new GroupEffect(this, childCount));
+    }
+
+    duplicate(count: number = 1) {
+        const lastEffect = this.queue[this.queue.length - 1];
+        for (let i = 0; i < count; i++) {
+            this.queue.push(lastEffect.copy());
+        }
+        return this;
     }
 
     destroy() {
