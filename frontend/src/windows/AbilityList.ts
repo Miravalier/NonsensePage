@@ -51,21 +51,19 @@ export class AbilityListWindow extends EntryListWindow {
     }
 
     async contextMenuHook(type: string, id: string, contextOptions: { [choice: string]: (ev: MouseEvent) => void }) {
-        if (type != "folder" || !Session.gm) {
-            return;
+        if (type == "folder" && Session.gm) {
+            contextOptions["Set Alt-Id"] = async () => {
+                const selection = await InputDialog(`Set Alternate Id`, { "ID": ["text"] }, "Set");
+                if (!selection || !selection.ID) {
+                    return;
+                }
+
+                await ApiRequest("/folder/ability/alt-id", {
+                    folder_id: id,
+                    alternate_id: selection.ID,
+                });
+            };
         }
-
-        contextOptions["Set Alt-Id"] = async () => {
-            const selection = await InputDialog(`Set Alternate Id`, { "ID": ["text"] }, "Set");
-            if (!selection || !selection.ID) {
-                return;
-            }
-
-            await ApiRequest("/folder/ability/alt-id", {
-                folder_id: id,
-                alternate_id: selection.ID,
-            });
-        };
     }
 }
 

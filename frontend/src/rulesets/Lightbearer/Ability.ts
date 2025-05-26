@@ -12,6 +12,67 @@ import { ErrorToast, WarningToast } from "../../lib/Notifications.ts";
 import { Html } from "../../lib/Elements.ts";
 
 
+async function onAbilityEdit(ability: Ability) {
+    const savedRolls = structuredClone(ability.rolls);
+    const selection = await InputDialog(
+        "Edit Ability",
+        {
+            "Name": ["text", ability.name],
+            "Type": [
+                "select",
+                {
+                    "0": "Passive",
+                    "1": "Free",
+                    "2": "Action",
+                    "3": "Reaction",
+                },
+                ability.type,
+            ],
+            "Cooldown": [
+                "select",
+                {
+                    "0": "None",
+                    "1": "1 Round",
+                    "2": "2 Rounds",
+                    "3": "3 Rounds",
+                },
+                ability.cooldown,
+            ],
+            "Description": ["paragraph", ability.description],
+            "Rolls": ["fragment", "rolls", ability],
+        },
+        "Save"
+    );
+    if (!selection) {
+        ability.rolls = savedRolls;
+        return;
+    }
+
+    ability.name = selection.Name;
+    ability.description = selection.Description;
+    ability.type = selection.Type;
+    ability.cooldown = selection.Cooldown;
+
+    await ApiRequest("/ability/update", {
+        id: ability.id,
+        changes: {
+            "$set": {
+                name: ability.name,
+                description: ability.description,
+                type: ability.type,
+                cooldown: ability.cooldown,
+                rolls: ability.rolls,
+            }
+        },
+    });
+}
+
+
+export async function onAbilityContextMenu(ability: Ability, contextMenuOptions: { [choice: string]: (ev: MouseEvent) => void }) {
+    contextMenuOptions["Edit"] = () => onAbilityEdit(ability);
+}
+
+
 export async function onRenderAbilityEntry(element: HTMLDivElement, ability: Ability) {
     element.querySelector("img").remove();
     element.insertBefore(Html(`<div class="icons">${GetAbilityIcons(ability)}</div>`), element.firstChild);
@@ -42,19 +103,19 @@ export async function UseAbility(character: Character, ability: Ability | Charac
         speaker: character.name,
         character_id: character.id,
         content: `
-                <div class="Lightbearer template">
-                    <div class="ability" data-character-id="${character.id}" data-id="${ability.id}" data-type="${ability.type}">
-                        <div class="bar">
-                            <div class="row">
-                                <div class="icons">${GetAbilityIcons(ability)}</div>
-                                <div class="name">${ability.name}</div>
-                            </div>
+            <div class="Lightbearer template">
+                <div class="ability" data-character-id="${character.id}" data-id="${ability.id}" data-type="${ability.type}">
+                    <div class="bar">
+                        <div class="row">
+                            <div class="icons">${GetAbilityIcons(ability)}</div>
+                            <div class="name">${ability.name}</div>
                         </div>
-                        <div class="details hidden">${RenderDescription(ability.description)}</div>
-                        <div class="chat-rolls">${rollResults}</div>
                     </div>
+                    <div class="details hidden">${RenderDescription(ability.description)}</div>
+                    <div class="chat-rolls">${rollResults}</div>
                 </div>
-            `,
+            </div>
+        `,
     });
 }
 
@@ -111,51 +172,7 @@ export class LightbearerAbilitySheet extends Sheet {
         if (permission >= Permissions.WRITE) {
             ContextMenu.set(abilityElement, {
                 "Ability": {
-                    "Edit": async () => {
-                        const savedRolls = structuredClone(this.data.rolls);
-                        const selection = await InputDialog(
-                            "Edit Ability",
-                            {
-                                "Name": ["text", this.data.name],
-                                "Type": [
-                                    "select",
-                                    {
-                                        "0": "Passive",
-                                        "1": "Free",
-                                        "2": "Action",
-                                        "3": "Reaction",
-                                    },
-                                    this.data.type,
-                                ],
-                                "Cooldown": [
-                                    "select",
-                                    {
-                                        "0": "None",
-                                        "1": "1 Round",
-                                        "2": "2 Rounds",
-                                        "3": "3 Rounds",
-                                    },
-                                    this.data.cooldown,
-                                ],
-                                "Description": ["paragraph", this.data.description],
-                                "Rolls": ["fragment", "rolls", this.data],
-                            },
-                            "Save"
-                        );
-                        if (!selection) {
-                            this.data.rolls = savedRolls;
-                            return;
-                        }
-                        await this.update({
-                            "$set": {
-                                name: selection.Name,
-                                description: selection.Description,
-                                type: selection.Type,
-                                cooldown: selection.Cooldown,
-                                rolls: this.data.rolls,
-                            }
-                        });
-                    },
+                    "Edit": () => onAbilityEdit(this.data),
                 },
             });
         }

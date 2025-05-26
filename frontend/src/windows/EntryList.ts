@@ -137,6 +137,7 @@ export class EntryListWindow extends ContentWindow {
             }
         }
 
+        Events.dispatch(`${this.entryType}.context.folder`, id, contextOptions);
         await this.contextMenuHook("folder", id, contextOptions);
         ContextMenu.set(element, { "Edit Folder": contextOptions });
     }
@@ -193,6 +194,7 @@ export class EntryListWindow extends ContentWindow {
                 permissionsEditor.load(this.entryType, entry.id);
             }
         }
+        Events.dispatch(`${this.entryType}.context.entry`, entry, contextOptions);
         this.contextMenuHook("entry", entry.id, contextOptions);
         ContextMenu.set(element, {
             [TitleCase(this.entryType)]: contextOptions,

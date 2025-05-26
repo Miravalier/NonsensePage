@@ -5,7 +5,7 @@ import { RegisterFragment } from "../../lib/Fragments.ts";
 import { LoadCss } from "../../lib/Templates.ts";
 
 import { onRenderMessage } from "./Chat.ts";
-import { LightbearerAbilitySheet, onRenderAbilityEntry } from "./Ability.ts";
+import { LightbearerAbilitySheet, onRenderAbilityEntry, onAbilityContextMenu } from "./Ability.ts";
 import { LightbearerCharacterSheet } from "./Character.ts";
 import { LightbearerCreatorRender } from "./Creator.ts";
 import { RollsFragmentRender } from "./Rolls.ts";
@@ -27,4 +27,5 @@ export async function init() {
     RegisterFragment("rolls", RollsFragment, RollsFragmentRender);
     Events.register("renderMessage", onRenderMessage);
     Events.register("renderAbilityEntry", onRenderAbilityEntry);
+    Events.register("ability.context.entry", onAbilityContextMenu);
 }
