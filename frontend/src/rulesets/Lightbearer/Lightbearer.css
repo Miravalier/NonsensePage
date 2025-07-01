@@ -209,3 +209,48 @@
     justify-content: center;
     align-items: center;
 }
+
+.Lightbearer.rules {
+    height: 100%;
+    width: 100%;
+    overflow-y: scroll;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    padding: 12px;
+}
+
+.Lightbearer.rules .race-portrait {
+    height: 360px;
+    margin: 8px;
+    padding: 0;
+    border-radius: 12px;
+}
+
+.Lightbearer.rules .races, .Lightbearer.rules .classes {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: center;
+}
+
+.Lightbearer.rules .races .race, .Lightbearer.rules .classes .class {
+    margin: 8px;
+    padding: 2px;
+    border: 1px solid #ffffff50;
+    border-radius: 8px;
+}
+
+.Lightbearer.rules h1 {
+    margin: 4px;
+    margin-top: 16px;
+}
+
+.Lightbearer.rules h2 {
+    margin: 4px;
+    margin-top: 8px;
+}
+
+.Lightbearer.rules p {
+    margin: 4px;
+}

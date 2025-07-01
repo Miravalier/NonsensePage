@@ -4,7 +4,7 @@ import * as Notifications from "../lib/Notifications.ts";
 import * as Templates from "../lib/Templates.ts";
 import { users } from "../lib/Database.ts";
 import { ErrorToast } from "../lib/Notifications.ts";
-import { IntroRegistry } from "../lib/Intro.ts";
+import { IntroRegistryIsEmpty } from "../lib/Intro.ts";
 import { Rulesets } from "../rulesets/index.ts";
 import { Vector2 } from "../lib/Vector.ts";
 import { LogOut } from "../lib/Utils.ts";
@@ -278,7 +278,7 @@ async function Main() {
 async function LoadStartingWindows() {
     await Sleep(50);
 
-    if (!Session.gm && !users[Session.id].character_id && IntroRegistry.html !== null) {
+    if (!Session.gm && !users[Session.id].character_id && !IntroRegistryIsEmpty()) {
         const characterCreator = new CharacterCreatorWindow({
             size: new Vector2(window.innerWidth - 40, window.innerHeight - 80),
             position: new Vector2(20, 20),

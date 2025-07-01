@@ -95,6 +95,7 @@ export interface User extends Entry {
     languages: Language[];
     settings: any;
     online: boolean;
+    active: boolean;
 }
 
 export interface Message {

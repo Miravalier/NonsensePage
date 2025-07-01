@@ -5,6 +5,7 @@ export default {
             input: {
                 main: '/main.html',
                 login: '/login.html',
+                rules: '/rules.html',
             },
         },
         commonjsOptions: {

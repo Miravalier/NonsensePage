@@ -104,6 +104,7 @@ export class SettingsWindow extends ContentWindow {
         this.group(() => {
             this.addCheckbox("hideImages", "presence.hideImages", true);
             this.addCheckbox("hideOffline", "presence.hideOffline", true);
+            this.addCheckbox("hideInactive", "presence.hideInactive", true);
         });
 
         if (Session.gm) {

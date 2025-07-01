@@ -72,6 +72,10 @@ async def login(request: LoginRequest):
     if user is None:
         raise AuthError("invalid username or password")
 
+    # Check user is active
+    if not user.active:
+        raise AuthError("inactive user")
+
     # Check the password
     if not check_password(request.password, user.hashed_password):
         raise AuthError("invalid username or password")

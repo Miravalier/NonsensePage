@@ -657,20 +657,20 @@ button:hover i {
     display: none;
 }
 
-.presence.window .content.hideOffline .portrait {
+.presence.window .content.hideOffline .portrait.offline {
     display: none;
 }
 
-.presence.window .content.hideOffline .portrait.online {
-    display: flex;
+.presence.window .content.hideInactive .portrait.inactive {
+    display: none;
 }
 
 .presence.window .portrait {
-    opacity: 25%;
+    opacity: 100%;
 }
 
-.presence.window .portrait.online {
-    opacity: 100%;
+.presence.window .portrait.offline {
+    opacity: 25%;
 }
 
 .settings.window .content {

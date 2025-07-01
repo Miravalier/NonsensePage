@@ -43,6 +43,7 @@ export class PresenceWindow extends InvisibleWindow {
 
         this.trackSetting("hideImages", true);
         this.trackSetting("hideOffline", true);
+        this.trackSetting("hideInactive", true);
 
         for (const user of Object.values(Database.users)) {
             let image = user.image;
@@ -50,36 +51,54 @@ export class PresenceWindow extends InvisibleWindow {
                 image = "/unknown.png";
             }
             const portrait = this.content.appendChild(Html(`
-                <div class="portrait ${user.online ? "online" : ""}">
+                <div class="portrait">
                     <img src="${image}" draggable=false>
                     <span class="name">${user.name}</span>
                 </div>
             `)) as HTMLDivElement;
+            if (!user.online) {
+                portrait.classList.add("offline");
+            }
+            if (!user.active) {
+                portrait.classList.add("inactive");
+            }
             portrait.dataset.id = user.id;
             this.portraits[user.id] = portrait;
-            if (Session.gm) {
-                ContextMenu.set(portrait, {
-                    [`User ${user.name}`]: {
-                        "Delete": async () => {
-                            if (user.is_gm) {
-                                ErrorToast("Cannot delete GM - edit the database");
-                            }
-                            else {
-                                await ApiRequest("/user/delete", { id: user.id });
-                            }
-                        }
+            if (Session.gm && user.id !== Session.id) {
+                const contextOptions = {};
+                if (user.active) {
+                    contextOptions["Disable"] = async () => {
+                        await ApiRequest("/user/update", {
+                            id: user.id,
+                            changes: { "$set": { "active": false } },
+                        });
+                    };
+                } else {
+                    contextOptions["Enable"] = async () => {
+                        await ApiRequest("/user/update", {
+                            id: user.id,
+                            changes: { "$set": { "active": true } },
+                        });
+                    };
+                }
+                contextOptions["Delete"] = async () => {
+                    if (user.is_gm) {
+                        ErrorToast("Cannot delete GM - edit the database");
                     }
-                });
+                    else {
+                        await ApiRequest("/user/delete", { id: user.id });
+                    }
+                };
+                ContextMenu.set(portrait, {[`User ${user.name}`]: contextOptions});
             }
         }
 
         Events.register("userPresence", (userId: string, online: boolean) => {
             const portrait = this.portraits[userId];
             if (online) {
-                portrait.classList.add("online");
-            }
-            else {
-                portrait.classList.remove("online");
+                portrait.classList.remove("offline");
+            } else {
+                portrait.classList.add("offline");
             }
         });
 
@@ -93,6 +112,11 @@ export class PresenceWindow extends InvisibleWindow {
             imageElement.src = image;
             const nameElement = portrait.querySelector(".name");
             nameElement.textContent = user.name;
+            if (!user.active) {
+                portrait.classList.add("inactive");
+            } else {
+                portrait.classList.remove("inactive");
+            }
         });
 
         Events.register("userDelete", (userId: string) => {

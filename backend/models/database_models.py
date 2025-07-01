@@ -317,6 +317,7 @@ class User(Entry):
     character_id: Optional[str] = None
     languages: list[Language] = Field(default_factory=list)
     settings: dict = Field(default_factory=dict)
+    active: bool = True
 
     @property
     def file_root(self) -> Path:

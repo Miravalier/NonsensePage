@@ -12,6 +12,7 @@ import { ErrorToast } from "../lib/Notifications.ts";
 import { Language } from "../lib/Enums.ts";
 import { Message } from "../lib/Models.ts";
 import { GetSpeaker } from "../lib/Database.ts";
+import { CharacterCreatorWindow } from "./CharacterCreator.ts";
 
 
 const LANGUAGES = [
@@ -45,7 +46,14 @@ export const COMMANDS = {
     "?": helpCommand,
     "help": helpCommand,
     "h": helpCommand,
+    "create": characterCreatorCommand,
 };
+
+
+async function characterCreatorCommand() {
+    const characterCreator = new CharacterCreatorWindow();
+    await characterCreator.load();
+}
 
 
 function spongebobCase(s) {

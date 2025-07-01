@@ -7,7 +7,7 @@ import { Html } from "../../lib/Elements.ts";
 import { AddDescriptionListeners, RenderDescription } from "../../lib/Utils.ts";
 
 
-const raceImageAuthors = {
+export const raceImageAuthors = {
     "Aarakocra": "@jaesmart",
     "Centaur": "@krimspyke",
     "Dragonborn": "@sygdom",
@@ -26,7 +26,7 @@ const raceImageAuthors = {
 }
 
 
-const classMaxHp = {
+export const classMaxHp = {
     "Assassin": 18,
     "Bard": 20,
     "Berserker": 22,
@@ -38,7 +38,7 @@ const classMaxHp = {
 }
 
 
-const classAttributes = {
+export const classAttributes = {
     // Classes
     "Assassin": { "agility": 5, "perception": 2, "charisma": -2, "endurance": -2, "strength": -2 },
     "Bard": { "charisma": 5, "memory": 5, "perception": -2, "agility": -1, "endurance": -3, "strength": -3 },
@@ -66,7 +66,7 @@ const classAttributes = {
     "Warforged": { "strength": 3, "endurance": 3, "memory": 3, "perception": -4, "charisma": -4 },
 };
 
-const classSkills = {
+export const classSkills = {
     // Classes
     "Assassin": ["stealth", "melee"],
     "Bard": ["spellwork"],
@@ -94,7 +94,7 @@ const classSkills = {
     "Warforged": ["melee"],
 };
 
-const classDescriptions = {
+export const classDescriptions = {
     // Classes
     "Assassin": "Stealthy, melee, single-target damage dealer",
     "Bard": "Team-oriented with large AoE buffs and debuffs",
@@ -122,7 +122,7 @@ const classDescriptions = {
     "Warforged": "Automaton created by war mages",
 };
 
-const raceDescriptions = {
+export const raceDescriptions = {
     "Aarakocra": {
         "Height": "4'10\" - 5'5\"",
         "Weight": "80 - 100 lbs",
@@ -207,9 +207,7 @@ function RenderAbility(ability: Ability): HTMLDivElement {
     abilityElement.innerHTML = `
         <div class="bar">
             <div class="row">
-                <div class="icons">
-                    <!-- Rendered by script -->
-                </div>
+                <div class="icons"></div>
                 <div class="name">${ability.name}</div>
             </div>
         </div>

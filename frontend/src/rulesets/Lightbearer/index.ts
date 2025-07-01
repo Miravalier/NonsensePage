@@ -2,6 +2,7 @@ import * as Events from "../../lib/Events.ts";
 import { RegisterSheet } from "../../lib/Sheet.ts";
 import { RegisterIntro } from "../../lib/Intro.ts";
 import { RegisterFragment } from "../../lib/Fragments.ts";
+import { RegisterRules } from "../../lib/Rules.ts";
 import { LoadCss } from "../../lib/Templates.ts";
 
 import { onRenderMessage } from "./Chat.ts";
@@ -9,9 +10,11 @@ import { LightbearerAbilitySheet, onRenderAbilityEntry, onAbilityContextMenu } f
 import { LightbearerCharacterSheet } from "./Character.ts";
 import { LightbearerCreatorRender } from "./Creator.ts";
 import { RollsFragmentRender } from "./Rolls.ts";
+import { LightbearerRulesRender } from "./Rules.ts";
 import LightbearerCss from "./Lightbearer.css?raw";
 import CharacterHtml from "./Character.html?raw";
 import CreatorHtml from "./Creator.html?raw";
+import RulesHtml from "./Rules.html?raw";
 import AbilityHtml from "./Ability.html?raw";
 import ItemFragmentHtml from "./ItemFragment.html?raw";
 import RollsFragment from "./Rolls.html?raw";
@@ -22,6 +25,7 @@ export async function init() {
     RegisterSheet("character.default", LightbearerCharacterSheet, CharacterHtml);
     RegisterSheet("ability.default", LightbearerAbilitySheet, AbilityHtml);
     RegisterIntro(LightbearerCreatorRender, CreatorHtml);
+    RegisterRules(LightbearerRulesRender, RulesHtml);
     RegisterFragment("ability", AbilityHtml);
     RegisterFragment("item", ItemFragmentHtml);
     RegisterFragment("rolls", RollsFragment, RollsFragmentRender);
