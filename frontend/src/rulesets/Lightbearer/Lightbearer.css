@@ -218,6 +218,11 @@
     flex-flow: column nowrap;
     align-items: center;
     padding: 12px;
+    user-select: text;
+}
+
+.Lightbearer.rules * {
+    user-select: text;
 }
 
 .Lightbearer.rules .race-portrait {
