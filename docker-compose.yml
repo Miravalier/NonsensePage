@@ -11,6 +11,8 @@ services:
         restart: unless-stopped
         volumes:
             - ${DATA_ROOT}/db:/data/db
+        ports:
+            - ${DB_PORT}:27017
 
     nonsense_api:
         build: .

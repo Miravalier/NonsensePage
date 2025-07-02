@@ -292,6 +292,7 @@ class Character(Entity, Container):
     sheet_type: str = "default"
     ability_map: dict[str, CharacterAbility] = Field(default_factory=dict)
     ability_order: list[str] = Field(default_factory=list)
+    temporary: bool = False
 
 
 class Ability(Entry):

@@ -69,6 +69,34 @@ async def map_update(request: MapUpdateRequest):
     return {"status": "success"}
 
 
+class DeleteTokenRequest(AuthRequest):
+    map: str
+    token_id: str
+
+
+@router.post("/delete-token")
+async def map_delete_token(request: DeleteTokenRequest):
+    map = require(database.maps.find_one(request.map), "invalid map id")
+    if not request.requester.is_gm:
+        auth_require(map.has_permission(request.requester.id, "*", Permissions.WRITE))
+
+    token = require(map.tokens.get(request.token_id), "invalid token id")
+
+    character = database.characters.find_one(token.character_id)
+    if character is not None and character.temporary:
+        database.characters.delete_one(character.id)
+
+    changes = {
+        "$unset": {
+            f"tokens.{token.id}": None,
+        },
+    }
+    database.maps.find_one_and_update(request.map, changes)
+    await map.broadcast_changes(changes)
+
+    return {"status": "success"}
+
+
 class MapPingRequest(AuthRequest):
     id: str
     x: float

@@ -569,6 +569,7 @@ export class MapWindow extends CanvasWindow {
                 if (character.alignment != Alignment.PLAYER) {
                     character.name = `${character.name} - ${PCG.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ" as any)}${PCG.choice("0123456789" as any)}`;
                     character.folder_id = null;
+                    character.temporary = true;
                     const createResponse: {
                         status: string;
                         id: string;

@@ -137,7 +137,7 @@ async def folder_list(request: ListRequest, entryType: EntryType):
     subfolders.sort(key=lambda f: f[1])
 
     entries = []
-    for entry in entryCollection.find({"folder_id": folder_id}):
+    for entry in entryCollection.find({"folder_id": folder_id, "temporary": {"$ne": True}}):
         if request.requester.is_gm or entry.has_permission(request.requester.id, level=Permissions.READ):
             entries.append(entry.model_dump())
     entries.sort(key=lambda entry: entry["name"])

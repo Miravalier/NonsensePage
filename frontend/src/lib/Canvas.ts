@@ -821,14 +821,7 @@ export class MapCanvas extends Canvas {
         }
 
         sprite.on("delete", async () => {
-            await ApiRequest("/map/update", {
-                id: this.id,
-                changes: {
-                    "$unset": {
-                        [`tokens.${token.id}`]: null,
-                    },
-                },
-            });
+            await ApiRequest("/map/delete-token", {map: this.id, token: token.id});
         });
 
         sprite.on("resized", (attribute: string, value: number) => {
@@ -1027,14 +1020,7 @@ export class MapCanvas extends Canvas {
         const contextOptions = {
             "Edit Token": {
                 "Delete Token": async () => {
-                    await ApiRequest("/map/update", {
-                        id: this.id,
-                        changes: {
-                            "$unset": {
-                                [`tokens.${token.id}`]: null,
-                            },
-                        },
-                    });
+                    await ApiRequest("/map/delete-token", {map: this.id, token_id: token.id});
                 },
                 "Edit Properties": async () => {
                     let width;

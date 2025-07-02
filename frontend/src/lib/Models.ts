@@ -143,6 +143,7 @@ export interface Character extends Entity {
     item_order: string[];
     ability_map: { [id: string]: CharacterAbility };
     ability_order: string[];
+    temporary: boolean;
 }
 
 export interface Note extends Entry {

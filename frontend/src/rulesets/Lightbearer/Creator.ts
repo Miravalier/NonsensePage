@@ -194,8 +194,8 @@ export const raceDescriptions = {
         "Lifespan": "1000 yrs",
     },
     "Warforged": {
-        "Height": "6'",
-        "Weight": "500 lbs",
+        "Height": "4'0\" - 7'0\"",
+        "Weight": "400-600 lbs",
         "Lifespan": "Immortal",
     },
 }
