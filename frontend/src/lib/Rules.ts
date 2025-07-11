@@ -5,7 +5,7 @@ export const RulesRegistry: {
 
 
 export function RulesRegistryIsEmpty(): boolean {
-    return RulesRegistry.html !== null;
+    return RulesRegistry.html === null;
 }
 
 

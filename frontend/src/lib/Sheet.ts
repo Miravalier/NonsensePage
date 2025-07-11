@@ -231,9 +231,13 @@ export class TabbedSheet extends Sheet {
             this.tabs[selectorId] = {};
             this.tabButtons[selectorId] = {};
             let firstTab: HTMLDivElement = null;
+            let defaultTab: HTMLDivElement = null;
             for (const tab of this.container.querySelectorAll<HTMLDivElement>(`div.tab[data-id="${selectorId}"]`)) {
                 if (firstTab === null) {
                     firstTab = tab;
+                }
+                if (defaultTab === null && tab.dataset.default) {
+                    defaultTab = tab;
                 }
                 const tabId = tab.dataset.tab;
                 this.tabs[selectorId][tabId] = tab;
@@ -245,7 +249,10 @@ export class TabbedSheet extends Sheet {
                     this.setTab(selectorId, tabId);
                 });
             }
-            if (firstTab) {
+            if (defaultTab) {
+                this.setTab(selectorId, defaultTab.dataset.tab);
+            }
+            else if (firstTab) {
                 this.setTab(selectorId, firstTab.dataset.tab);
             }
         }

@@ -285,24 +285,44 @@ async function LoadStartingWindows() {
         });
         await characterCreator.load();
         characterCreator.on_close.push(LoadStartingWindows);
+        return;
     }
-    else {
-        const defaultLayout = localStorage.getItem("defaultLayout");
-        if (defaultLayout != null) {
-            const layouts = JSON.parse(localStorage.getItem("layouts"));
-            await applyLayout(layouts[defaultLayout]);
-        }
-        else {
-            const chatWindow = new ChatWindow({
-                size: new Vector2(400, window.innerHeight - 64),
-                position: new Vector2(window.innerWidth - 400, 0),
-            });
-            await chatWindow.load();
 
-            if (users[Session.id].character_id) {
-                const characterSheet = new CharacterSheetWindow();
-                characterSheet.load(users[Session.id].character_id);
-            }
-        }
+    const defaultLayout = localStorage.getItem("defaultLayout");
+    if (defaultLayout != null) {
+        const layouts = JSON.parse(localStorage.getItem("layouts"));
+        await applyLayout(layouts[defaultLayout]);
+        return;
+    }
+
+    let chatPosition: Vector2;
+    let chatSize: Vector2;
+    let characterPosition: Vector2;
+    let characterSize: Vector2;
+    const portraitMode = window.innerHeight > window.innerWidth;
+    if (portraitMode) {
+        chatPosition = new Vector2(0, window.innerHeight / 2);
+        chatSize = new Vector2(window.innerWidth, window.innerHeight / 2 - 30);
+        characterPosition = new Vector2(0, 0);
+        characterSize = new Vector2(window.innerWidth, window.innerHeight / 2 - 32);
+    } else {
+        chatPosition = new Vector2(window.innerWidth - 400, 0);
+        chatSize = new Vector2(400, window.innerHeight - 30);
+        characterPosition = new Vector2(0, 0);
+        characterSize = undefined;
+    }
+
+    const chatWindow = new ChatWindow({
+        size: chatSize,
+        position: chatPosition,
+    });
+    await chatWindow.load();
+
+    if (users[Session.id].character_id) {
+        const characterSheet = new CharacterSheetWindow({
+            position: characterPosition,
+            size: characterSize,
+        });
+        characterSheet.load(users[Session.id].character_id);
     }
 }

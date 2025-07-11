@@ -1,6 +1,6 @@
 import { CharacterAbility, AbilityType, Ability } from "../../lib/Models.ts";
 import { ErrorToast } from "../../lib/Notifications.ts";
-import { ApiRequest } from "../../lib/Requests.ts";
+import { ApiRequest, Session } from "../../lib/Requests.ts";
 import { BaseWindow } from "../../windows/Window.ts";
 import { GetAbilityIcons } from "./Utils.ts";
 import { Html } from "../../lib/Elements.ts";
@@ -233,7 +233,6 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
     const classAbilityContainer = container.querySelector<HTMLDivElement>(".class-abilities");
     const raceAbilityContainer = container.querySelector<HTMLDivElement>(".race-abilities");
     const weaponAbilityContainer = container.querySelector<HTMLDivElement>(".weapon-ability");
-    const nameInput = container.querySelector<HTMLInputElement>(".characterName");
     const finishButton = container.querySelector<HTMLButtonElement>(".finish");
     const weaponSelect = document.createElement("select");
     weaponSelect.classList.add("weapon");
@@ -380,11 +379,6 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             return;
         }
 
-        if (!nameInput.value) {
-            ErrorToast("You must input a name");
-            return;
-        }
-
         selectedAbilities.push(...basicAbilities);
         selectedAbilities.push(...racialAbilities);
         selectedAbilities.push(...weaponAbilities);
@@ -394,7 +388,7 @@ export async function LightbearerCreatorRender(container: HTMLDivElement, data: 
             abilityMap[ability.id] = ability;
         }
         const characterInfo = {
-            name: nameInput.value,
+            name: Session.username,
             image: `/files/Lightbearer/${classSelect.value}.png`,
             hp: classMaxHp[classSelect.value],
             max_hp: classMaxHp[classSelect.value],

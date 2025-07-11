@@ -5,7 +5,7 @@ export const IntroRegistry: {
 
 
 export function IntroRegistryIsEmpty(): boolean {
-    return IntroRegistry.html !== null;
+    return IntroRegistry.html === null;
 }
 
 

@@ -821,7 +821,15 @@ export class MapCanvas extends Canvas {
         }
 
         sprite.on("delete", async () => {
-            await ApiRequest("/map/delete-token", {map: this.id, token: token.id});
+            await ApiRequest("/map/delete-token", {map: this.id, token_id: token.id});
+        });
+
+        sprite.on("combat-add", async () => {
+            if (token.character_id) {
+                await ApiRequest("/combat/add-combatant", {
+                    character_id: token.character_id,
+                });
+            }
         });
 
         sprite.on("resized", (attribute: string, value: number) => {
@@ -1071,10 +1079,9 @@ export class MapCanvas extends Canvas {
         };
         if (Session.gm) {
             contextOptions["Edit Token"]["Combat Tracker"] = async () => {
-                if (token.character_id) {
-                    await ApiRequest("/combat/add-combatant", {
-                        character_id: token.character_id,
-                    });
+                this.selectedTokens.add(sprite);
+                for (const sprite of this.selectedTokens) {
+                    sprite.emit("add-combat");
                 }
             };
             contextOptions["Change Layer"] = {
@@ -1105,7 +1112,7 @@ export class MapCanvas extends Canvas {
         sprite.filters = [];
     }
 
-    DeleteToken(id) {
+    DeleteToken(id: string) {
         this.tokenNodes[id].destroy();
         delete this.tokenNodes[id];
     }

@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from wand.image import Image
 from wand.color import Color
+from wand.exceptions import ImageError
 
 from .errors import JsonError
 from ..models.database_models import User
@@ -170,10 +171,14 @@ def generate_thumbnail(image_path: Path, force: bool = False, svg: bool = False)
     if svg:
         image_params["background"] = Color('transparent')
 
-    with Image(**image_params) as image:
-        with image.clone() as thumbnail:
-            thumbnail.thumbnail(128, 128)
-            thumbnail.save(filename=thumbnail_path)
+    try:
+        with Image(**image_params) as image:
+            with image.clone() as thumbnail:
+                thumbnail.thumbnail(128, 128)
+                thumbnail.save(filename=thumbnail_path)
+    except ImageError:
+        with Image(background=Color("transparent"), width=128, height=128) as image:
+            image.save(filename=thumbnail_path)
 
 
 def delete_thumbnail(image_path: Path):
