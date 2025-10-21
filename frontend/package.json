@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "typescript": "^5.2.2",
-    "vite": "^5.2.14"
+    "vite": "^5.4.21"
   },
   "dependencies": {
     "mathjs": "^12.4.1",
