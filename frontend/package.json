@@ -13,7 +13,7 @@
     "vite": "^5.2.14"
   },
   "dependencies": {
-    "mathjs": "^12.4.1",
+    "mathjs": "^15.2.0",
     "pixi.js": "^8.0.4",
     "pixi-filters": "^6.0.0",
     "squirrelly": "^9.1.0",
